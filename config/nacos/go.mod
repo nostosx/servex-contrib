@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/nacos-group/nacos-sdk-go/v2 v2.3.5
-	github.com/nostosx/servex v0.0.0-00010101000000-000000000000
+	github.com/nostosx/servex v1.0.0
 )
 
 require (
@@ -63,5 +63,3 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 )
-
-replace github.com/nostosx/servex => ../../../servex

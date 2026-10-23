@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/hashicorp/consul/api v1.35.0
-	github.com/nostosx/servex v0.0.0-00010101000000-000000000000
+	github.com/nostosx/servex v1.0.0
 )
 
 require (
@@ -26,5 +26,3 @@ require (
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/sys v0.48.0 // indirect
 )
-
-replace github.com/nostosx/servex => ../../../servex

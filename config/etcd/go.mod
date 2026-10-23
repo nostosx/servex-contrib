@@ -3,7 +3,7 @@ module github.com/nostosx/servex-contrib/config/etcd
 go 1.27.3
 
 require (
-	github.com/nostosx/servex v0.0.0-00010101000000-000000000000
+	github.com/nostosx/servex v1.0.0
 	go.etcd.io/etcd/client/v3 v3.7.2
 	go.etcd.io/etcd/server/v3 v3.7.2
 )
@@ -66,5 +66,3 @@ require (
 	k8s.io/utils v0.0.0-20260108192941-914a6e750570 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
-
-replace github.com/nostosx/servex => ../../../servex

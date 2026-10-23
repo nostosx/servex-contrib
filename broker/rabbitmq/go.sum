@@ -1,3 +1,5 @@
+github.com/nostosx/servex v1.0.0 h1:BnNod/LDpqxcTr+sTnMEF0CMHrcaszfxYTeiCxKRaNI=
+github.com/nostosx/servex v1.0.0/go.mod h1:9Qp0pyoc7lcNd11ke3OlEEWWcNnqEBxqlWtP4Yk37kw=
 github.com/rabbitmq/amqp091-go v1.16.0 h1:1O8oQqnj9hLACoo6CVMgn57z2pLWXvgemhh4GsquV+Y=
 github.com/rabbitmq/amqp091-go v1.16.0/go.mod h1:Hy4jKW5kQART1u+JkDTF9YYOQUHXqMuhrgxOEeS7G4o=
 go.uber.org/goleak v1.3.0 h1:2K3zAYmnTNqV73imy9J1T3WC+gmCePx2hEGkimedGto=
