@@ -1,0 +1,257 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      servex-ref:
+        description: servex branch, tag or commit (empty uses its default branch)
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOWORK: "off"
+  GOTOOLCHAIN: local
+  GO_VERSION: "1.27.3"
+  GOLANGCI_LINT_VERSION: v2.15.0
+
+defaults:
+  run:
+    shell: bash
+
+# The core replacement requires sibling servex/ and servex-contrib/ checkouts.
+# depguard also relies on the servex-contrib/ name. kitx resolves from its release.
+# The servex repository must exist and be readable before jobs run remotely.
+# The default checkout token reads public siblings; a private sibling repository
+# needs an explicitly configured credential with read access.
+jobs:
+  modules:
+    name: Module and integration coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Matrices cover every module and integration test directory
+        run: make matrices-check
+
+  unit:
+    name: Check (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        module:
+          # BEGIN MODULES
+          - broker/kafka
+          - broker/nats
+          - broker/rabbitmq
+          - cache/redis
+          - config/consul
+          - config/etcd
+          - config/nacos
+          - database/mongodb
+          - discovery/consul
+          - discovery/etcd
+          - discovery/kubernetes
+          - discovery/nacos
+          - encoding/proto
+          - encoding/yaml
+          - jobqueue/asynq
+          - metrics/otel
+          - metrics/prometheus
+          - middleware
+          - selector
+          - tracing/otel
+          - transport/grpcx
+          # END MODULES
+    defaults:
+      run:
+        working-directory: servex-contrib/${{ matrix.module }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: servex-contrib
+      - uses: actions/checkout@v7
+        with:
+          repository: nostosx/servex
+          ref: ${{ inputs.servex-ref }}
+          path: servex
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache-dependency-path: |
+            servex-contrib/${{ matrix.module }}/go.mod
+            servex-contrib/${{ matrix.module }}/go.sum
+      - name: Check module (no external services)
+        working-directory: servex-contrib
+        run: make check MODULES="${{ matrix.module }}"
+
+  lint:
+    name: Lint (Go 1.27.3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: servex-contrib
+      - uses: actions/checkout@v7
+        with:
+          repository: nostosx/servex
+          ref: ${{ inputs.servex-ref }}
+          path: servex
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            servex-contrib/**/go.mod
+            servex-contrib/**/go.sum
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          install-mode: goinstall
+          version: ${{ env.GOLANGCI_LINT_VERSION }}
+          install-only: true
+      - name: Lint all modules
+        working-directory: servex-contrib
+        run: make lint
+
+  vulncheck:
+    name: Reachable vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: servex-contrib
+      - uses: actions/checkout@v7
+        with:
+          repository: nostosx/servex
+          ref: ${{ inputs.servex-ref }}
+          path: servex
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: |
+            servex-contrib/**/go.mod
+            servex-contrib/**/go.sum
+      - name: Install scanner outside the modules
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - name: Scan all modules (normal and integration builds)
+        working-directory: servex-contrib
+        run: make vulncheck
+
+  integration:
+    name: Integration (${{ matrix.backend }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # BEGIN INTEGRATIONS
+          - backend: kafka
+            modules: broker/kafka
+          - backend: nats
+            modules: broker/nats
+          - backend: rabbitmq
+            modules: broker/rabbitmq
+          - backend: redis
+            modules: cache/redis jobqueue/asynq
+          - backend: mongodb
+            modules: database/mongodb
+          - backend: consul
+            modules: config/consul discovery/consul
+          - backend: etcd
+            modules: config/etcd discovery/etcd
+          - backend: nacos
+            modules: config/nacos discovery/nacos
+            # END INTEGRATIONS
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: servex-contrib
+      - uses: actions/checkout@v7
+        with:
+          repository: nostosx/servex
+          ref: ${{ inputs.servex-ref }}
+          path: servex
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache-dependency-path: |
+            servex-contrib/**/go.mod
+            servex-contrib/**/go.sum
+      - name: Start disposable service and wait for readiness
+        working-directory: servex-contrib
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: bash .github/scripts/start-service.sh "$BACKEND"
+      - name: Run integration tests and reject skipped or absent tests
+        working-directory: servex-contrib
+        env:
+          MODULES: ${{ matrix.modules }}
+        run: make integration
+      - name: Service logs
+        if: failure()
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: docker logs "servex-it-$BACKEND"
+      - name: Remove disposable service
+        if: always()
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: |
+          if docker container inspect "servex-it-$BACKEND" >/dev/null 2>&1; then
+            docker rm -f -v "servex-it-$BACKEND"
+          fi
+
+  integration-kubernetes:
+    name: Integration (kind)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: servex-contrib
+      - uses: actions/checkout@v7
+        with:
+          repository: nostosx/servex
+          ref: ${{ inputs.servex-ref }}
+          path: servex
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          check-latest: true
+          cache-dependency-path: |
+            servex-contrib/discovery/kubernetes/go.mod
+            servex-contrib/discovery/kubernetes/go.sum
+      - uses: helm/kind-action@v1
+        with:
+          cluster_name: servex-it
+          wait: 120s
+      - name: Verify cluster readiness and kubeconfig
+        run: |
+          test -s "$HOME/.kube/config"
+          kubectl --context kind-servex-it wait --for=condition=Ready nodes --all --timeout=120s
+      - name: Run Kubernetes integration tests and reject skips
+        working-directory: servex-contrib
+        run: |
+          export SERVEX_IT_KUBECONFIG="$HOME/.kube/config"
+          make integration MODULES=discovery/kubernetes
+      # kind-action deletes the cluster in its post step, including on failure.

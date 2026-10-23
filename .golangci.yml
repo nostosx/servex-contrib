@@ -1,0 +1,73 @@
+version: "2"
+
+run:
+  go: "1.27.3"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - depguard
+    - errorlint
+    - gocritic
+    - misspell
+    - modernize
+    - noctx
+    - nolintlint
+    - revive
+    - unconvert
+    - unparam
+    - usestdlibvars
+  settings:
+    depguard:
+      rules:
+        # middleware and selector use the standard library, servex and kitx.
+        core-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/middleware/**"
+            - "**/servex-contrib/selector/**"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex
+            - github.com/nostosx/kitx/backoff$
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+        - name: package-comments
+          disabled: true
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      # Tests build requests from fixed URLs against in-process servers.
+      - path: _test\.go
+        linters:
+          - noctx
+      # Test helpers keep parameters that read better at the call site even
+      # when every current caller passes the same value, and test callbacks
+      # implement signatures whose error result they never need.
+      - path: _test\.go
+        linters:
+          - unparam
+      # Tests compare errors with == to assert that the exact value is
+      # passed through unchanged; errors.Is would also accept a wrapped one.
+      - path: _test\.go
+        linters:
+          - errorlint
+        text: "comparing with [=!]= will fail on wrapped errors"
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    gofmt:
+      simplify: true
+    goimports:
+      local-prefixes:
+        - github.com/nostosx
