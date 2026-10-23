@@ -1,0 +1,66 @@
+# Releasing servex-contrib
+
+All 21 modules are preparing their first release as v1.0.0. No module has a
+published version. The CI workflow does not create tags or publish releases.
+Publication is a separate maintainer decision.
+
+## Dependency order
+
+kitx v1.0.0 is already published and used without local replacements. Release
+and verify the servex core before contrib modules. For each module selected
+for publication, replace the placeholder core requirement with an available
+core version and remove its local replacement. Preserve core replacements
+during joint development until that version exists. Middleware imports kitx
+directly; other modules resolve it through servex.
+
+Contrib modules do not depend on one another, so they may be released
+independently after their core dependency. Update servex-examples only after
+the modules it imports are available. Do not invent a version or remove a
+replacement before its dependency can be fetched.
+
+## Module gates
+
+1. Choose the module version independently of the Go 1.27.3 toolchain.
+   Review the selected module's prepared `<module>/v1.0.0` notes in
+   [CHANGELOG.md](CHANGELOG.md) and add the release date when publishing.
+   For later releases, move its entries from `Unreleased` into the matching
+   dated module/version section.
+2. Run the module's checks with the published core dependency and
+   `GOWORK=off`, without sibling replacement directives. From the repository
+   root, for example:
+
+   ```sh
+   MODULES='cache/redis' make check lint vulncheck
+   ```
+
+3. For modules with service-backed tests, provision dedicated disposable
+   services, export the required addresses, and run the matching acceptance:
+
+   ```sh
+   SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='cache/redis' make integration
+   ```
+
+   Require actual integration execution; skipped tests or compilation-only
+   checks are insufficient. Record backend versions and platform coverage.
+4. Require successful CI for the exact release revision. Check dependency and
+   license changes, confirm the module directory includes its MIT `LICENSE`,
+   and exclude credentials or local artifacts from release contents.
+
+## Tags and published artifacts
+
+Nested module tags include the complete directory prefix. For example,
+`cache/redis/v1.0.0` publishes
+`github.com/nostosx/servex-contrib/cache/redis@v1.0.0`;
+`middleware/v1.0.0` publishes the middleware module. These are tag-shape
+examples, not existing releases. A root `v1.0.0` tag does not publish the
+nested modules. Follow Go's major-version module-path rules for v2 and later.
+
+After the gates pass and publication is authorized, create the selected
+module tag and publish notes for that module. Verify from a fresh external
+consumer module that the version can be fetched, imported and built without
+local replacements or sibling checkouts. Inspect the module archive for its
+license and expected files. Local sibling-based CI does not establish that
+a published dependency graph is installable.
+
+Do not move a published tag to fix a release. Publish a corrected version,
+document the impact and use a module retraction when appropriate.

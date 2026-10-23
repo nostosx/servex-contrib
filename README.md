@@ -1,0 +1,193 @@
+# servex-contrib
+
+English | [简体中文](README.zh-CN.md)
+
+Implementations of the [servex](https://github.com/nostosx/servex) contracts
+that depend on third-party SDKs, plus two collections without third-party SDKs
+(`middleware` and `selector`). The servex core holds the contracts and one
+standard-library reference implementation each; every further implementation
+lives here.
+
+Status: pre-release. Neither servex nor these modules have been tagged yet.
+Every module currently builds against a local servex checkout through a
+`replace` directive (see [Development](#development)). kitx v1.0.0 resolves
+from the Go module proxy, without a sibling kitx checkout.
+
+Runnable applications composing core and contrib live in
+[servex-examples](https://github.com/nostosx/servex-examples).
+
+## Modules
+
+Each directory below is its own Go module, split by dependency set so that
+importing one implementation never pulls in the SDKs of another. Module paths
+are `github.com/nostosx/servex-contrib/<directory>`. Modules import only the
+public servex packages and never each other.
+
+| Module | Implements | Key dependency |
+|---|---|---|
+| [`broker/kafka`](broker/kafka) | `broker.Publisher` and `broker.Subscriber` on Apache Kafka | `github.com/twmb/franz-go` |
+| [`broker/nats`](broker/nats) | `broker.Publisher` and `broker.Subscriber` on NATS JetStream | `github.com/nats-io/nats.go` |
+| [`broker/rabbitmq`](broker/rabbitmq) | `broker.Publisher` and `broker.Subscriber` on RabbitMQ (AMQP 0-9-1) | `github.com/rabbitmq/amqp091-go` |
+| [`cache/redis`](cache/redis) | `cache.Cache` on Redis (standalone, sentinel or cluster) | `github.com/redis/go-redis/v9` |
+| [`config/consul`](config/consul) | `config.Source` and `config.Watchable` on the Consul KV store | `github.com/hashicorp/consul/api` |
+| [`config/etcd`](config/etcd) | `config.Source` and `config.Watchable` on etcd | `go.etcd.io/etcd/client/v3` |
+| [`config/nacos`](config/nacos) | `config.Source` and `config.Watchable` on the Nacos configuration service | `github.com/nacos-group/nacos-sdk-go/v2` |
+| [`database/mongodb`](database/mongodb) | Tracing and metrics for the MongoDB driver, lifecycle Hook and health check | `go.mongodb.org/mongo-driver/v2` |
+| [`discovery/consul`](discovery/consul) | `discovery.Registrar` and `discovery.Discoverer` on the Consul agent | `github.com/hashicorp/consul/api` |
+| [`discovery/etcd`](discovery/etcd) | `discovery.Registrar` and `discovery.Discoverer` on etcd leases | `go.etcd.io/etcd/client/v3` |
+| [`discovery/kubernetes`](discovery/kubernetes) | `discovery.Discoverer` on Kubernetes EndpointSlices | `k8s.io/client-go` |
+| [`discovery/nacos`](discovery/nacos) | `discovery.Registrar` and `discovery.Discoverer` on the Nacos naming service | `github.com/nacos-group/nacos-sdk-go/v2` |
+| [`encoding/proto`](encoding/proto) | `encoding.Codec` named `proto` | `google.golang.org/protobuf` |
+| [`encoding/yaml`](encoding/yaml) | `encoding.Codec` named `yaml` | `go.yaml.in/yaml/v3` |
+| [`jobqueue/asynq`](jobqueue/asynq) | `jobqueue.Enqueuer` and `jobqueue.Runner` on asynq (Redis) | `github.com/hibiken/asynq` |
+| [`metrics/otel`](metrics/otel) | `metrics.Meter` on an OpenTelemetry meter | `go.opentelemetry.io/otel/metric` |
+| [`metrics/prometheus`](metrics/prometheus) | `metrics.Meter` on the Prometheus client | `github.com/prometheus/client_golang` |
+| [`middleware`](middleware) | `endpoint.Middleware`: auth, circuitbreaker, logging, metrics, ratelimit, recovery, retry, timeout, tracing, validate | standard library, servex and kitx |
+| [`selector`](selector) | `selector.Selector`: roundrobin (smooth weighted), p2c (Power of Two Choices) | standard library, servex and kitx |
+| [`tracing/otel`](tracing/otel) | `tracing.Tracer` and `tracing.Propagator` on OpenTelemetry | `go.opentelemetry.io/otel/trace` |
+| [`transport/grpcx`](transport/grpcx) | `transport.Server` and a gRPC client with servex middleware, discovery and node selection | `google.golang.org/grpc` |
+
+Common conventions:
+
+- Constructors take dependencies explicitly. Where an adapter accepts an SDK
+  client you created, the caller retains ownership unless its API documents
+  otherwise.
+- Returned errors are classified with `errorx`: unreachable backends are
+  retryable `Unavailable`, bad arguments `InvalidArgument`, and calls on a
+  closed client, broker or queue a non-retryable `FailedPrecondition`.
+- Every type that implements a servex contract has a compile-time assertion.
+
+## Versioning
+
+All 21 modules are preparing their first release as v1.0.0. Each module is
+versioned independently with tags prefixed by its directory,
+for example `broker/kafka/v1.0.0` or `middleware/v1.0.0`:
+
+```sh
+# After broker/kafka/v1.0.0 has been released:
+go get github.com/nostosx/servex-contrib/broker/kafka@v1.0.0
+```
+
+kitx v1.0.0 is already published. Until servex is released, every module keeps
+a placeholder core requirement and a local replacement:
+
+```
+require github.com/nostosx/servex v0.0.0-00010101000000-000000000000
+replace github.com/nostosx/servex => ../../../servex   # ../../servex for middleware and selector
+```
+
+Before tagging a contrib module, select a released servex version, remove its
+local replacement and verify the published kitx dependency. Root tags such as
+`v1.0.0` do not release these nested modules; use the full directory prefix.
+No release is published by the CI workflow.
+
+## Development
+
+Check out servex and servex-contrib side by side so the core replacement resolves:
+
+```
+workspace/
+├── servex/
+└── servex-contrib/
+```
+
+Requires Go 1.27.3, GNU Make, Bash and Python 3. The repository root is not a
+module. Run the common targets from this root; they apply to every module and
+export `GOWORK=off`:
+
+```sh
+make check
+make lint
+make vulncheck
+```
+
+`check` rejects formatting, modernizer and tidy changes, vets and builds normal
+and `integration` configurations, verifies the middleware and selector dependency
+boundaries, and runs shuffled race tests. `lint` and `vulncheck` also inspect
+both build configurations. `make fmt`, `make fix` and `make tidy` explicitly
+modify files. Use `MODULES` to select one or more modules:
+
+```sh
+MODULES='cache/redis' make check lint vulncheck
+MODULES='middleware selector' make check
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for tool installation, architecture
+boundaries and test requirements, [CHANGELOG.md](CHANGELOG.md) for unreleased
+changes, [RELEASING.md](RELEASING.md) for module publication and
+[SECURITY.md](SECURITY.md) for sensitive reports.
+
+Applications consuming these unreleased modules need their own replacements:
+Go ignores replacement directives in dependency modules. For example, with
+an application next to `servex/` and `servex-contrib/`:
+
+```sh
+go mod edit -require=github.com/nostosx/servex-contrib/cache/redis@v0.0.0-00010101000000-000000000000
+go mod edit -replace=github.com/nostosx/servex-contrib/cache/redis=../servex-contrib/cache/redis
+go mod edit -replace=github.com/nostosx/servex=../servex
+go mod tidy
+```
+
+Replace each contrib module you import, plus the core; adjust paths for your
+layout. kitx v1.0.0 downloads automatically. The README examples use the APIs
+of these local checkouts.
+
+### Tests
+
+Unit tests need no external services: they use in-process fakes such as
+`kfake`, an embedded NATS server, an embedded etcd, miniredis, the client-go
+fake clientset, httptest servers and OpenTelemetry in-memory exporters.
+
+Integration tests live in `*_integration_test.go` files behind the
+`integration` build tag and read the server address from an environment
+variable; a test whose variable is unset is skipped. The fixtures create and
+remove their own topics, streams, keys or namespaces. A successful tagged
+`go test` with missing variables proves only that the remaining tests passed;
+it does not prove the service integrations ran.
+
+| Variable | Modules | Example value |
+|---|---|---|
+| `SERVEX_IT_KAFKA_BROKERS` | `broker/kafka` | `127.0.0.1:9092` (comma separated) |
+| `SERVEX_IT_NATS_URL` | `broker/nats` | `nats://127.0.0.1:4222` (JetStream enabled) |
+| `SERVEX_IT_RABBITMQ_URL` | `broker/rabbitmq` | `amqp://guest:guest@127.0.0.1:5672/` |
+| `SERVEX_IT_REDIS_ADDR` | `cache/redis`, `jobqueue/asynq` | `127.0.0.1:6379` |
+| `SERVEX_IT_CONSUL_ADDR` | `config/consul`, `discovery/consul` | `127.0.0.1:8500` |
+| `SERVEX_IT_ETCD_ENDPOINTS` | `config/etcd`, `discovery/etcd` | `127.0.0.1:2379` (comma separated) |
+| `SERVEX_IT_NACOS_ADDR` | `config/nacos`, `discovery/nacos` | `127.0.0.1:8848` (HTTP API) |
+| `SERVEX_IT_NACOS_GRPC_PORT` | `config/nacos`, `discovery/nacos` | optional, defaults to the HTTP port + 1000 |
+| `SERVEX_IT_MONGODB_URI` | `database/mongodb` | `mongodb://127.0.0.1:27017` |
+| `SERVEX_IT_KUBECONFIG` | `discovery/kubernetes` | path to a kubeconfig file |
+
+For example, after preparing a dedicated local Redis instance:
+
+```sh
+SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='cache/redis' make integration
+```
+
+Make does not provision services. The integration helper rejects missing
+configuration, absent tests, skipped tests and failures. Modules without
+service integration tests are omitted; the target fails if the selection
+contains none. `make check` remains the separate unit and static check entry
+point.
+
+The local [CI workflow](.github/workflows/ci.yml) defines a 21-module check
+matrix, independent lint and vulnerability jobs, eight disposable Docker
+service jobs and a kind job for Kubernetes. A matrix check compares the matrices to the module
+and integration-test directories. Each service job waits for readiness,
+exports the required variable, runs only `TestIntegration*` tests and rejects
+absent, skipped, failed or unfinished integration results. The service
+container is removed even on failure; kind-action cleans up its cluster.
+The jobs are independent and run on pull requests, pushes to `main` or manual
+dispatch. A manual run can select `servex-ref`; otherwise it uses the core's
+default branch. This tests against a moving sibling checkout, not a released
+core version.
+
+These workflow definitions have not run on GitHub. `nostosx/servex` must be
+available to the runner for the sibling checkout; a private core also needs a
+credential with read access. Container image pulls, runner service readiness
+and kind execution remain part of remote CI validation.
+
+## License
+
+Licensed under the [MIT License](LICENSE). Each module directory includes
+a copy for its independently published archive.
