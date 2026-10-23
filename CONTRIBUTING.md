@@ -3,18 +3,11 @@
 ## Setup
 
 Use Go 1.27.3, GNU Make, Bash and Python 3. Race tests require a supported
-platform and a working C toolchain. Check out the repositories as siblings:
-
-```text
-workspace/
-├── servex/
-└── servex-contrib/
-```
+platform and a working C toolchain. Clone this repository on its own.
 
 The root is not a Go module. Each listed implementation has its own `go.mod`;
-local replacements resolve the unreleased sibling servex core. kitx v1.0.0
-resolves from the Go module proxy and needs no sibling checkout. Dependency
-replacements do not propagate to consumers.
+servex and kitx v1.0.0 resolve through the Go module proxy without sibling
+checkouts or local replacements.
 Do not commit a `go.work` file or add cross-module contrib imports.
 
 Install tools outside the modules with Go 1.27.3 and put them on `PATH`:

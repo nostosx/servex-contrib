@@ -22,9 +22,7 @@
 
 ## Install
 
-Requires Go 1.27.3. This module is unreleased; use the
-[local checkout instructions](../../README.md#development), including a
-replacement for the core in your application's `go.mod`.
+Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
 Earlier pre-release checkouts replaced punctuation with `_` in durable names.
 The new names create new consumers starting at the stream's oldest message;
@@ -33,7 +31,7 @@ position explicitly before switching if replay is unacceptable. Remove old
 consumers and their redelivery state after migration. There is no automatic
 fallback to ambiguous old names.
 
-After a release is available:
+Install this module in your application:
 
 ```sh
 go get github.com/nostosx/servex-contrib/broker/nats@v1.0.0

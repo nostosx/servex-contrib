@@ -17,9 +17,7 @@
 
 ## Install
 
-Requires Go 1.27.3. This module is unreleased; use the
-[local checkout instructions](../../README.md#development), including a
-replacement for the core in your application's `go.mod`.
+Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
 Earlier pre-release checkouts joined unescaped components. If either component
 contains `%` or `-`, stop and deregister the old registration before upgrading,
@@ -28,7 +26,7 @@ registration until its TTL check expires and Consul deregisters it. Monitoring
 or automation that stores exact service IDs must use the new escaped ID. Plain
 names and IDs without these characters keep their existing IDs.
 
-After a release is available:
+Install this module in your application:
 
 ```sh
 go get github.com/nostosx/servex-contrib/discovery/consul@v1.0.0

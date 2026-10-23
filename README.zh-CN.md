@@ -6,8 +6,8 @@
 服务适配器，以及不依赖第三方 SDK 的 `middleware`、`selector` 两个模块。
 核心保留契约及参考实现，本仓库按依赖拆分其他实现。
 
-各模块尚未发布，当前通过相对 `replace` 使用本地 servex。
-kitx 使用已发布的 v1.0.0，由 Go 模块代理下载，无需本地检出。
+各模块使用已发布的 servex 和 kitx v1.0.0，由 Go 模块代理下载。
+独立检出本仓库即可，无需同级源码或本地替换。
 可运行应用见独立的 [servex-examples](https://github.com/nostosx/servex-examples) 项目。
 
 ## 模块
@@ -46,34 +46,20 @@ kitx 使用已发布的 v1.0.0，由 Go 模块代理下载，无需本地检出�
 
 ## 版本
 
-21 个模块的首个正式版本均为 v1.0.0，尚未发布。各模块独立发布，
-标签包含完整目录前缀，例如 `broker/kafka/v1.0.0` 或
-`middleware/v1.0.0`。以下安装命令仅在对应版本发布后可用：
+21 个模块的首个正式版本均为 v1.0.0。各模块独立发布，标签包含完整目录前缀，
+例如 `broker/kafka/v1.0.0` 或 `middleware/v1.0.0`：
 
 ```sh
 go get github.com/nostosx/servex-contrib/broker/kafka@v1.0.0
 ```
 
-目前各模块仍依赖 servex 的占位版本并保留本地替换：
-
-```text
-require github.com/nostosx/servex v0.0.0-00010101000000-000000000000
-replace github.com/nostosx/servex => ../../../servex   # middleware 和 selector 使用 ../../servex
-```
-
-发布 contrib 前，须先选择已发布的 servex 版本、移除对应替换，并验证 kitx 依赖。
-根目录的 `v1.0.0` 标签不会发布这些嵌套模块。CI 不创建标签或发布版本。
+依赖图选用 servex 和 kitx v1.0.0，无需本地替换。根目录的 `v1.0.0` 标签
+不会发布这些嵌套模块。CI 负责验证，不创建标签或发布版本。
 Go 1.27.3 是工具链要求，与模块版本独立。
 
 ## 开发
 
-使用 Go 1.27.3、GNU Make、Bash 和 Python 3，并将项目放在同一级：
-
-```text
-workspace/
-├── servex/
-└── servex-contrib/
-```
+使用 Go 1.27.3、GNU Make、Bash 和 Python 3。独立检出本仓库，Go 会下载已发布的依赖。
 
 根目录不是 Go 模块。在根目录运行下列命令，Make 会逐模块执行并设置 `GOWORK=off`：
 
@@ -97,18 +83,7 @@ MODULES='middleware selector' make check
 变更见 [CHANGELOG.md](CHANGELOG.md)，模块发布见 [RELEASING.md](RELEASING.md)，
 私密报告见 [SECURITY.md](SECURITY.md)。
 
-使用未发布模块的应用也必须声明替换，因为 Go 不继承依赖模块中的 `replace`。
-假设应用与两个仓库同级：
-
-```sh
-go mod edit -require=github.com/nostosx/servex-contrib/cache/redis@v0.0.0-00010101000000-000000000000
-go mod edit -replace=github.com/nostosx/servex-contrib/cache/redis=../servex-contrib/cache/redis
-go mod edit -replace=github.com/nostosx/servex=../servex
-go mod tidy
-```
-
-按实际目录替换所用的每个 contrib 模块及 core；kitx v1.0.0 会自动下载。
-各模块 README 中的示例对应当前本地 API。
+应用可以直接用 `go get` 安装所需模块，无需本地替换。各模块 README 介绍对应的公开 API。
 
 ### 测试
 
@@ -147,11 +122,8 @@ Make 不启动服务。集成入口会拒绝缺少配置、缺失测试、跳过
 矩阵检查会核对模块及集成测试目录；服务任务等待就绪后只运行 `TestIntegration*`，
 拒绝缺失、跳过、失败或未完成的结果，并清理服务容器或 kind 集群。
 
-各任务独立运行，支持 pull request、main 推送与手动触发。
-手动触发可选择 `servex-ref`，否则使用 core 默认分支；这是同级源码联调，
-不能作为已发布版本兼容性的证明。目前工作流尚未在 GitHub 上执行。
-runner 必须能读取 servex；私有仓库还需要相应凭据。
-容器拉取、服务就绪和 kind 执行须在远程 CI 中验证。
+各任务独立运行，支持 pull request、main 推送与手动触发。任务只检出本仓库，
+使用锁定的已发布依赖。单元检查通过不能替代真实服务的集成验证。
 
 ## 许可证
 

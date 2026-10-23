@@ -8,10 +8,8 @@ that depend on third-party SDKs, plus two collections without third-party SDKs
 standard-library reference implementation each; every further implementation
 lives here.
 
-Status: pre-release. Neither servex nor these modules have been tagged yet.
-Every module currently builds against a local servex checkout through a
-`replace` directive (see [Development](#development)). kitx v1.0.0 resolves
-from the Go module proxy, without a sibling kitx checkout.
+All modules use the published servex and kitx v1.0.0 dependencies. A
+standalone checkout needs no sibling source directories or local replacements.
 
 Runnable applications composing core and contrib live in
 [servex-examples](https://github.com/nostosx/servex-examples).
@@ -59,37 +57,21 @@ Common conventions:
 
 ## Versioning
 
-All 21 modules are preparing their first release as v1.0.0. Each module is
-versioned independently with tags prefixed by its directory,
-for example `broker/kafka/v1.0.0` or `middleware/v1.0.0`:
+Each of the 21 modules starts at v1.0.0 and is versioned independently with
+tags prefixed by its directory, for example `broker/kafka/v1.0.0` or
+`middleware/v1.0.0`:
 
 ```sh
-# After broker/kafka/v1.0.0 has been released:
 go get github.com/nostosx/servex-contrib/broker/kafka@v1.0.0
 ```
 
-kitx v1.0.0 is already published. Until servex is released, every module keeps
-a placeholder core requirement and a local replacement:
-
-```
-require github.com/nostosx/servex v0.0.0-00010101000000-000000000000
-replace github.com/nostosx/servex => ../../../servex   # ../../servex for middleware and selector
-```
-
-Before tagging a contrib module, select a released servex version, remove its
-local replacement and verify the published kitx dependency. Root tags such as
+The dependency graph selects servex and kitx v1.0.0. Root tags such as
 `v1.0.0` do not release these nested modules; use the full directory prefix.
-No release is published by the CI workflow.
+The CI workflow validates changes and does not publish releases.
 
 ## Development
 
-Check out servex and servex-contrib side by side so the core replacement resolves:
-
-```
-workspace/
-├── servex/
-└── servex-contrib/
-```
+Clone this repository on its own; Go downloads the published dependencies.
 
 Requires Go 1.27.3, GNU Make, Bash and Python 3. The repository root is not a
 module. Run the common targets from this root; they apply to every module and
@@ -117,20 +99,8 @@ boundaries and test requirements, [CHANGELOG.md](CHANGELOG.md) for unreleased
 changes, [RELEASING.md](RELEASING.md) for module publication and
 [SECURITY.md](SECURITY.md) for sensitive reports.
 
-Applications consuming these unreleased modules need their own replacements:
-Go ignores replacement directives in dependency modules. For example, with
-an application next to `servex/` and `servex-contrib/`:
-
-```sh
-go mod edit -require=github.com/nostosx/servex-contrib/cache/redis@v0.0.0-00010101000000-000000000000
-go mod edit -replace=github.com/nostosx/servex-contrib/cache/redis=../servex-contrib/cache/redis
-go mod edit -replace=github.com/nostosx/servex=../servex
-go mod tidy
-```
-
-Replace each contrib module you import, plus the core; adjust paths for your
-layout. kitx v1.0.0 downloads automatically. The README examples use the APIs
-of these local checkouts.
+Applications can install the modules directly using `go get`; no local
+replacement directives are needed. Each module README documents its public API.
 
 ### Tests
 
@@ -170,7 +140,7 @@ service integration tests are omitted; the target fails if the selection
 contains none. `make check` remains the separate unit and static check entry
 point.
 
-The local [CI workflow](.github/workflows/ci.yml) defines a 21-module check
+The [CI workflow](.github/workflows/ci.yml) defines a 21-module check
 matrix, independent lint and vulnerability jobs, eight disposable Docker
 service jobs and a kind job for Kubernetes. A matrix check compares the matrices to the module
 and integration-test directories. Each service job waits for readiness,
@@ -178,14 +148,8 @@ exports the required variable, runs only `TestIntegration*` tests and rejects
 absent, skipped, failed or unfinished integration results. The service
 container is removed even on failure; kind-action cleans up its cluster.
 The jobs are independent and run on pull requests, pushes to `main` or manual
-dispatch. A manual run can select `servex-ref`; otherwise it uses the core's
-default branch. This tests against a moving sibling checkout, not a released
-core version.
-
-These workflow definitions have not run on GitHub. `nostosx/servex` must be
-available to the runner for the sibling checkout; a private core also needs a
-credential with read access. Container image pulls, runner service readiness
-and kind execution remain part of remote CI validation.
+dispatch. Each job resolves the pinned published dependencies from a standalone
+checkout. Passing unit checks does not substitute for service integration.
 
 ## License
 

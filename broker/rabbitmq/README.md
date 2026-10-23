@@ -18,11 +18,8 @@ through [amqp091-go](https://github.com/rabbitmq/amqp091-go).
 
 ## Install
 
-Requires Go 1.27.3. This module is unreleased; use the
-[local checkout instructions](../../README.md#development), including a
-replacement for the core in your application's `go.mod`.
-
-After a release is available:
+Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
+Install this module in your application:
 
 ```sh
 go get github.com/nostosx/servex-contrib/broker/rabbitmq@v1.0.0
