@@ -91,9 +91,22 @@ func (s syncRegistrar) Deregister(ctx context.Context, ins *discovery.Instance) 
 	return s.await(ctx, ins, false)
 }
 
-func (s syncRegistrar) await(ctx context.Context, ins *discovery.Instance, present bool) error {
+func (s syncRegistrar) await(ctx context.Context, ins *discovery.Instance, present bool) (err error) {
 	ctx, cancel := context.WithTimeout(ctx, patience)
 	defer cancel()
+	// SelectAllInstances reads the SDK cache. After a watch unsubscribes,
+	// that cache remains populated but no longer receives server updates.
+	// Keep a subscription for this wait, independently of watcher churn.
+	param := &vo.SubscribeParam{
+		ServiceName:       ins.Name,
+		GroupName:         s.r.group,
+		Clusters:          []string{s.r.cluster},
+		SubscribeCallback: func([]model.Instance, error) {},
+	}
+	if err := s.r.client.Subscribe(param); err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, s.r.client.Unsubscribe(param)) }()
 	tick := time.NewTicker(20 * time.Millisecond)
 	defer tick.Stop()
 	for {
@@ -169,5 +182,32 @@ func TestSyncRegistrarAwait(t *testing.T) {
 	f.fail.Store(true)
 	if err := s.await(t.Context(), ins, true); !errors.Is(err, errFake) {
 		t.Fatalf("await unavailable registry = %v, want errFake", err)
+	}
+}
+
+// subscribedNaming refuses cache reads without an active subscription,
+// modeling the SDK's stale cache after its last watcher stops.
+type subscribedNaming struct{ *fakeNaming }
+
+func (f subscribedNaming) SelectAllInstances(p vo.SelectAllInstancesParam) ([]model.Instance, error) {
+	if f.subscribers(p.GroupName, p.ServiceName) == 0 {
+		return nil, errors.New("cache is no longer subscribed")
+	}
+	return f.fakeNaming.SelectAllInstances(p)
+}
+
+func TestSyncRegistrarAwaitKeepsCacheSubscribed(t *testing.T) {
+	f := newFakeNaming()
+	r := New(subscribedNaming{f})
+	ins := inst("service", "1")
+	if err := r.Register(t.Context(), ins); err != nil {
+		t.Fatal(err)
+	}
+	s := syncRegistrar{r}
+	if err := s.await(t.Context(), ins, true); err != nil {
+		t.Fatalf("await a published instance: %v", err)
+	}
+	if got := f.subscribers(r.group, ins.Name); got != 0 {
+		t.Fatalf("wait retained %d subscriptions", got)
 	}
 }
