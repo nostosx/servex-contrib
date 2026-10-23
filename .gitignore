@@ -1,0 +1,13 @@
+# Local workspaces are per-developer; modules resolve the core via go.mod.
+go.work
+go.work.sum
+*.test
+*.out
+/coverage.txt
+/bin/
+/dist/
+.env
+.env.*
+!.env.example
+*.prof
+.DS_Store
