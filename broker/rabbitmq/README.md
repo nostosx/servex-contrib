@@ -19,7 +19,7 @@ through [amqp091-go](https://github.com/rabbitmq/amqp091-go).
 ## Install
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/broker/rabbitmq@v1.0.0
@@ -29,6 +29,16 @@ The example version corresponds to the tag `broker/rabbitmq/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated RabbitMQ server at `127.0.0.1:5672` with the local demo
+credentials below. The program declares a consumer and waits until Ctrl+C;
+it does not publish a message. Use the separate Publish fragment from another
+application after the subscriber has created its queue. The `shop` exchange,
+group queue and dead-letter resources are durable and remain after shutdown;
+use a disposable broker or delete these example resources after use.
 
 ```go
 package main

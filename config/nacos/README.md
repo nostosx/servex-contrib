@@ -18,7 +18,7 @@
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/config/nacos@v1.0.0
@@ -28,6 +28,23 @@ The example version corresponds to the tag `config/nacos/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated Nacos 2 standalone server with authentication disabled
+for local testing. Expose HTTP port `8848` and client gRPC port `9848`.
+In its console, create data ID `user-service.json` in `DEFAULT_GROUP` in
+the public namespace with this JSON content:
+
+```json
+{"http":{"addr":"127.0.0.1:8000"},"log":{"level":"info"}}
+```
+
+The program prints the configured address and keeps watching until Ctrl+C.
+Publish a changed log level to see the callback, and delete the example item
+after use. The SDK writes local cache and logs; run it in a writable directory.
+For an authenticated server, supply credentials in the SDK client config.
 
 ```go
 package main
@@ -41,6 +58,7 @@ import (
 	"github.com/nacos-group/nacos-sdk-go/v2/vo"
 
 	"github.com/nostosx/servex-contrib/config/nacos"
+	"github.com/nostosx/servex/app"
 	"github.com/nostosx/servex/config"
 )
 
@@ -54,7 +72,8 @@ func main() {
 	}
 	defer client.CloseClient()
 
-	ctx := context.Background()
+	ctx, stop := app.SignalContext(context.Background())
+	defer stop()
 	src := nacos.New(client, "user-service.json", nacos.DefaultGroup)
 	cfg, err := config.New(ctx, src)
 	if err != nil {
@@ -65,7 +84,7 @@ func main() {
 	err = cfg.Watch(ctx, func(c *config.Config) {
 		log.Println("config changed, log level:", c.String("log.level"))
 	})
-	if err != nil {
+	if err != nil && ctx.Err() == nil {
 		log.Fatal(err)
 	}
 }

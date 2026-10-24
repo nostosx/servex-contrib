@@ -20,7 +20,7 @@ a Service.
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/discovery/kubernetes@v1.0.0
@@ -30,6 +30,22 @@ The example version corresponds to the tag `discovery/kubernetes/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+This program runs inside a Kubernetes Pod, not directly on your laptop:
+`rest.InClusterConfig` reads the Pod's service-account credentials. In the
+`shop` namespace, provide a `user` Service with a port named `http`, ready
+backing Pods and a `GET /v1/users/7` endpoint returning `{"name":"alice"}`.
+Grant the calling Pod's service account `get`, `list` and `watch` on
+`endpointslices` in API group `discovery.k8s.io`, scoped to `shop`.
+
+For local execution, replace `rest.InClusterConfig()` with
+`clientcmd.BuildConfigFromFlags("", kubeconfigPath)` from
+`k8s.io/client-go/tools/clientcmd`, using a dedicated cluster's kubeconfig and
+the same namespace permissions. The program prints the returned user's name
+and exits; it does not create a Service, deployment or RBAC policy.
 
 ```go
 package main

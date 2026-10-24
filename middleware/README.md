@@ -23,7 +23,7 @@ are injected through functions and interfaces.
 ## Install
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/middleware@v1.0.0
@@ -33,6 +33,9 @@ The example version corresponds to the tag `middleware/v1.0.0`;
 see [module versioning](../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
 
 Middleware runs in the order written; servex never reorders it. The
 recommended chains:
@@ -121,7 +124,7 @@ Each package has a runnable `Example` in its `example_test.go`.
 
 ```sh
 GOWORK=off go test -race -count=1 ./...
-GOWORK=off go list -m all   # must list only this module and github.com/nostosx/servex
+GOWORK=off go list -m all   # only this module, github.com/nostosx/servex and github.com/nostosx/kitx
 ```
 
 There are no integration tests.

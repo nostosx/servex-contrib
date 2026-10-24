@@ -61,13 +61,42 @@ Each of the 21 modules starts at v1.0.0 and is versioned independently with
 tags prefixed by its directory, for example `broker/kafka/v1.0.0` or
 `middleware/v1.0.0`:
 
+Run `go get` from your application's Go module. For a new application:
+
 ```sh
-go get github.com/nostosx/servex-contrib/broker/kafka@v1.0.0
+mkdir servex-demo
+cd servex-demo
+go mod init example.com/servex-demo
+go get github.com/nostosx/servex-contrib/cache/redis@v1.0.0
 ```
 
+Choose the module you need from the table, then save its complete Usage
+example as `main.go`. Run `go mod tidy` and `go run .` in that application
+directory after preparing the example's backend. Do not run these commands
+from this repository root, which has no `go.mod`. For modules with multiple
+complete programs, put each program in a separate directory.
+
 The dependency graph selects servex and kitx v1.0.0. Root tags such as
-`v1.0.0` do not release these nested modules; use the full directory prefix.
+`v1.0.0` do not release these nested modules. The directory prefix belongs to
+the Git tag; the version argument to `go get` remains `@v1.0.0`.
 The CI workflow validates changes and does not publish releases.
+
+## Running the examples
+
+Usage examples use local development addresses. Start dedicated disposable
+backends before running them; installing a Go module does not start its
+service. The module READMEs describe required data, streams or cluster setup.
+Programs that start a server or watch configuration keep running until you
+press Ctrl+C. The middleware and selector examples demonstrate construction;
+they do not start a server or make a request. The OpenTelemetry metrics
+example records nothing until your application installs an SDK provider.
+
+The examples omit production credentials, TLS and access policies. Configure
+those on the SDK client you supply before using a remote backend. Where a
+server listens on all interfaces, restrict its address or network access for
+local testing. A discovery registration must advertise an address reachable
+by its consumers; a loopback address is suitable only for clients on the
+same host.
 
 ## Development
 

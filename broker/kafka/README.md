@@ -19,7 +19,7 @@
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/broker/kafka@v1.0.0
@@ -29,6 +29,22 @@ The example version corresponds to the tag `broker/kafka/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated Kafka broker at `127.0.0.1:9092`. Create the `orders` and
+`orders.dead` topics before running this example; do not rely on broker-side
+automatic topic creation. For example, using the Kafka distribution's CLI:
+
+```sh
+kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --create --if-not-exists --topic orders --partitions 1 --replication-factor 1
+kafka-topics.sh --bootstrap-server 127.0.0.1:9092 --create --if-not-exists --topic orders.dead --partitions 1 --replication-factor 1
+```
+
+The program publishes one record and consumes with the `billing` group until
+Ctrl+C. On a fresh topic/group it logs that order; subsequent runs resume the
+group's committed position. Remove the example topics and group after use.
 
 ```go
 package main

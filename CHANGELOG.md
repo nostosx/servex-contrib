@@ -10,6 +10,13 @@ v1.0.0 without replacements. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- All modules: document standalone application setup, dependency tidying and
+  nested-module version selection; complete example prerequisites and expected
+  behavior, including seed data, persistent resources and Kubernetes deployment.
+- config/consul, config/etcd and config/nacos: handle Ctrl+C in watcher examples.
+- encoding/yaml: provide the configuration file used by the example.
+- middleware and selector: include kitx in dependency-check instructions.
+
 ## broker/kafka/v1.0.0
 
 Release date: 2026-10-23.

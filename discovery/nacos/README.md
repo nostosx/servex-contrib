@@ -21,7 +21,7 @@
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/discovery/nacos@v1.0.0
@@ -31,6 +31,19 @@ The example version corresponds to the tag `discovery/nacos/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated Nacos 2 standalone server with authentication disabled for
+local testing. Expose HTTP port `8848` and client gRPC port `9848`. The SDK
+writes local cache and logs, so use a writable directory. For an authenticated
+server, supply credentials in the SDK client config.
+
+The program starts an HTTP server on port `8000` and registers it as `user`
+in group `shop`; Ctrl+C deregisters it and stops the server. No application
+routes are registered. Choose an address reachable from consumers before
+using this registration across hosts.
 
 ```go
 package main

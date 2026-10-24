@@ -15,7 +15,7 @@ back `cache.Loader` and any other `cache.Cache` consumer.
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/cache/redis@v1.0.0
@@ -25,6 +25,14 @@ The example version corresponds to the tag `cache/redis/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated Redis instance at `127.0.0.1:6379`. The program prints
+`alice` and exits. It creates `users:42` with a ten-minute TTL; remove that
+example key afterwards or discard the instance. No database is needed for
+the loader callback used here.
 
 ```go
 package main

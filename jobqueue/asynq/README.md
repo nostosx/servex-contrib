@@ -26,7 +26,7 @@ queue [asynq](https://github.com/hibiken/asynq).
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/jobqueue/asynq@v1.0.0
@@ -36,6 +36,16 @@ The example version corresponds to the tag `jobqueue/asynq/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated Redis instance at `127.0.0.1:6379`. The program schedules
+an email job one minute ahead, then keeps processing the `mail` queue until
+Ctrl+C. Wait at least one minute for the handler's log output. The handler
+only logs the payload; it sends no email. A second run within the one-hour
+uniqueness window returns `jobqueue.ErrDuplicate`. Queue state and uniqueness
+keys survive process exit; use a disposable Redis instance for this demo.
 
 ```go
 package main

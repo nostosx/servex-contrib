@@ -26,7 +26,7 @@ registration until its TTL check expires and Consul deregisters it. Monitoring
 or automation that stores exact service IDs must use the new escaped ID. Plain
 names and IDs without these characters keep their existing IDs.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/discovery/consul@v1.0.0
@@ -36,6 +36,15 @@ The example version corresponds to the tag `discovery/consul/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated Consul agent at `127.0.0.1:8500`. The program starts an HTTP
+server on port `8000` and registers it as `user`; Ctrl+C deregisters it and
+stops the server. No application routes are registered, so this demonstrates
+lifecycle and discovery rather than a user endpoint. For a deployment, choose
+a listen/advertise address reachable from the service's clients.
 
 ```go
 package main

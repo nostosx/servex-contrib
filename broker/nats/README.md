@@ -31,7 +31,7 @@ position explicitly before switching if replay is unacceptable. Remove old
 consumers and their redelivery state after migration. There is no automatic
 fallback to ambiguous old names.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/broker/nats@v1.0.0
@@ -41,6 +41,15 @@ The example version corresponds to the tag `broker/nats/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated NATS server with JetStream enabled (`nats-server -js`) at
+`127.0.0.1:4222`. The program creates the `ORDERS` stream, publishes an order
+and consumes until Ctrl+C. It also creates a durable consumer and, when
+needed, the redelivery KV bucket. Closing the application does not delete
+these persistent resources; use a disposable server or remove them after use.
 
 ```go
 package main

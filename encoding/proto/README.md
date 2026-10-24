@@ -10,7 +10,7 @@ Values must implement `proto.Message`; anything else yields an
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/encoding/proto@v1.0.0
@@ -20,6 +20,9 @@ The example version corresponds to the tag `encoding/proto/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
 
 Register the codec with the core `httpx` server and client. The server picks
 it for requests and responses whose media type is `application/x-protobuf`

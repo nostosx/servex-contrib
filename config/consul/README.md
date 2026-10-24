@@ -18,7 +18,7 @@
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/config/consul@v1.0.0
@@ -28,6 +28,21 @@ The example version corresponds to the tag `config/consul/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated Consul agent at `127.0.0.1:8500`. Before running the
+program, seed its KV prefix with JSON objects:
+
+```sh
+curl --fail --request PUT --data '{"addr":"127.0.0.1:8000"}' http://127.0.0.1:8500/v1/kv/services/user/http
+curl --fail --request PUT --data '{"level":"info"}' http://127.0.0.1:8500/v1/kv/services/user/log
+```
+
+The program prints the configured address and keeps watching until Ctrl+C.
+Change the `services/user/log` value to see the callback. These keys are
+example data; remove them from your disposable instance after use.
 
 ```go
 package main
@@ -39,6 +54,7 @@ import (
 	"github.com/hashicorp/consul/api"
 
 	"github.com/nostosx/servex-contrib/config/consul"
+	"github.com/nostosx/servex/app"
 	"github.com/nostosx/servex/config"
 )
 
@@ -52,7 +68,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ctx := context.Background()
+	ctx, stop := app.SignalContext(context.Background())
+	defer stop()
 	cfg, err := config.New(ctx, consul.New(client, "services/user/", consul.WithPrefix()))
 	if err != nil {
 		log.Fatal(err)
@@ -66,7 +83,7 @@ func main() {
 	err = cfg.Watch(ctx, func(c *config.Config) {
 		log.Println("config changed, log level:", c.String("log.level"))
 	})
-	if err != nil {
+	if err != nil && ctx.Err() == nil {
 		log.Fatal(err)
 	}
 }

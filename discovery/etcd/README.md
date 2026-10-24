@@ -16,7 +16,7 @@
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/discovery/etcd@v1.0.0
@@ -26,6 +26,14 @@ The example version corresponds to the tag `discovery/etcd/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated etcd v3 server at `127.0.0.1:2379`. The program starts an
+HTTP server on port `8000` and registers it as `user`; Ctrl+C removes its
+registration and stops the server. No application routes are registered.
+For a deployment, choose an address reachable from the service's clients.
 
 ```go
 package main

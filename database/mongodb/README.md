@@ -19,7 +19,7 @@ servex, in the same way the core `storage/database` package does for
 ## Install
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/database/mongodb@v1.0.0
@@ -29,6 +29,13 @@ The example version corresponds to the tag `database/mongodb/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
+
+Start a dedicated MongoDB deployment at `127.0.0.1:27017`. This program pings
+it on startup and waits until Ctrl+C, then disconnects. It creates no database
+or collection and does not start an HTTP server.
 
 ```go
 package main

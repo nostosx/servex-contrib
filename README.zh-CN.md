@@ -49,13 +49,37 @@
 21 个模块的首个正式版本均为 v1.0.0。各模块独立发布，标签包含完整目录前缀，
 例如 `broker/kafka/v1.0.0` 或 `middleware/v1.0.0`：
 
+在应用自身的 Go 模块中执行 `go get`。新应用可以从以下步骤开始：
+
 ```sh
-go get github.com/nostosx/servex-contrib/broker/kafka@v1.0.0
+mkdir servex-demo
+cd servex-demo
+go mod init example.com/servex-demo
+go get github.com/nostosx/servex-contrib/cache/redis@v1.0.0
 ```
 
+从模块表选择所需实现，将对应 Usage 中的完整示例保存为 `main.go`，
+准备好示例依赖的后端后，在应用目录执行 `go mod tidy` 和 `go run .`。
+本仓库根目录没有 `go.mod`，不要在这里执行这些应用命令。
+一个模块展示多个完整程序时，应将每个程序放在独立目录中。
+
 依赖图选用 servex 和 kitx v1.0.0，无需本地替换。根目录的 `v1.0.0` 标签
-不会发布这些嵌套模块。CI 负责验证，不创建标签或发布版本。
+不会发布这些嵌套模块。目录前缀用于 Git 标签，`go get` 的版本参数仍是
+`@v1.0.0`。CI 负责验证，不创建标签或发布版本。
 Go 1.27.3 是工具链要求，与模块版本独立。
+
+## 运行示例
+
+Usage 示例使用本地开发地址。运行前应启动专用的临时后端；安装 Go 模块
+不会启动服务。各模块 README 说明所需数据、stream 或集群配置。
+启动服务器、监听配置的程序会持续运行，按 Ctrl+C 退出。
+middleware 和 selector 示例只展示装配，不会启动服务或发起请求。
+OpenTelemetry 指标示例需要应用先安装 SDK provider 才会记录数据。
+
+示例省略生产环境的凭证、TLS 和访问策略。连接远程后端前，请在传入的
+SDK 客户端上完成这些配置。监听所有网卡的服务器用于本地测试时，应限制
+监听地址或网络访问。服务发现必须公布调用方可达的地址；回环地址只适合
+同一主机上的客户端。
 
 ## 开发
 

@@ -24,7 +24,7 @@ the core `transport/httpx`.
 
 Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 
-Install this module in your application:
+Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
 go get github.com/nostosx/servex-contrib/transport/grpcx@v1.0.0
@@ -34,6 +34,9 @@ The example version corresponds to the tag `transport/grpcx/v1.0.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
+
+Save a complete program below as `main.go`, then run `go mod tidy` and
+`go run .` from that application directory.
 
 A server whose `grpc.health.v1` status follows the application readiness, and a
 client calling it. Real services register generated code the same way.
