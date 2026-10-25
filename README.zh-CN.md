@@ -6,9 +6,14 @@
 服务适配器，以及不依赖第三方 SDK 的 `middleware`、`selector` 两个模块。
 核心保留契约及参考实现，本仓库按依赖拆分其他实现。
 
-各模块使用已发布的 servex 和 kitx v1.0.0，由 Go 模块代理下载。
+已发布的 v1.0.0 模块使用 servex 和 kitx v1.0.0，由 Go 模块代理下载。
 独立检出本仓库即可，无需同级源码或本地替换。
 可运行应用见独立的 [servex-examples](https://github.com/nostosx/servex-examples) 项目。
+
+`middleware/v1.1.0` 新增类型化 CQRS 日志、指标与追踪，使用 servex v1.1.0
+和 kitx v1.0.0；middleware v1.0.0 不包含这些 API。
+用法见[类型化应用中间件](middleware/README.md#typed-application-middleware)。
+其他模块保留 v1.0.0 依赖，继续独立版本管理。
 
 ## 模块
 
@@ -63,7 +68,7 @@ go get github.com/nostosx/servex-contrib/cache/redis@v1.0.0
 本仓库根目录没有 `go.mod`，不要在这里执行这些应用命令。
 一个模块展示多个完整程序时，应将每个程序放在独立目录中。
 
-依赖图选用 servex 和 kitx v1.0.0，无需本地替换。根目录的 `v1.0.0` 标签
+已发布 v1.0.0 的依赖图选用 servex 和 kitx v1.0.0，无需本地替换。根目录的 `v1.0.0` 标签
 不会发布这些嵌套模块。目录前缀用于 Git 标签，`go get` 的版本参数仍是
 `@v1.0.0`。CI 负责验证，不创建标签或发布版本。
 Go 1.27.3 是工具链要求，与模块版本独立。
@@ -83,7 +88,7 @@ SDK 客户端上完成这些配置。监听所有网卡的服务器用于本地�
 
 ## 开发
 
-使用 Go 1.27.3、GNU Make、Bash 和 Python 3。独立检出本仓库，Go 会下载已发布的依赖。
+使用 Go 1.27.3、GNU Make、Bash 和 Python 3。独立检出本仓库；middleware 开发需先按上文配置核心源码覆盖或开发模块代理，其余依赖由 Go 下载。
 
 根目录不是 Go 模块。在根目录运行下列命令，Make 会逐模块执行并设置 `GOWORK=off`：
 

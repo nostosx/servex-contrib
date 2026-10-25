@@ -5,8 +5,9 @@ The initial release of each module is v1.0.0. Published v1 releases preserve
 public API compatibility. Record subsequent changes under `Unreleased`,
 identifying the module.
 
-All modules require Go 1.27.3 or later and use published servex and kitx
-v1.0.0 without replacements. See [RELEASING.md](RELEASING.md) for release gates.
+Published v1.0.0 modules require Go 1.27.3 or later and use servex and kitx
+v1.0.0 without replacements. Middleware v1.1.0 uses servex v1.1.0 and kitx
+v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
@@ -16,6 +17,21 @@ v1.0.0 without replacements. See [RELEASING.md](RELEASING.md) for release gates.
 - config/consul, config/etcd and config/nacos: handle Ctrl+C in watcher examples.
 - encoding/yaml: provide the configuration file used by the example.
 - middleware and selector: include kitx in dependency-check instructions.
+
+## middleware/v1.1.0
+
+Release date: 2026-10-25.
+
+- Add typed Command/Query logging, metrics and internal tracing using CQRS
+  assembly metadata, independent of transport metadata. Existing endpoint APIs
+  remain compatible.
+- Exclude payloads, results, error text, error reasons and panic values from
+  typed signals. Preserve results, error identity, cancellation and panic
+  propagation; end internal spans once.
+- Cover operation metadata, parent contexts, signal redaction and concurrent
+  calls with regression tests and an executable command/query example.
+- Require published servex v1.1.0, kitx v1.0.0 and Go 1.27.3 or later,
+  without local replacements or development module proxies.
 
 ## broker/kafka/v1.0.0
 

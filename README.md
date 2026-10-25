@@ -8,11 +8,16 @@ that depend on third-party SDKs, plus two collections without third-party SDKs
 standard-library reference implementation each; every further implementation
 lives here.
 
-All modules use the published servex and kitx v1.0.0 dependencies. A
+Published v1.0.0 modules use servex and kitx v1.0.0 dependencies. A
 standalone checkout needs no sibling source directories or local replacements.
 
 Runnable applications composing core and contrib live in
 [servex-examples](https://github.com/nostosx/servex-examples).
+
+`middleware/v1.1.0` adds typed CQRS logging, metrics and tracing and uses
+servex v1.1.0 with kitx v1.0.0. These APIs are absent from middleware v1.0.0.
+See [typed application middleware](middleware/README.md#typed-application-middleware).
+Other modules retain their v1.0.0 dependencies and independent versions.
 
 ## Modules
 
@@ -76,7 +81,7 @@ directory after preparing the example's backend. Do not run these commands
 from this repository root, which has no `go.mod`. For modules with multiple
 complete programs, put each program in a separate directory.
 
-The dependency graph selects servex and kitx v1.0.0. Root tags such as
+The published v1.0.0 dependency graph selects servex and kitx v1.0.0. Root tags such as
 `v1.0.0` do not release these nested modules. The directory prefix belongs to
 the Git tag; the version argument to `go get` remains `@v1.0.0`.
 The CI workflow validates changes and does not publish releases.
@@ -100,7 +105,9 @@ same host.
 
 ## Development
 
-Clone this repository on its own; Go downloads the published dependencies.
+Clone this repository on its own. For middleware development, first configure
+the core source override or development module proxy described above; Go downloads
+the remaining published dependencies.
 
 Requires Go 1.27.3, GNU Make, Bash and Python 3. The repository root is not a
 module. Run the common targets from this root; they apply to every module and

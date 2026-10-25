@@ -1,8 +1,8 @@
 # middleware
 
 `github.com/nostosx/servex-contrib/middleware` is one module holding the
-standard servex middleware. Every package returns an `endpoint.Middleware`,
-reads call information from `metadata.FromContext` (kind, protocol,
+standard servex middleware. Each package provides `endpoint.Middleware` via `New`,
+which reads call information from `metadata.FromContext` (kind, protocol,
 operation, header) and works with any transport, consumer or worker. The
 module depends only on the standard library, servex and kitx; external capabilities
 are injected through functions and interfaces.
@@ -20,16 +20,56 @@ are injected through functions and interfaces.
 | `circuitbreaker` | client | `New(WithKey, WithK, WithWindow, WithBuckets, WithMinRequests, ...)`, `ErrOpen` | Google SRE adaptive throttling per operation; rejects with a non-retryable `Unavailable` (reason `CIRCUIT_OPEN`), so an outer retry stops. |
 | `timeout` | client | `New(d)` | Bounds a single attempt; an exceeded deadline is `DeadlineExceeded` (reason `TIMEOUT`). |
 
+## Typed application middleware
+
+Version v1.1.0 also provides `logging.Command[C,R]` / `Query[Q,R]`,
+`metrics.Command[C,R]` / `Query[Q,R]` and `tracing.Command[C,R]` / `Query[Q,R]`.
+These use servex/cqrs v1.1.0;
+**middleware/v1.0.0 does not contain these APIs**. Keep the endpoint API above
+for transport calls. Application wrappers consume `cqrs.Metadata{Kind, Operation}`
+from `ChainCommand` / `ChainQuery`, independently of transport metadata.
+
+Assemble once in the application composition root, with stable operation names:
+
+```go
+handler := cqrs.ChainCommand("catalog.create_product", command,
+    tracing.Command[Create, Product](tracer),
+    metrics.Command[Create, Product](meter),
+    logging.Command[Create, Product](logger),
+)
+```
+
+This is an assembly fragment; request/result types, command and sinks belong to
+the application. For a complete command/query program see the executable
+[ExampleCommand](logging/cqrs_test.go). The first wrapper is outermost; logging
+runs inside the internal span for trace correlation. Nil sinks select slog.Default
+and no-op metrics/tracing; WithLevel and WithBuckets apply to the typed factories.
+Use concurrency-safe sinks and handlers. No automatic retry or transaction is added.
+
+- Logs: kind, operation, duration, code, and trace/span IDs when valid.
+- Metrics: `servex_usecase_calls_total{kind,operation,code}` and
+  `servex_usecase_duration_seconds{kind,operation}`; bounded operation names only.
+- Traces: internal child spans named after the operation; kind, operation and code.
+  Caller context is preserved through the child context; no transport headers are
+  extracted, injected or changed.
+
+Requests, results, error text, error reasons and panic values are excluded from
+these signals. Failed spans record only the errorx code (`Unknown` for unclassified
+errors). Panics count as `Internal`, end the span once and propagate unchanged;
+recovery belongs at the outer transport/process boundary. Results and original
+errors pass back unchanged, including nonzero results returned together with errors.
+
 ## Install
 
-Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
+Requires Go 1.27.3 or later. Version v1.1.0 uses published servex v1.1.0
+and kitx v1.0.0, without local replacements.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/middleware@v1.0.0
+go get github.com/nostosx/servex-contrib/middleware@v1.1.0
 ```
 
-The example version corresponds to the tag `middleware/v1.0.0`;
+The example version corresponds to the tag `middleware/v1.1.0`;
 see [module versioning](../README.md#versioning).
 
 ## Usage

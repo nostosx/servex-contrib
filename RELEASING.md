@@ -6,7 +6,8 @@ separate maintainer decision.
 
 ## Dependency order
 
-The modules use published servex and kitx v1.0.0 without local replacements.
+Middleware v1.1.0 uses published servex v1.1.0 and kitx v1.0.0. Other
+modules retain their published v1.0.0 dependencies. No replacements are required.
 Before adopting a newer core or utility release, verify that version through
 the public Go proxy, update requirements, tidy and rerun the module gates.
 Contrib modules do not depend on one another and may be released independently.
@@ -57,3 +58,8 @@ a published dependency graph is installable.
 
 Do not move a published tag to fix a release. Publish a corrected version,
 document the impact and use a module retraction when appropriate.
+
+For middleware v1.1.0, verify servex v1.1.0 through the public proxy before
+publishing `middleware/v1.1.0`. Keep the existing middleware and core v1.0.0
+tags unchanged. Verify the new middleware version from an independent consumer
+after publication.

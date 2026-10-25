@@ -6,8 +6,9 @@ Use Go 1.27.3, GNU Make, Bash and Python 3. Race tests require a supported
 platform and a working C toolchain. Clone this repository on its own.
 
 The root is not a Go module. Each listed implementation has its own `go.mod`;
-servex and kitx v1.0.0 resolve through the Go module proxy without sibling
-checkouts or local replacements.
+released versions resolve servex and kitx through the public Go module proxy.
+Middleware v1.1.0 uses servex v1.1.0 and kitx v1.0.0; other modules
+continue to use published v1.0.0 dependencies.
 Do not commit a `go.work` file or add cross-module contrib imports.
 
 Install tools outside the modules with Go 1.27.3 and put them on `PATH`:
@@ -82,3 +83,7 @@ Describe the problem, resulting behavior and checks in a pull request. Record
 user-visible changes under the affected module in [CHANGELOG.md](CHANGELOG.md).
 Sensitive reports follow [SECURITY.md](SECURITY.md). Module versions and
 publication gates are documented in [RELEASING.md](RELEASING.md).
+
+Verify middleware changes with its published dependencies and GOWORK=off.
+No development proxy or core source override is required. Published tags stay
+unchanged; release changes under a new module version.
