@@ -105,9 +105,8 @@ same host.
 
 ## Development
 
-Clone this repository on its own. For middleware development, first configure
-the core source override or development module proxy described above; Go downloads
-the remaining published dependencies.
+Clone this repository on its own. All module dependencies resolve from published
+versions; no core source override or development module proxy is required.
 
 Requires Go 1.27.3, GNU Make, Bash and Python 3. The repository root is not a
 module. Run the common targets from this root; they apply to every module and
