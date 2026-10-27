@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -20,10 +21,17 @@ type subscription struct {
 	group string
 	cl    *kgo.Client
 	lost  atomic.Pointer[error] // set when the liveness check gives up
+
+	// readyMu guards ready, which is called at most once and never after
+	// run returned; run sets it to nil when it returns.
+	readyMu sync.Mutex
+	ready   func()
 }
 
-// newSubscription creates the consumer client of a Subscribe call.
-func (b *Broker) newSubscription(topic, group string) (*subscription, error) {
+// newSubscription creates the consumer client of a Subscribe call. ready,
+// if not nil, is called once the subscription is established.
+func (b *Broker) newSubscription(topic, group string, ready func()) (*subscription, error) {
+	s := &subscription{b: b, topic: topic, group: group, ready: ready}
 	kopts := slices.Clone(b.base)
 	kopts = append(kopts, kgo.ConsumeTopics(topic))
 	if group != "" {
@@ -32,6 +40,13 @@ func (b *Broker) newSubscription(topic, group string) (*subscription, error) {
 			kgo.DisableAutoCommit(),
 			kgo.BlockRebalanceOnPoll(),
 		)
+		if ready != nil {
+			// franz-go calls this after every join, also with an empty
+			// assignment, so it marks the end of the first join.
+			kopts = append(kopts, kgo.OnPartitionsAssigned(func(context.Context, *kgo.Client, map[string][]int32) {
+				s.markReady()
+			}))
+		}
 	} else {
 		// Broadcast: read every partition directly, starting with the records
 		// produced from now on.
@@ -41,23 +56,61 @@ func (b *Broker) newSubscription(topic, group string) (*subscription, error) {
 	if err != nil {
 		return nil, invalid("subscribe: new client: %v", err)
 	}
+	s.cl = cl
 	if fn := b.opts.subscribed; fn != nil {
 		fn(topic, group)
 	}
-	return &subscription{b: b, topic: topic, group: group, cl: cl}, nil
+	return s, nil
+}
+
+// markReady calls the ready function, if any, unless it was called already
+// or run returned.
+func (s *subscription) markReady() {
+	s.readyMu.Lock()
+	defer s.readyMu.Unlock()
+	if s.ready != nil {
+		s.ready()
+		s.ready = nil
+	}
+}
+
+// awaitReachable pings the cluster until it answers or ctx ends, then marks
+// a broadcast subscription ready. Failed pings are retried with a delay
+// doubling from 50ms up to one second; the liveness check of watch ends a
+// subscription whose cluster stays unreachable.
+func (s *subscription) awaitReachable(ctx context.Context) {
+	delay := 50 * time.Millisecond
+	for {
+		if err := s.cl.Ping(ctx); err == nil {
+			s.markReady()
+			return
+		}
+		if !sleep(ctx, delay) {
+			return
+		}
+		delay = min(2*delay, time.Second)
+	}
 }
 
 // run consumes until ctx ends or a fatal error occurs, then closes the
 // consumer client. cancel cancels ctx.
 func (s *subscription) run(ctx context.Context, cancel context.CancelFunc, h endpoint.Endpoint) error {
 	defer s.close()
-	watchDone := make(chan struct{})
-	defer func() { <-watchDone }()
-	defer cancel()
-	go func() {
-		defer close(watchDone)
-		s.watch(ctx, cancel)
+	// Runs after the goroutines below returned and before the client is
+	// closed; markReady checks ready, so it is never called once run
+	// returned.
+	defer func() {
+		s.readyMu.Lock()
+		s.ready = nil
+		s.readyMu.Unlock()
 	}()
+	var wg sync.WaitGroup
+	defer wg.Wait()
+	defer cancel()
+	wg.Go(func() { s.watch(ctx, cancel) })
+	if s.group == "" {
+		wg.Go(func() { s.awaitReachable(ctx) })
+	}
 
 	for {
 		fetches := s.cl.PollFetches(ctx)

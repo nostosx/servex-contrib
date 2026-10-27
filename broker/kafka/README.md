@@ -1,7 +1,7 @@
 # broker/kafka
 
 `github.com/nostosx/servex-contrib/broker/kafka` implements the servex
-`broker.Publisher` and `broker.Subscriber` contracts on Apache Kafka through
+`broker.Publisher` and `broker.ReadySubscriber` contracts on Apache Kafka through
 [franz-go](https://github.com/twmb/franz-go).
 
 - A non-empty group is a Kafka consumer group. Offsets are committed only after
@@ -10,6 +10,11 @@
   receives every record produced after it subscribed, and no group is left on
   the cluster.
 - `Message.Key` maps to the record key, `Message.Header` to the record headers.
+- `SubscribeReady` reports readiness once a group consumer received its first
+  assignment, or once the cluster answered a broadcast subscriber's ping.
+  `broker.NewConsumer` uses it, so the consumer hook's `Start` waits for the
+  group join and fails when the subscription cannot start. Group consumers are
+  named `consumer:<topic>:<group>` in app logs and errors.
 - Kafka has no per-message nack: a record rejected with a retryable error is
   redelivered to the handler in-process. Records rejected with a non-retryable
   error, or that ran out of redeliveries, go to the dead letter topic (if
@@ -57,11 +62,11 @@ import (
 
 	"github.com/nostosx/servex-contrib/broker/kafka"
 	"github.com/nostosx/servex/app"
+	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/messaging/broker"
 )
 
-func handleOrder(_ context.Context, req any) (any, error) {
-	msg := req.(*broker.Message)
+func handleOrder(_ context.Context, msg *broker.Message) (any, error) {
 	log.Printf("order %s: %s", msg.Key, msg.Body)
 	return nil, nil // nil acknowledges; an error rejects the record
 }
@@ -84,8 +89,9 @@ func run() error {
 		return err
 	}
 
-	// The consumer is an app.Hook: it subscribes on Start and stops on Stop.
-	consumer := broker.NewConsumer(b, "orders", "billing", handleOrder)
+	// The consumer is an app.Hook: Start returns once it joined the group,
+	// Stop ends the subscription.
+	consumer := broker.NewConsumer(b, "orders", "billing", endpoint.Typed(handleOrder))
 	return app.New(app.WithHooks(consumer)).Run(ctx)
 }
 

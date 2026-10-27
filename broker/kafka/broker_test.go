@@ -666,6 +666,14 @@ func TestWithConsumerInApp(t *testing.T) {
 		info.Header.Get("x-id") != "42" {
 		t.Fatalf("Info = %+v", info)
 	}
+	// Consumers in a group are named after topic and group.
+	if name := consumer.Name(); name != "consumer:orders:app" {
+		t.Errorf("Name() = %q, want consumer:orders:app", name)
+	}
+	// The consumer runs over SubscribeReady and takes part in readiness.
+	if err := consumer.(interface{ Check(context.Context) error }).Check(t.Context()); err != nil {
+		t.Errorf("Check() = %v, want nil while subscribed", err)
+	}
 	cancel()
 	if err := <-runErr; err != nil {
 		t.Fatalf("Run() = %v", err)
@@ -693,5 +701,86 @@ func TestConnectionLossFailsApp(t *testing.T) {
 	}
 	if s := a.State(); s != app.StateFailed {
 		t.Fatalf("State() = %v, want failed", s)
+	}
+}
+
+// TestSubscribeReady checks that SubscribeReady reports readiness once, and
+// that a message published right after it is delivered, for group and
+// broadcast subscriptions.
+func TestSubscribeReady(t *testing.T) {
+	for _, group := range []string{"g", ""} {
+		t.Run(fmt.Sprintf("group=%q", group), func(t *testing.T) {
+			f := newFixture(t)
+			var readyCalls atomic.Int32
+			ready := make(chan struct{})
+			got := make(chan string, 16)
+			ctx, cancel := context.WithCancel(t.Context())
+			done := make(chan error, 1)
+			go func() {
+				done <- f.broker.SubscribeReady(ctx, "orders", group, endpoint.Typed(func(_ context.Context, msg *broker.Message) (any, error) {
+					got <- msg.Key
+					return nil, nil
+				}), func() {
+					if readyCalls.Add(1) == 1 {
+						close(ready)
+					}
+				})
+			}()
+			select {
+			case <-ready:
+			case err := <-done:
+				t.Fatalf("SubscribeReady() = %v before ready", err)
+			case <-time.After(waitTimeout):
+				t.Fatal("subscription not ready")
+			}
+			f.publish(t, "orders", "k0", "k1", "k2", "k3")
+			received := map[string]bool{}
+			for len(received) < 4 {
+				select {
+				case k := <-got:
+					received[k] = true
+				case <-time.After(waitTimeout):
+					t.Fatalf("received %v after ready, want k0..k3", received)
+				}
+			}
+			cancel()
+			if err := <-done; err != nil {
+				t.Fatalf("SubscribeReady() = %v, want nil", err)
+			}
+			if n := readyCalls.Load(); n != 1 {
+				t.Fatalf("ready called %d times, want 1", n)
+			}
+		})
+	}
+}
+
+// TestSubscribeReadyFailures checks that SubscribeReady returns without
+// calling ready when the subscription cannot start.
+func TestSubscribeReadyFailures(t *testing.T) {
+	notReady := func() { t.Error("ready called") }
+	t.Run("invalid", func(t *testing.T) {
+		f := newFixture(t)
+		if err := f.broker.SubscribeReady(t.Context(), "", "g", newCollector().handle, notReady); errorx.CodeOf(err) != errorx.InvalidArgument {
+			t.Fatalf("SubscribeReady(empty topic) = %v, want InvalidArgument", err)
+		}
+	})
+	t.Run("closed", func(t *testing.T) {
+		f := newFixture(t)
+		f.broker.Close()
+		if err := f.broker.SubscribeReady(t.Context(), "orders", "g", newCollector().handle, notReady); err != nil {
+			t.Fatalf("SubscribeReady() after Close = %v, want nil", err)
+		}
+	})
+	for _, group := range []string{"g", ""} {
+		t.Run(fmt.Sprintf("unreachable group=%q", group), func(t *testing.T) {
+			f := newFixture(t, WithPingInterval(20*time.Millisecond))
+			f.cluster.Close()
+			c := broker.NewConsumer(f.broker, "orders", group, newCollector().handle)
+			ctx, cancel := context.WithTimeout(t.Context(), waitTimeout)
+			defer cancel()
+			if err := c.Start(ctx); errorx.CodeOf(err) != errorx.Unavailable {
+				t.Fatalf("consumer Start() = %v, want Unavailable", err)
+			}
+		})
 	}
 }

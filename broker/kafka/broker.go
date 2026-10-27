@@ -23,11 +23,11 @@ const (
 
 // Compile-time interface checks.
 var (
-	_ broker.Publisher  = (*Broker)(nil)
-	_ broker.Subscriber = (*Broker)(nil)
+	_ broker.Publisher       = (*Broker)(nil)
+	_ broker.ReadySubscriber = (*Broker)(nil)
 )
 
-// Broker implements broker.Publisher and broker.Subscriber with Kafka. Its
+// Broker implements broker.Publisher and broker.ReadySubscriber with Kafka. Its
 // methods are safe for concurrent use. Create one with New or NewFromClient.
 //
 // Publish produces through a single client. Every Subscribe call creates its
@@ -106,6 +106,24 @@ func (b *Broker) Publish(ctx context.Context, msg *broker.Message) error {
 // subscriber receives the records produced after Subscribe was called, and
 // nothing is committed.
 func (b *Broker) Subscribe(ctx context.Context, topic, group string, h endpoint.Endpoint) error {
+	return b.subscribe(ctx, topic, group, h, nil)
+}
+
+// SubscribeReady implements broker.ReadySubscriber. It behaves like
+// Subscribe and calls the non-nil ready once the subscription is
+// established: for a non-empty group when the consumer joined the group and
+// received its first assignment, possibly empty when the group has more
+// members than partitions; for an empty group once the cluster answered a
+// ping. Records produced after ready are delivered to the subscription.
+// SubscribeReady returns without calling ready when it fails before that,
+// for example on invalid arguments, a closed Broker or an unreachable
+// cluster (see WithPingInterval).
+func (b *Broker) SubscribeReady(ctx context.Context, topic, group string, h endpoint.Endpoint, ready func()) error {
+	return b.subscribe(ctx, topic, group, h, ready)
+}
+
+// subscribe implements Subscribe and SubscribeReady; ready may be nil.
+func (b *Broker) subscribe(ctx context.Context, topic, group string, h endpoint.Endpoint, ready func()) error {
 	switch {
 	case topic == "":
 		return invalid("subscribe: empty topic")
@@ -120,7 +138,7 @@ func (b *Broker) Subscribe(ctx context.Context, topic, group string, h endpoint.
 	stop := context.AfterFunc(b.ctx, cancel)
 	defer stop()
 
-	s, err := b.newSubscription(topic, group)
+	s, err := b.newSubscription(topic, group, ready)
 	if err != nil {
 		return err
 	}
