@@ -22,7 +22,7 @@ func TestTypedTracing(t *testing.T) {
 			header := metadata.Pairs("traceparent", "untrusted-header")
 			ctx, cancel := context.WithCancel(metadata.NewContext(parentCtx, metadata.Info{Kind: metadata.KindClient, Protocol: "http", Operation: "transport", Header: header}))
 			cancel()
-			failure := errorx.New(errorx.NotFound, "PRIVATE", "secret-token")
+			failure := errorx.New(errorx.Internal, "PRIVATE", "secret-token")
 			base := cqrs.CommandFunc[int, int](func(got context.Context, req int) (int, error) {
 				info, _ := metadata.FromContext(got)
 				if got.Err() != context.Canceled || info.Operation != "transport" || tracing.SpanFromContext(got) == parent {
@@ -41,11 +41,39 @@ func TestTypedTracing(t *testing.T) {
 				t.Fatal("result or error changed")
 			}
 			span := tr.spans[1]
-			if span.kind != tracing.SpanKindInternal || span.parent != parent.SpanID() || span.traceID != parent.TraceID() || span.ended != 1 || span.attrs[mwtracing.AttrKind] != string(kind) || span.attrs[mwtracing.AttrOperation] != span.name || span.attrs[mwtracing.AttrCode] != "NotFound" {
+			if span.kind != tracing.SpanKindInternal || span.parent != parent.SpanID() || span.traceID != parent.TraceID() || span.ended != 1 || span.attrs[mwtracing.AttrKind] != string(kind) || span.attrs[mwtracing.AttrOperation] != span.name || span.attrs[mwtracing.AttrCode] != "Internal" {
 				t.Fatalf("span: %+v", span)
 			}
-			if len(span.errs) != 1 || span.errs[0].Error() != "NotFound" || len(span.attrs) != 3 || header.Get("traceparent") != "untrusted-header" {
+			if len(span.errs) != 1 || span.errs[0].Error() != "Internal" || len(span.attrs) != 3 || header.Get("traceparent") != "untrusted-header" {
 				t.Fatal("sensitive error or transport header leaked/changed")
+			}
+		})
+	}
+}
+
+func TestTypedTracingErrorStatusByCodeClass(t *testing.T) {
+	t.Parallel()
+	for code := errorx.Canceled; code <= errorx.Unauthenticated; code++ {
+		t.Run(code.String(), func(t *testing.T) {
+			t.Parallel()
+			tr := &recordingTracer{}
+			failure := errorx.New(code, "PRIVATE", "secret-token")
+			handler := cqrs.ChainQuery("catalog.get", cqrs.QueryFunc[int, int](func(context.Context, int) (int, error) {
+				return 0, failure
+			}), mwtracing.Query[int, int](tr))
+			if _, err := handler.Handle(t.Context(), 1); err != failure {
+				t.Fatalf("err = %v, want unchanged", err)
+			}
+			span := tr.only(t)
+			if span.attrs[mwtracing.AttrCode] != code.String() || span.ended != 1 {
+				t.Fatalf("span: %+v", span)
+			}
+			want := serverFaults[code]
+			if want != (len(span.errs) == 1) || len(span.errs) > 1 {
+				t.Fatalf("errs = %v, want error status %v", span.errs, want)
+			}
+			if want && span.errs[0].Error() != code.String() {
+				t.Fatalf("recorded %q, want the code only", span.errs[0])
 			}
 		})
 	}

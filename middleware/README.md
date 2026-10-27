@@ -13,7 +13,7 @@ are injected through functions and interfaces.
 | `auth` | server, client | `New[P](verify, WithHeader, WithScheme)`, `FromContext[P]`, `Client(token, ...)` | Server: verifies the `Authorization: Bearer` token and stores the principal; missing or invalid tokens are `Unauthenticated`. Client: writes the token into the outbound header. |
 | `validate` | server | `New()` | Calls `Validate() error` on requests that implement it (protoc-gen-validate compatible); failures are `InvalidArgument`. |
 | `ratelimit` | server | `New(Limiter, WithKey)`, `TokenBucket(rate, burst, WithClock, WithIdleTimeout)` | Rejects with `ResourceExhausted` (reason `RATE_LIMITED`). The token bucket is keyed and evicts idle buckets without a goroutine. |
-| `tracing` | both | `New(tracing.Tracer, tracing.Propagator)` | Server spans continue the inbound trace; client spans are injected into the outbound header. |
+| `tracing` | both | `New(tracing.Tracer, tracing.Propagator)`, `IsServerFault` | Server spans continue the inbound trace; client spans are injected into the outbound header. Following OpenTelemetry, server and internal spans get an error status only for server faults (Unknown, DeadlineExceeded, Unimplemented, Internal, Unavailable, DataLoss); client spans for every failure. The `servex.code` attribute is always set. |
 | `logging` | both | `New(*slog.Logger, WithLevel)` | One record per call with kind, protocol, operation, duration and errorx code. |
 | `metrics` | both | `New(metrics.Meter, WithBuckets)` | `servex_requests_total{kind,protocol,operation,code}` and `servex_request_duration_seconds{kind,protocol,operation}`. |
 | `retry` | client | `New(WithMaxAttempts, WithBackoff, WithRetryIf)`, `Exponential(base, limit)` | Retries retryable errors (default 3 attempts, exponential backoff with jitter from 100ms to 2s); stops when the caller's context ends. |
@@ -54,8 +54,9 @@ Use concurrency-safe sinks and handlers. No automatic retry or transaction is ad
   extracted, injected or changed.
 
 Requests, results, error text, error reasons and panic values are excluded from
-these signals. Failed spans record only the errorx code (`Unknown` for unclassified
-errors). Panics count as `Internal`, end the span once and propagate unchanged;
+these signals. Spans always carry the errorx code (`Unknown` for unclassified
+errors); only server faults record a code-only error and an error status, so
+client-class results such as NotFound or InvalidArgument do not. Panics count as `Internal`, end the span once and propagate unchanged;
 recovery belongs at the outer transport/process boundary. Results and original
 errors pass back unchanged, including nonzero results returned together with errors.
 

@@ -16,8 +16,10 @@ const AttrKind = "servex.kind"
 // the caller context as parent and passes the child context to the handler.
 // Transport metadata and headers are untouched. A nil tracer uses tracing.Noop.
 // Only kind, operation and code are recorded; error text, payloads and panic
-// values are excluded. Failed calls record a code-only error. Panics mark the
-// span Internal, end it exactly once and propagate unchanged.
+// values are excluded. Server faults (see IsServerFault) record a code-only
+// error, which marks the span status as an error; other failures, such as
+// NotFound or InvalidArgument, only set AttrCode. Panics mark the span
+// Internal, end it exactly once and propagate unchanged.
 func Command[Request, Result any](tracer tracing.Tracer) cqrs.CommandMiddleware[Request, Result] {
 	if tracer == nil {
 		tracer = tracing.Noop()
@@ -31,7 +33,7 @@ func Command[Request, Result any](tracer tracing.Tracer) cqrs.CommandMiddleware[
 			code := errorx.Internal
 			defer func() {
 				span.SetAttribute(AttrCode, code.String())
-				if code != errorx.OK {
+				if IsServerFault(code) {
 					span.RecordError(errors.New(code.String()))
 				}
 			}()

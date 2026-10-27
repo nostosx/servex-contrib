@@ -33,8 +33,12 @@ const (
 //     tracing.SpanKindInternal span is started and nothing is propagated.
 //
 // The span gets the attributes AttrProtocol, AttrOperation and AttrCode, the
-// errorx.Code name of the result. A failed call is recorded with
-// Span.RecordError. The span ends when the next endpoint returns.
+// errorx.Code name of the result. Following the OpenTelemetry RPC and HTTP
+// conventions, Span.RecordError, which marks the span status as an error, is
+// called for every failed client call, but for server and internal calls only
+// when the code is a server fault (see IsServerFault). Client-class failures
+// such as NotFound or InvalidArgument leave a server span's status unset; the
+// code stays visible in AttrCode. The span ends when the next endpoint returns.
 func New(t tracing.Tracer, p tracing.Propagator) endpoint.Middleware {
 	if t == nil {
 		t = tracing.Noop()
@@ -71,10 +75,27 @@ func New(t tracing.Tracer, p tracing.Propagator) endpoint.Middleware {
 
 			resp, err := next(ctx, req)
 			span.SetAttribute(AttrCode, errorx.CodeOf(err).String())
-			if err != nil {
+			if err != nil && (kind == tracing.SpanKindClient || IsServerFault(errorx.CodeOf(err))) {
 				span.RecordError(err)
 			}
 			return resp, err
 		}
+	}
+}
+
+// IsServerFault reports whether code means the callee failed, which marks a
+// server or internal span as an error. The set follows the OpenTelemetry gRPC
+// server-span convention: Unknown, DeadlineExceeded, Unimplemented, Internal,
+// Unavailable and DataLoss. Every other code, including OK and client-class
+// codes such as Canceled, InvalidArgument, NotFound, AlreadyExists,
+// PermissionDenied, ResourceExhausted, FailedPrecondition, Aborted, OutOfRange
+// and Unauthenticated, is not a server fault.
+func IsServerFault(code errorx.Code) bool {
+	switch code {
+	case errorx.Unknown, errorx.DeadlineExceeded, errorx.Unimplemented,
+		errorx.Internal, errorx.Unavailable, errorx.DataLoss:
+		return true
+	default:
+		return false
 	}
 }

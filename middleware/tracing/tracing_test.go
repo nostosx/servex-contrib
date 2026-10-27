@@ -235,20 +235,63 @@ func TestNoInfoStartsInternalSpan(t *testing.T) {
 	}
 }
 
-func TestRecordsError(t *testing.T) {
+// serverFaults is the expected server-span error set of the OpenTelemetry
+// gRPC convention.
+var serverFaults = map[errorx.Code]bool{
+	errorx.Unknown:          true,
+	errorx.DeadlineExceeded: true,
+	errorx.Unimplemented:    true,
+	errorx.Internal:         true,
+	errorx.Unavailable:      true,
+	errorx.DataLoss:         true,
+}
+
+func TestErrorStatusByCodeClass(t *testing.T) {
+	kinds := []struct {
+		name string
+		info *metadata.Info
+		all  bool // every failure marks the span as an error
+	}{
+		{"server", &metadata.Info{Kind: metadata.KindServer, Operation: "op"}, false},
+		{"internal", nil, false},
+		{"client", &metadata.Info{Kind: metadata.KindClient, Operation: "op", Header: metadata.MD{}}, true},
+	}
+	for _, k := range kinds {
+		for code := errorx.Canceled; code <= errorx.Unauthenticated; code++ {
+			t.Run(k.name+"/"+code.String(), func(t *testing.T) {
+				tr := &recordingTracer{}
+				ctx := t.Context()
+				if k.info != nil {
+					ctx = metadata.NewContext(ctx, *k.info)
+				}
+				failure := errorx.New(code, "REASON", "message")
+				_, err := mwtracing.New(tr, nil)(func(context.Context, any) (any, error) { return nil, failure })(ctx, nil)
+				if err != failure {
+					t.Fatalf("err = %v, want unchanged", err)
+				}
+				s := tr.only(t)
+				if s.attrs[mwtracing.AttrCode] != code.String() {
+					t.Fatalf("code = %v", s.attrs[mwtracing.AttrCode])
+				}
+				if want := k.all || serverFaults[code]; want != (len(s.errs) == 1) || len(s.errs) > 1 {
+					t.Fatalf("errs = %v, want error status %v", s.errs, want)
+				}
+				if len(s.errs) == 1 && !errors.Is(s.errs[0], failure) {
+					t.Fatalf("recorded %v, want the call error", s.errs[0])
+				}
+			})
+		}
+	}
+}
+
+func TestUnclassifiedErrorIsServerFault(t *testing.T) {
 	tr := &recordingTracer{}
-	failure := errorx.New(errorx.NotFound, "MISSING", "missing")
+	failure := errors.New("boom")
 	ctx := metadata.NewContext(t.Context(), metadata.Info{Kind: metadata.KindServer, Operation: "op"})
-	_, err := mwtracing.New(tr, nil)(func(context.Context, any) (any, error) { return nil, failure })(ctx, nil)
-	if err != failure {
-		t.Fatalf("err = %v, want unchanged", err)
-	}
+	_, _ = mwtracing.New(tr, nil)(func(context.Context, any) (any, error) { return nil, failure })(ctx, nil)
 	s := tr.only(t)
-	if len(s.errs) != 1 || !errors.Is(s.errs[0], failure) {
-		t.Fatalf("errs = %v", s.errs)
-	}
-	if s.attrs[mwtracing.AttrCode] != "NotFound" {
-		t.Fatalf("code = %v", s.attrs[mwtracing.AttrCode])
+	if s.attrs[mwtracing.AttrCode] != "Unknown" || len(s.errs) != 1 || !errors.Is(s.errs[0], failure) {
+		t.Fatalf("code %v, errs %v", s.attrs[mwtracing.AttrCode], s.errs)
 	}
 }
 

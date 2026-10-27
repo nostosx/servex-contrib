@@ -17,6 +17,12 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 - config/consul, config/etcd and config/nacos: handle Ctrl+C in watcher examples.
 - encoding/yaml: provide the configuration file used by the example.
 - middleware and selector: include kitx in dependency-check instructions.
+- middleware/tracing: follow the OpenTelemetry span status conventions. Server,
+  internal and typed Command/Query spans call `RecordError` only for server
+  faults (Unknown, DeadlineExceeded, Unimplemented, Internal, Unavailable,
+  DataLoss); client-class codes such as NotFound, InvalidArgument,
+  PermissionDenied or Canceled keep the `servex.code` attribute without an
+  error status. Client spans still record every failure. Add `IsServerFault`.
 
 ## middleware/v1.1.0
 
