@@ -88,8 +88,9 @@ func (s *subscription) declare(topic, group string) error {
 	return nil
 }
 
-// run consumes until ctx ends or the channel fails.
-func (s *subscription) run(ctx context.Context, topic, group string, h endpoint.Endpoint) error {
+// run consumes until ctx ends or the channel fails. It calls the non-nil
+// ready once the server accepted the consumer.
+func (s *subscription) run(ctx context.Context, topic, group string, h endpoint.Endpoint, ready func()) error {
 	if ctx.Err() != nil {
 		return nil
 	}
@@ -105,6 +106,9 @@ func (s *subscription) run(ctx context.Context, topic, group string, h endpoint.
 	}
 	if fn := s.b.opts.subscribed; fn != nil {
 		fn(topic, group)
+	}
+	if ready != nil {
+		ready()
 	}
 	for ctx.Err() == nil {
 		select {

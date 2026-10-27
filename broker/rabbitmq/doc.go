@@ -1,5 +1,6 @@
-// Package rabbitmq implements broker.Publisher and broker.Subscriber on top of
-// RabbitMQ (AMQP 0-9-1).
+// Package rabbitmq implements broker.Publisher and broker.ReadySubscriber on
+// top of RabbitMQ (AMQP 0-9-1). SubscribeReady reports readiness once the
+// queue is declared and bound and the server accepted the consumer.
 //
 // Messages are published to a durable topic exchange with the topic as the
 // routing key. A non-empty group consumes from the durable queue

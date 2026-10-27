@@ -1,7 +1,7 @@
 # broker/rabbitmq
 
 `github.com/nostosx/servex-contrib/broker/rabbitmq` implements the servex
-`broker.Publisher` and `broker.Subscriber` contracts on RabbitMQ (AMQP 0-9-1)
+`broker.Publisher` and `broker.ReadySubscriber` contracts on RabbitMQ (AMQP 0-9-1)
 through [amqp091-go](https://github.com/rabbitmq/amqp091-go).
 
 - Messages are published to a durable topic exchange with the topic as routing
@@ -9,6 +9,11 @@ through [amqp091-go](https://github.com/rabbitmq/amqp091-go).
 - A non-empty group consumes from the durable queue `QueueName(topic, group)`
   (`<group>.<topic>`, escaped). An empty group consumes from an exclusive,
   server-named queue that lives as long as the subscription.
+- `SubscribeReady` reports readiness once the queue is declared and bound and
+  the server accepted the consumer. `broker.NewConsumer` uses it, so the
+  consumer hook's `Start` fails on setup errors such as a queue declared with
+  different arguments. Group consumers are named `consumer:<topic>:<group>` in
+  app logs and errors.
 - `Message.Header` maps to the AMQP headers; `Message.Key` travels in the
   `Servex-Key` header (`HeaderKey`).
 - A retryable rejection is republished to the queue with an incremented
@@ -51,11 +56,12 @@ import (
 
 	"github.com/nostosx/servex-contrib/broker/rabbitmq"
 	"github.com/nostosx/servex/app"
+	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/messaging/broker"
 )
 
-func handleOrder(_ context.Context, req any) (any, error) {
-	log.Printf("order: %s", req.(*broker.Message).Body)
+func handleOrder(_ context.Context, msg *broker.Message) (any, error) {
+	log.Printf("order: %s", msg.Body)
 	return nil, nil
 }
 
@@ -72,7 +78,7 @@ func run() error {
 	ctx, stop := app.SignalContext(context.Background())
 	defer stop()
 
-	consumer := broker.NewConsumer(b, "orders.created", "billing", handleOrder)
+	consumer := broker.NewConsumer(b, "orders.created", "billing", endpoint.Typed(handleOrder))
 	return app.New(app.WithHooks(consumer)).Run(ctx)
 }
 

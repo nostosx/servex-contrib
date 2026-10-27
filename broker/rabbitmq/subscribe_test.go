@@ -730,3 +730,56 @@ func TestSubscribeEnds(t *testing.T) {
 		})
 	}
 }
+
+// TestSubscribeReady checks that SubscribeReady reports readiness once the
+// server accepted the consumer, and not when setup fails.
+func TestSubscribeReady(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		srv, b, _ := newFakeBroker(t)
+		readyCalls := 0
+		handled := make(chan string, 1)
+		ctx, cancel := context.WithCancel(t.Context())
+		done := make(chan error, 1)
+		go func() {
+			done <- b.SubscribeReady(ctx, "orders", "g", endpoint.Typed(func(_ context.Context, msg *broker.Message) (any, error) {
+				handled <- msg.Key
+				return nil, nil
+			}), func() { readyCalls++ })
+		}()
+		synctest.Wait()
+		if readyCalls != 1 {
+			t.Fatalf("ready called %d times, want 1", readyCalls)
+		}
+		srv.consumer().deliver(delivery("orders", "k", 0))
+		synctest.Wait()
+		if got := <-handled; got != "k" {
+			t.Fatalf("handled key = %q, want k", got)
+		}
+		cancel()
+		synctest.Wait()
+		if err := <-done; err != nil {
+			t.Fatalf("SubscribeReady() = %v, want nil", err)
+		}
+		if readyCalls != 1 {
+			t.Fatalf("ready called %d times, want 1", readyCalls)
+		}
+	})
+}
+
+func TestSubscribeReadySetupFailure(t *testing.T) {
+	refused := &amqp.Error{Code: amqp.AccessRefused, Reason: "exclusive consumer"}
+	srv, b, _ := newFakeBroker(t)
+	srv.fail("consume", refused)
+	err := b.SubscribeReady(t.Context(), "orders", "g", ack, func() { t.Error("ready called") })
+	if errorx.CodeOf(err) != errorx.PermissionDenied || !errors.Is(err, refused) {
+		t.Fatalf("SubscribeReady() = %v, want PermissionDenied caused by %v", err, refused)
+	}
+	// A consumer hook over the Broker fails its Start with the setup error.
+	c := broker.NewConsumer(b, "orders", "g", ack)
+	if err := c.Start(t.Context()); !errors.Is(err, refused) {
+		t.Fatalf("consumer Start() = %v, want %v", err, refused)
+	}
+	if name := c.Name(); name != "consumer:orders:g" {
+		t.Errorf("Name() = %q, want consumer:orders:g", name)
+	}
+}

@@ -14,14 +14,14 @@ import (
 
 // Compile-time interface checks.
 var (
-	_ broker.Publisher  = (*Broker)(nil)
-	_ broker.Subscriber = (*Broker)(nil)
+	_ broker.Publisher       = (*Broker)(nil)
+	_ broker.ReadySubscriber = (*Broker)(nil)
 )
 
 // errClosed is returned by Publish once the Broker is closed.
 var errClosed = errorx.New(errorx.FailedPrecondition, "RABBITMQ_CLOSED", "rabbitmq: broker is closed")
 
-// Broker implements broker.Publisher and broker.Subscriber with RabbitMQ. Its
+// Broker implements broker.Publisher and broker.ReadySubscriber with RabbitMQ. Its
 // methods are safe for concurrent use. Create one with New.
 //
 // Publish uses one channel in confirm mode, reopened after a failure. Every
@@ -86,6 +86,21 @@ func (b *Broker) Publish(ctx context.Context, msg *broker.Message) error {
 // not exist yet; an existing queue must have been declared with the same
 // arguments.
 func (b *Broker) Subscribe(ctx context.Context, topic, group string, h endpoint.Endpoint) error {
+	return b.subscribe(ctx, topic, group, h, nil)
+}
+
+// SubscribeReady implements broker.ReadySubscriber. It behaves like
+// Subscribe and calls the non-nil ready once the queue is declared and bound
+// and the server accepted the consumer, so messages published afterwards are
+// delivered. It returns without calling ready when setup fails, for example
+// because a queue exists with different arguments, or when ctx ends or the
+// Broker is closed first.
+func (b *Broker) SubscribeReady(ctx context.Context, topic, group string, h endpoint.Endpoint, ready func()) error {
+	return b.subscribe(ctx, topic, group, h, ready)
+}
+
+// subscribe implements Subscribe and SubscribeReady; ready may be nil.
+func (b *Broker) subscribe(ctx context.Context, topic, group string, h endpoint.Endpoint, ready func()) error {
 	switch {
 	case topic == "":
 		return invalid("subscribe: empty topic")
@@ -119,7 +134,7 @@ func (b *Broker) Subscribe(ctx context.Context, topic, group string, h endpoint.
 		return err
 	}
 	defer s.ch.Close()
-	return s.run(ctx, topic, group, h)
+	return s.run(ctx, topic, group, h, ready)
 }
 
 // Close closes the publishing channel. Afterwards Publish returns an error and

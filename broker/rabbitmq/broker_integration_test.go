@@ -564,6 +564,14 @@ func TestIntegrationWithConsumerInApp(t *testing.T) {
 		info.Header.Get("x-id") != "42" {
 		t.Fatalf("Info = %+v", info)
 	}
+	// Consumers in a group are named after topic and group.
+	if name, want := consumer.Name(), "consumer:orders:"+f.group("app"); name != want {
+		t.Errorf("Name() = %q, want %q", name, want)
+	}
+	// The consumer runs over SubscribeReady and takes part in readiness.
+	if err := consumer.(interface{ Check(context.Context) error }).Check(t.Context()); err != nil {
+		t.Errorf("Check() = %v, want nil while subscribed", err)
+	}
 	cancel()
 	if err := <-runErr; err != nil {
 		t.Fatalf("Run() = %v", err)
@@ -580,6 +588,8 @@ func TestIntegrationConnectionLossFailsApp(t *testing.T) {
 	runErr := make(chan error, 1)
 	go func() { runErr <- a.Run(t.Context()) }()
 	<-f.ready
+	// Start waits for the subscription, so the loss happens while running.
+	eventually(t, "app running", func() bool { return a.State() == app.StateRunning })
 	f.conn.Close()
 	select {
 	case err := <-runErr:
