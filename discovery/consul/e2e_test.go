@@ -24,7 +24,7 @@ import (
 func runEndToEnd(t *testing.T, reg discovery.Registrar, dis discovery.Discoverer) {
 	ctx := t.Context()
 	name := "greeter-" + uuid.NewV7().String()
-	srv := httpx.NewServer(httpx.Address("127.0.0.1:0"), httpx.Logger(slog.New(slog.DiscardHandler)))
+	srv := httpx.NewServer(httpx.WithAddress("127.0.0.1:0"), httpx.WithLogger(slog.New(slog.DiscardHandler)))
 	srv.HandleHTTP("GET /hello", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "hello") // a failed write surfaces as a client error
 	}))

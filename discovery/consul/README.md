@@ -12,6 +12,9 @@
 - `Instance.Metadata` becomes the service meta (keys must satisfy Consul's
   rules); the first endpoint provides the service address and port; ID,
   version and all endpoints are stored in tags prefixed with `servex.`.
+- A positive `Instance.Weight` becomes the service's passing weight (warning
+  weight 1); other weights keep Consul's defaults. Watched instances carry the
+  passing weight, which Consul reports as 1 by default.
 - `Watch` follows blocking health queries and reports passing instances only.
 - The client is owned by the caller.
 
@@ -69,7 +72,7 @@ func run() error {
 	}
 	reg := consul.New(client, consul.WithTTL(10*time.Second))
 
-	srv := httpx.NewServer(httpx.Address(":8000"))
+	srv := httpx.NewServer(httpx.WithAddress(":8000"))
 	a := app.New(app.WithHooks(srv, discovery.Registration(reg, discovery.Instance{Name: "user", Version: "v1"}, srv)))
 
 	ctx, stop := app.SignalContext(context.Background())

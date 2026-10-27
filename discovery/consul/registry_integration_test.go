@@ -181,3 +181,37 @@ func TestSyncRegistrarAwaitDeadline(t *testing.T) {
 		t.Fatalf("await missing instance = %v, want DeadlineExceeded", err)
 	}
 }
+
+// TestIntegrationWeight checks the weights an agent reports for instances
+// registered with and without a weight.
+func TestIntegrationWeight(t *testing.T) {
+	client := itClient(t)
+	r := New(client)
+	t.Cleanup(func() { stopAll(r) })
+	s := newSyncRegistrar(t, r)
+	name := "it-weight-" + uuid.NewV7().String()
+	for _, ins := range []*discovery.Instance{
+		{Name: name, ID: "weighted", Weight: 4, Endpoints: []string{"http://127.0.0.1:8080"}},
+		{Name: name, ID: "default", Endpoints: []string{"http://127.0.0.1:8081"}},
+	} {
+		if err := s.Register(t.Context(), ins); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w, err := r.Watch(t.Context(), name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = w.Stop() }()
+	list, err := w.Next()
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := make(map[string]int, len(list))
+	for _, ins := range list {
+		got[ins.ID] = ins.Weight
+	}
+	if !maps.Equal(got, map[string]int{"weighted": 4, "default": 1}) {
+		t.Fatalf("weights = %v, want weighted 4 and default 1", got)
+	}
+}

@@ -211,3 +211,26 @@ func TestSyncRegistrarAwaitKeepsCacheSubscribed(t *testing.T) {
 		t.Fatalf("wait retained %d subscriptions", got)
 	}
 }
+
+// TestIntegrationWeight checks the weights a server reports for instances
+// registered with and without a weight.
+func TestIntegrationWeight(t *testing.T) {
+	r := New(itClient(t), WithGroup("servex-it-"+uuid.NewV7().String()))
+	s := newSyncRegistrar(t, r)
+	for _, ins := range []*discovery.Instance{
+		{Name: "svc", ID: "weighted", Weight: 4, Endpoints: []string{"http://127.0.0.1:8080"}},
+		{Name: "svc", ID: "default", Endpoints: []string{"http://127.0.0.1:8081"}},
+	} {
+		if err := s.Register(t.Context(), ins); err != nil {
+			t.Fatal(err)
+		}
+	}
+	w, err := r.Watch(t.Context(), "svc")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = w.Stop() }()
+	waitFor(t, w, func(list []*discovery.Instance) bool {
+		return slices.Equal(ids(list), []string{"default", "weighted"}) && list[0].Weight == 1 && list[1].Weight == 4
+	})
+}

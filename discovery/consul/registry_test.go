@@ -103,10 +103,40 @@ func TestRegistrationLayout(t *testing.T) {
 	if c := reg.Check; c == nil || c.CheckID != "service:svc-1" || c.TTL != "30s" || c.Status != api.HealthPassing || c.DeregisterCriticalServiceAfter != "2m0s" {
 		t.Errorf("check = %+v", reg.Check)
 	}
-	_, list := mustWatch(t, r, "svc")
-	if len(list) != 1 || !equalInstance(list[0], ins) {
-		t.Fatalf("snapshot = %+v, want %+v", list, ins)
+	if reg.Weights != nil {
+		t.Errorf("weights = %+v, want Consul defaults for weight 0", reg.Weights)
 	}
+	_, list := mustWatch(t, r, "svc")
+	want := clone(ins)
+	want.Weight = 1 // Consul's default passing weight
+	if len(list) != 1 || !equalInstance(list[0], want) {
+		t.Fatalf("snapshot = %+v, want %+v", list, want)
+	}
+}
+
+// TestWeight checks that a positive weight becomes the passing weight of the
+// Consul service and is reported back by Watch, and that changing it
+// updates watchers.
+func TestWeight(t *testing.T) {
+	f, client := newFakeConsul(t)
+	r := New(client)
+	t.Cleanup(func() { stopAll(r) })
+	ins := &discovery.Instance{ID: "1", Name: "svc", Weight: 5, Endpoints: []string{"http://10.0.0.1:80"}}
+	mustRegister(t, r, ins)
+	reg, ok := f.service("svc-1")
+	if !ok {
+		t.Fatal("service svc-1 not registered")
+	}
+	if reg.Weights == nil || *reg.Weights != (api.AgentWeights{Passing: 5, Warning: 1}) {
+		t.Fatalf("weights = %+v, want passing 5, warning 1", reg.Weights)
+	}
+	w, list := mustWatch(t, r, "svc")
+	if len(list) != 1 || list[0].Weight != 5 {
+		t.Fatalf("snapshot = %+v, want weight 5", list)
+	}
+	ins.Weight = 2
+	mustRegister(t, r, ins)
+	waitFor(t, w, func(list []*discovery.Instance) bool { return len(list) == 1 && list[0].Weight == 2 })
 }
 
 func TestDistinctServiceIdentities(t *testing.T) {

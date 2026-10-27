@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"math"
 	"net/url"
 	"slices"
 	"strconv"
@@ -88,7 +89,10 @@ func WithCluster(s string) Option {
 // the endpoint's host and port, kept alive by the naming client's
 // connection. The instance ID, version and endpoint URL are stored in
 // metadata under the reserved "servex." prefix, so instances need at least
-// one endpoint with a port. A Nacos 2 client publishes one set of instances
+// one endpoint with a port. Each Nacos instance gets the Weight of the
+// servex instance, or the Nacos default weight 1 for a non-positive Weight.
+// Watchers report the Nacos weight of the first endpoint, rounded to the
+// nearest integer and at least 1. A Nacos 2 client publishes one set of instances
 // per service, so the Registry always publishes all instances of a service
 // registered through it together.
 //
@@ -260,7 +264,7 @@ func (r *Registry) params(ins *discovery.Instance) ([]vo.RegisterInstanceParam, 
 		out = append(out, vo.RegisterInstanceParam{
 			Ip:          u.Hostname(),
 			Port:        port,
-			Weight:      1,
+			Weight:      float64(max(ins.Weight, 1)),
 			Enable:      true,
 			Healthy:     true,
 			Metadata:    md,
@@ -336,8 +340,9 @@ func (r *Registry) Watch(ctx context.Context, name string) (discovery.Watcher, e
 // instance ID.
 func instances(name string, list []model.Instance) []*discovery.Instance {
 	type endpoint struct {
-		url   string
-		index int
+		url    string
+		index  int
+		weight float64
 	}
 	byID := make(map[string]*discovery.Instance)
 	eps := make(map[string][]endpoint)
@@ -359,7 +364,7 @@ func instances(name string, list []model.Instance) []*discovery.Instance {
 			byID[id] = ins
 		}
 		index, _ := strconv.Atoi(n.Metadata[metaIndex])
-		eps[id] = append(eps[id], endpoint{ep, index})
+		eps[id] = append(eps[id], endpoint{ep, index, n.Weight})
 	}
 	out := make([]*discovery.Instance, 0, len(byID))
 	for id, ins := range byID {
@@ -370,9 +375,17 @@ func instances(name string, list []model.Instance) []*discovery.Instance {
 		for _, e := range list {
 			ins.Endpoints = append(ins.Endpoints, e.url)
 		}
+		ins.Weight = weight(list[0].weight)
 		out = append(out, ins)
 	}
 	return out
+}
+
+// weight converts the positive Nacos weight w, a float, into an instance
+// weight: w rounded to the nearest integer, at least 1 and at most
+// math.MaxInt32.
+func weight(w float64) int {
+	return int(min(max(math.Round(w), 1), math.MaxInt32))
 }
 
 // validate checks that ins identifies an instance.

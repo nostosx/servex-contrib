@@ -7,6 +7,9 @@
 - An instance is stored as JSON under `<namespace>/<name>/<id>`, attached to a
   lease that is kept alive while it is registered. A lost lease (for example
   after a network partition) is granted again and the instance rewritten.
+- A nonzero `Instance.Weight` is stored in the `weight` field and reported to
+  watchers, so weighted selectors see it; older values without the field read
+  as weight 0, the selector default.
 - `Watch` returns the full instance list first and then follows changes with an
   etcd watch; interrupted watches, including compactions, recover by reading
   the full list again.
@@ -63,7 +66,7 @@ func run() error {
 
 	reg := etcd.New(client, etcd.WithTTL(10*time.Second))
 
-	srv := httpx.NewServer(httpx.Address(":8000"))
+	srv := httpx.NewServer(httpx.WithAddress(":8000"))
 	// Registration registers the server URL after it listens and
 	// deregisters it before it stops.
 	a := app.New(app.WithHooks(srv, discovery.Registration(reg, discovery.Instance{Name: "user", Version: "v1"}, srv)))

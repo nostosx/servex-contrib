@@ -13,7 +13,8 @@ a Service.
   present. Each named port adds the endpoint
   `<port name>://<address>:<port>`, so ports named `http` and `grpc` serve the
   transports with those schemes; unnamed ports are ignored.
-- Instance metadata holds `zone` and `node` when known.
+- Instance metadata holds `zone` and `node` when known. EndpointSlices carry
+  no weight, so instances have `Weight` 0, the selector default.
 - Each `Watch` runs an EndpointSlice informer until the Watcher is stopped.
 
 ## Install

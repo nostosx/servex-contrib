@@ -109,6 +109,7 @@ func TestStorageLayout(t *testing.T) {
 		ID:        "1",
 		Name:      "svc",
 		Version:   "v1",
+		Weight:    3,
 		Metadata:  map[string]string{"zone": "a"},
 		Endpoints: []string{"http://10.0.0.1:80", "grpc://10.0.0.1:90"},
 	}
@@ -121,7 +122,7 @@ func TestStorageLayout(t *testing.T) {
 	if err := json.Unmarshal(resp.Kvs[0].Value, &got); err != nil {
 		t.Fatal(err)
 	}
-	if got["id"] != "1" || got["name"] != "svc" || got["version"] != "v1" {
+	if got["id"] != "1" || got["name"] != "svc" || got["version"] != "v1" || got["weight"] != 3.0 {
 		t.Errorf("stored value = %s", resp.Kvs[0].Value)
 	}
 	ttl, err := cli.TimeToLive(t.Context(), clientv3.LeaseID(resp.Kvs[0].Lease))
@@ -144,7 +145,12 @@ func TestStorageLayout(t *testing.T) {
 	if _, err := cli.Put(t.Context(), "/ns/svc/2", `{"name":"svc"}`); err != nil {
 		t.Fatal(err)
 	}
-	waitFor(t, w, hasIDs("1", "2"))
+	// A value without a weight, such as one stored before weights were
+	// supported, has weight 0.
+	list = waitFor(t, w, hasIDs("1", "2"))
+	if list[0].Weight != 3 || list[1].Weight != 0 {
+		t.Errorf("weights = %d, %d, want 3, 0", list[0].Weight, list[1].Weight)
+	}
 
 	// Deregister revokes the lease, which deletes the key.
 	mustDeregister(t, r, ins)

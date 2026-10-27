@@ -88,7 +88,10 @@ func WithDeregisterCriticalServiceAfter(d time.Duration) Option {
 // component as '%25' and '%2D'. Its Metadata becomes the service meta, so keys
 // must satisfy Consul's rules; the address and port of the first endpoint
 // become the service address, and the ID, version and all endpoints are
-// stored in tags prefixed with "servex.".
+// stored in tags prefixed with "servex.". A positive Weight becomes the
+// passing weight of the service, with Consul's default warning weight of 1;
+// other weights keep Consul's default weights. Discovered instances carry
+// the passing weight, which Consul reports as 1 by default.
 type Registry struct {
 	client          *api.Client
 	ttl             time.Duration
@@ -212,6 +215,10 @@ func (r *Registry) registration(ins *discovery.Instance) (*api.AgentServiceRegis
 		}
 		tags = append(tags, tagEndpoint+ep)
 	}
+	var weights *api.AgentWeights
+	if ins.Weight > 0 {
+		weights = &api.AgentWeights{Passing: ins.Weight, Warning: 1}
+	}
 	return &api.AgentServiceRegistration{
 		ID:      id,
 		Name:    ins.Name,
@@ -219,6 +226,7 @@ func (r *Registry) registration(ins *discovery.Instance) (*api.AgentServiceRegis
 		Meta:    maps.Clone(ins.Metadata),
 		Address: address,
 		Port:    port,
+		Weights: weights,
 		Check: &api.AgentServiceCheck{
 			CheckID:                        checkID(id),
 			Name:                           "servex TTL",
@@ -331,7 +339,8 @@ func instances(name string, entries []*api.ServiceEntry) []*discovery.Instance {
 		if e == nil || e.Service == nil {
 			continue
 		}
-		ins := &discovery.Instance{ID: e.Service.ID, Name: name}
+		// Watch reads passing instances only, so the passing weight applies.
+		ins := &discovery.Instance{ID: e.Service.ID, Name: name, Weight: e.Service.Weights.Passing}
 		if len(e.Service.Meta) > 0 {
 			ins.Metadata = maps.Clone(e.Service.Meta)
 		}

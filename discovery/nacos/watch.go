@@ -117,7 +117,7 @@ func (w *watcher) Stop() error {
 
 // equalInstance reports whether a and b describe the same instance.
 func equalInstance(a, b *discovery.Instance) bool {
-	return a.ID == b.ID && a.Name == b.Name && a.Version == b.Version &&
+	return a.ID == b.ID && a.Name == b.Name && a.Version == b.Version && a.Weight == b.Weight &&
 		maps.Equal(a.Metadata, b.Metadata) && slices.Equal(a.Endpoints, b.Endpoints)
 }
 
@@ -127,6 +127,7 @@ func clone(ins *discovery.Instance) *discovery.Instance {
 		ID:        ins.ID,
 		Name:      ins.Name,
 		Version:   ins.Version,
+		Weight:    ins.Weight,
 		Metadata:  maps.Clone(ins.Metadata),
 		Endpoints: slices.Clone(ins.Endpoints),
 	}

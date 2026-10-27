@@ -52,6 +52,7 @@ type fakeRegistration struct {
 	Meta    map[string]string `json:"Meta"`
 	Address string            `json:"Address"`
 	Port    int               `json:"Port"`
+	Weights *api.AgentWeights `json:"Weights"`
 	Check   *struct {
 		CheckID                        string `json:"CheckID"`
 		TTL                            string `json:"TTL"`
@@ -268,6 +269,7 @@ block:
 		Meta    map[string]string `json:"Meta"`
 		Address string            `json:"Address"`
 		Port    int               `json:"Port"`
+		Weights api.AgentWeights  `json:"Weights"`
 	}
 	type entry struct {
 		Node    node    `json:"Node"`
@@ -279,6 +281,11 @@ block:
 		if s.reg.Name != name || passing && s.status != api.HealthPassing {
 			continue
 		}
+		// Consul applies default weights to services registered without.
+		weights := api.AgentWeights{Passing: 1, Warning: 1}
+		if s.reg.Weights != nil {
+			weights = *s.reg.Weights
+		}
 		entries = append(entries, entry{
 			Node: node{Node: "fake", Address: "127.0.0.1"},
 			Service: service{
@@ -288,6 +295,7 @@ block:
 				Meta:    s.reg.Meta,
 				Address: s.reg.Address,
 				Port:    s.reg.Port,
+				Weights: weights,
 			},
 		})
 	}

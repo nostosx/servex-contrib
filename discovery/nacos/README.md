@@ -8,6 +8,10 @@
   with the endpoint's host and port, kept alive by the client connection. The
   servex ID, version and endpoint URL are stored in metadata under the
   `servex.` prefix, so an instance needs at least one endpoint with a port.
+- `Instance.Weight` becomes the Nacos weight of every endpoint (1 when not
+  positive). Watched instances carry the Nacos weight of their first endpoint,
+  rounded to an integer of at least 1, so weights changed in Nacos reach
+  weighted selectors.
 - `Watch` follows a naming subscription and reports healthy, enabled instances
   with a positive weight in the configured cluster; Nacos instances without
   servex metadata are ignored.
@@ -77,7 +81,7 @@ func run() error {
 
 	reg := nacos.New(client, nacos.WithGroup("shop"))
 
-	srv := httpx.NewServer(httpx.Address(":8000"))
+	srv := httpx.NewServer(httpx.WithAddress(":8000"))
 	a := app.New(app.WithHooks(srv, discovery.Registration(reg, discovery.Instance{Name: "user", Version: "v1"}, srv)))
 
 	ctx, stop := app.SignalContext(context.Background())

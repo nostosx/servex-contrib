@@ -3,6 +3,7 @@ package nacos
 import (
 	"errors"
 	"maps"
+	"math"
 	"slices"
 	"testing"
 
@@ -82,7 +83,7 @@ func TestPublishedLayout(t *testing.T) {
 	}
 
 	w, list := mustWatch(t, r, "svc")
-	wantIns := &discovery.Instance{ID: "1", Name: "svc", Version: "v1", Metadata: map[string]string{"zone": "a"}, Endpoints: ins.Endpoints}
+	wantIns := &discovery.Instance{ID: "1", Name: "svc", Version: "v1", Weight: 1, Metadata: map[string]string{"zone": "a"}, Endpoints: ins.Endpoints}
 	if len(list) != 1 || !equalInstance(list[0], wantIns) {
 		t.Fatalf("snapshot = %+v, want %+v", list, wantIns)
 	}
@@ -166,6 +167,42 @@ func TestFiltersUnusableHosts(t *testing.T) {
 	assertBlocked(t, ch, "for hosts without servex metadata")
 	if err := w.Stop(); err != nil {
 		t.Errorf("Stop error = %v", err)
+	}
+}
+
+// TestWeight checks that instance weights become Nacos weights and that
+// watchers report the rounded Nacos weight of the first endpoint.
+func TestWeight(t *testing.T) {
+	f := newFakeNaming()
+	r := New(f)
+	ins := &discovery.Instance{ID: "1", Name: "svc", Weight: 7, Endpoints: []string{"http://10.0.0.1:80", "grpc://10.0.0.1:90"}}
+	mustRegister(t, r, ins)
+	for _, h := range f.published[defaultGroup+"@@svc"] {
+		if h.Weight != 7 {
+			t.Fatalf("published weight = %v, want 7", h.Weight)
+		}
+	}
+	mustRegister(t, r, &discovery.Instance{ID: "2", Name: "svc", Weight: -3, Endpoints: []string{"http://10.0.0.2:80"}})
+	w, list := mustWatch(t, r, "svc")
+	if len(list) != 2 || list[0].Weight != 7 || list[1].Weight != 1 {
+		t.Fatalf("snapshot = %+v, want weights 7 and 1", list)
+	}
+	// Weights changed in Nacos, for example in its console, are reported.
+	f.update("", "svc", func(h *model.Instance) {
+		switch h.Metadata[metaEndpoint] {
+		case "http://10.0.0.1:80":
+			h.Weight = 2.5
+		case "grpc://10.0.0.1:90":
+			h.Weight = 100 // not the first endpoint
+		case "http://10.0.0.2:80":
+			h.Weight = 0.2
+		}
+	})
+	waitFor(t, w, func(list []*discovery.Instance) bool {
+		return len(list) == 2 && list[0].Weight == 3 && list[1].Weight == 1
+	})
+	if got := weight(1e300); got != math.MaxInt32 {
+		t.Errorf("weight(1e300) = %d, want MaxInt32", got)
 	}
 }
 

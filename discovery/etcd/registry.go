@@ -348,6 +348,7 @@ type record struct {
 	ID        string            `json:"id"`
 	Name      string            `json:"name"`
 	Version   string            `json:"version,omitzero"`
+	Weight    int               `json:"weight,omitzero"`
 	Metadata  map[string]string `json:"metadata,omitzero"`
 	Endpoints []string          `json:"endpoints,omitzero"`
 }
@@ -358,6 +359,7 @@ func encode(ins *discovery.Instance) (string, error) {
 		ID:        ins.ID,
 		Name:      ins.Name,
 		Version:   ins.Version,
+		Weight:    ins.Weight,
 		Metadata:  ins.Metadata,
 		Endpoints: ins.Endpoints,
 	})
@@ -378,6 +380,7 @@ func decode(name string, key, val []byte) (*discovery.Instance, bool) {
 		ID:        rec.ID,
 		Name:      name,
 		Version:   rec.Version,
+		Weight:    rec.Weight,
 		Metadata:  rec.Metadata,
 		Endpoints: rec.Endpoints,
 	}, true
