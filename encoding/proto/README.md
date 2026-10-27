@@ -45,9 +45,9 @@ import (
 )
 
 func main() {
-	srv := httpx.NewServer(httpx.Address(":8000"), httpx.Codecs(proto.Codec))
-	httpx.Route[wrapperspb.StringValue](srv, "POST /v1/echo", func(_ context.Context, req any) (any, error) {
-		return req.(*wrapperspb.StringValue), nil
+	srv := httpx.NewServer(httpx.WithAddress(":8000"), httpx.WithCodecs(proto.Codec))
+	httpx.RouteFunc(srv, "POST /v1/echo", func(_ context.Context, req *wrapperspb.StringValue) (*wrapperspb.StringValue, error) {
+		return req, nil
 	})
 
 	// A client that sends and accepts protobuf bodies.

@@ -75,15 +75,18 @@ func main() {
 	ctx, stop := app.SignalContext(context.Background())
 	defer stop()
 	src := nacos.New(client, "user-service.json", nacos.DefaultGroup)
-	cfg, err := config.New(ctx, src)
+	cfg, err := config.New(ctx, []config.Source{src})
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Println("listen on", cfg.String("http.addr"))
 
+	// Watch options such as WithReloadErrorHandler follow the callback.
 	err = cfg.Watch(ctx, func(c *config.Config) {
 		log.Println("config changed, log level:", c.String("log.level"))
-	})
+	}, config.WithReloadErrorHandler(func(err error) {
+		log.Println("config reload failed, keeping previous values:", err)
+	}))
 	if err != nil && ctx.Err() == nil {
 		log.Fatal(err)
 	}

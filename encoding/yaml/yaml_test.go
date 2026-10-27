@@ -175,7 +175,7 @@ func TestTimestamps(t *testing.T) {
 
 	path := filepath.Join(t.TempDir(), "app.yaml")
 	writeFile(t, path, doc)
-	c, err := config.New(t.Context(), file.New(path, file.WithCodec(".yaml", yaml.Codec)))
+	c, err := config.New(t.Context(), []config.Source{file.New(path, file.WithCodec(".yaml", yaml.Codec))})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,10 +262,10 @@ http:
   headers:
     2: two
 `)
-	c, err := config.New(t.Context(),
+	c, err := config.New(t.Context(), []config.Source{
 		file.New(base, file.WithCodec(".yaml", yaml.Codec)),
 		file.New(over, file.WithCodec(".yml", yaml.Codec)),
-	)
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

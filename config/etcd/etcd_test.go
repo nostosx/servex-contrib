@@ -411,7 +411,7 @@ func TestConfigWatchReloads(t *testing.T) {
 	put(t, c, "/svc/http/timeout", `"1s"`)
 	put(t, c, "/svc/v", `0`)
 
-	cfg, err := config.New(t.Context(), etcd.New(c, "/svc/", etcd.WithPrefix()))
+	cfg, err := config.New(t.Context(), []config.Source{etcd.New(c, "/svc/", etcd.WithPrefix())})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -37,7 +37,7 @@ func TestIntegrationLoadAndWatch(t *testing.T) {
 	put(t, c, prefix+"http/timeout", `"1s"`)
 	put(t, c, prefix+"v", `0`)
 
-	cfg, err := config.New(t.Context(), etcd.New(c, prefix, etcd.WithPrefix()))
+	cfg, err := config.New(t.Context(), []config.Source{etcd.New(c, prefix, etcd.WithPrefix())})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -58,7 +58,7 @@ func main() {
 		file.WithCodec(".yaml", yaml.Codec),
 		file.WithCodec(".yml", yaml.Codec),
 	)
-	cfg, err := config.New(context.Background(), src, config.Env("APP_"))
+	cfg, err := config.New(context.Background(), []config.Source{src, config.Env("APP_")})
 	if err != nil {
 		log.Fatal(err)
 	}

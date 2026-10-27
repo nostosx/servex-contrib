@@ -70,7 +70,7 @@ func main() {
 
 	ctx, stop := app.SignalContext(context.Background())
 	defer stop()
-	cfg, err := config.New(ctx, consul.New(client, "services/user/", consul.WithPrefix()))
+	cfg, err := config.New(ctx, []config.Source{consul.New(client, "services/user/", consul.WithPrefix())})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -80,9 +80,12 @@ func main() {
 	}
 	log.Println("listen on", httpCfg.Addr)
 
+	// Watch options such as WithReloadErrorHandler follow the callback.
 	err = cfg.Watch(ctx, func(c *config.Config) {
 		log.Println("config changed, log level:", c.String("log.level"))
-	})
+	}, config.WithReloadErrorHandler(func(err error) {
+		log.Println("config reload failed, keeping previous values:", err)
+	}))
 	if err != nil && ctx.Err() == nil {
 		log.Fatal(err)
 	}

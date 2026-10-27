@@ -61,7 +61,7 @@ func TestIntegrationLoadAndWatch(t *testing.T) {
 		t.Fatalf("single Load = %#v, want %#v", got, want)
 	}
 
-	cfg, err := config.New(t.Context(), consul.New(c, prefix, consul.WithPrefix(), consul.WithWaitTime(5*time.Second)))
+	cfg, err := config.New(t.Context(), []config.Source{consul.New(c, prefix, consul.WithPrefix(), consul.WithWaitTime(5*time.Second))})
 	if err != nil {
 		t.Fatal(err)
 	}

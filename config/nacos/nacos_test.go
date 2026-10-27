@@ -325,7 +325,7 @@ func TestWatchErrors(t *testing.T) {
 func TestConfigWatchReloads(t *testing.T) {
 	f := newFakeClient()
 	f.publish("app.json", "G", `{"http":{"addr":":8000","timeout":"1s"},"v":0}`)
-	cfg, err := config.New(t.Context(), nacos.New(f, "app.json", "G"))
+	cfg, err := config.New(t.Context(), []config.Source{nacos.New(f, "app.json", "G")})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -71,19 +71,22 @@ func main() {
 	ctx, stop := app.SignalContext(context.Background())
 	defer stop()
 	// Later sources override earlier ones.
-	cfg, err := config.New(ctx,
+	cfg, err := config.New(ctx, []config.Source{
 		config.Env("USER_"),
 		etcd.New(client, "/config/user/", etcd.WithPrefix()),
-	)
+	})
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Println("listen on", cfg.String("http.addr"))
 
 	// Reload and react to changes until ctx ends.
+	// Watch options such as WithReloadErrorHandler follow the callback.
 	err = cfg.Watch(ctx, func(c *config.Config) {
 		log.Println("config changed, log level:", c.String("log.level"))
-	})
+	}, config.WithReloadErrorHandler(func(err error) {
+		log.Println("config reload failed, keeping previous values:", err)
+	}))
 	if err != nil && ctx.Err() == nil {
 		log.Fatal(err)
 	}

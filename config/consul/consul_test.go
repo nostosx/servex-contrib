@@ -450,7 +450,7 @@ func TestConfigWatchReloads(t *testing.T) {
 	f.put("svc/http/timeout", `"1s"`)
 	f.put("svc/v", `0`)
 
-	cfg, err := config.New(t.Context(), consul.New(c, "svc/", consul.WithPrefix()))
+	cfg, err := config.New(t.Context(), []config.Source{consul.New(c, "svc/", consul.WithPrefix())})
 	if err != nil {
 		t.Fatal(err)
 	}

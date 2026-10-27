@@ -90,7 +90,7 @@ func TestIntegrationLoadAndWatch(t *testing.T) {
 	var cfg *config.Config
 	for {
 		var err error
-		cfg, err = config.New(t.Context(), src)
+		cfg, err = config.New(t.Context(), []config.Source{src})
 		if err == nil && cfg.Duration("http.timeout") == time.Second {
 			break
 		}
