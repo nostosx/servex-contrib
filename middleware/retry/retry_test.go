@@ -125,6 +125,21 @@ func TestNonRetryableStops(t *testing.T) {
 	}
 }
 
+// TestRetriesRemoteErrors checks that the hop receiving a remote error
+// retries it, while the error still reports to the next caller that it must
+// not be retried again.
+func TestRetriesRemoteErrors(t *testing.T) {
+	remote := errUnavailable.WithRemote()
+	s := &script{errs: slices.Repeat([]error{remote}, retry.DefaultMaxAttempts)}
+	_, err := retry.New(retry.WithBackoff(func(int) time.Duration { return 0 }))(s.endpoint)(t.Context(), nil)
+	if err != remote || s.count() != retry.DefaultMaxAttempts {
+		t.Fatalf("err = %v after %d calls; want the remote error after %d", err, s.count(), retry.DefaultMaxAttempts)
+	}
+	if got := errorx.From(err); !got.Remote() || got.PropagatedRetryable() {
+		t.Fatalf("remote error lost its mark: Remote %v, PropagatedRetryable %v", got.Remote(), got.PropagatedRetryable())
+	}
+}
+
 func TestRetryIf(t *testing.T) {
 	s := &script{errs: []error{errInvalid, errInvalid}}
 	_, err := retry.New(

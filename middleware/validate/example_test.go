@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/nostosx/servex-contrib/middleware/validate"
+	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
 )
 
@@ -21,9 +22,9 @@ func (r *CreateUser) Validate() error {
 }
 
 func Example() {
-	ep := validate.New()(func(_ context.Context, req any) (any, error) {
-		return "created " + req.(*CreateUser).Name, nil
-	})
+	ep := validate.New()(endpoint.Typed(func(_ context.Context, req *CreateUser) (string, error) {
+		return "created " + req.Name, nil
+	}))
 
 	resp, _ := ep(context.Background(), &CreateUser{Name: "alice"})
 	fmt.Println(resp)

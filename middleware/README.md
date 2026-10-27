@@ -16,7 +16,7 @@ are injected through functions and interfaces.
 | `tracing` | both | `New(tracing.Tracer, tracing.Propagator)`, `IsServerFault` | Server spans continue the inbound trace; client spans are injected into the outbound header. Following OpenTelemetry, server and internal spans get an error status only for server faults (Unknown, DeadlineExceeded, Unimplemented, Internal, Unavailable, DataLoss); client spans for every failure. The `servex.code` attribute is always set. |
 | `logging` | both | `New(*slog.Logger, WithLevel)` | One record per call with kind, protocol, operation, duration and errorx code. |
 | `metrics` | both | `New(metrics.Meter, WithBuckets)` | `servex_requests_total{kind,protocol,operation,code}` and `servex_request_duration_seconds{kind,protocol,operation}`. |
-| `retry` | client | `New(WithMaxAttempts, WithBackoff, WithRetryIf)`, `Exponential(base, limit)` | Retries retryable errors (default 3 attempts, exponential backoff with jitter from 100ms to 2s); stops when the caller's context ends. |
+| `retry` | client | `New(WithMaxAttempts, WithBackoff, WithRetryIf)`, `Exponential(base, limit)` | Retries retryable errors (default 3 attempts, exponential backoff with jitter from 100ms to 2s); stops when the caller's context ends. A remote error is retried only by the hop that received it: servex servers report it to their callers as not retryable. |
 | `circuitbreaker` | client | `New(WithKey, WithK, WithWindow, WithBuckets, WithMinRequests, ...)`, `ErrOpen` | Google SRE adaptive throttling per operation; rejects with a non-retryable `Unavailable` (reason `CIRCUIT_OPEN`), so an outer retry stops. |
 | `timeout` | client | `New(d)` | Bounds a single attempt; an exceeded deadline is `DeadlineExceeded` (reason `TIMEOUT`). |
 
@@ -131,7 +131,7 @@ func main() {
 	// servex-contrib/metrics/prometheus.
 	tracer, propagator, meter := tracing.Noop(), tracing.NoopPropagator(), metrics.Noop()
 
-	srv := httpx.NewServer(httpx.Middleware(
+	srv := httpx.NewServer(httpx.WithMiddleware(
 		recovery.New(recovery.WithLogger(logger)),
 		mwtracing.New(tracer, propagator),
 		logging.New(logger),

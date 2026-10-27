@@ -53,8 +53,10 @@ func WithBackoff(fn func(attempt int) time.Duration) Option {
 }
 
 // WithRetryIf sets the predicate deciding whether a failed attempt may be
-// retried. The default is errorx.IsRetryable; nil keeps the default. Errors
-// of an open circuit breaker are never retried, whatever fn returns.
+// retried. The default is errorx.IsRetryable, which also retries remote
+// errors received by this hop (see the package documentation); nil keeps the
+// default. Errors of an open circuit breaker are never retried, whatever fn
+// returns.
 func WithRetryIf(fn func(error) bool) Option {
 	return func(o *options) {
 		if fn != nil {

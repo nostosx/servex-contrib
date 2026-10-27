@@ -37,6 +37,9 @@ func TestTypedMetrics(t *testing.T) {
 		if meter.counters["servex_usecase_calls_total{command,inventory.reserve,Canceled}"] != 1 || !slices.Equal(meter.observations["servex_usecase_duration_seconds{command,inventory.reserve}"], []float64{.2}) {
 			t.Fatalf("metrics: %v %v", meter.counters, meter.observations)
 		}
+		if len(meter.contexts) != 2 || meter.contexts[0] != ctx || meter.contexts[1] != ctx {
+			t.Fatal("metrics did not receive the call context")
+		}
 		if !slices.Equal(meter.labelNames[mwmetrics.UsecaseCallsTotal], []string{"kind", "operation", "code"}) || !slices.Equal(meter.labelNames[mwmetrics.UsecaseDuration], []string{"kind", "operation"}) || !slices.Equal(meter.buckets[mwmetrics.UsecaseDuration], []float64{.1, 1}) {
 			t.Fatal("declarations or bucket ownership changed")
 		}

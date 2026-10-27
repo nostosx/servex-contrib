@@ -69,8 +69,8 @@ func New(m metrics.Meter, opts ...Option) endpoint.Middleware {
 
 			info, _ := metadata.FromContext(ctx)
 			kind := string(info.Kind)
-			requests.With(kind, info.Protocol, info.Operation, errorx.CodeOf(err).String()).Add(1)
-			durations.With(kind, info.Protocol, info.Operation).Observe(elapsed.Seconds())
+			requests.With(kind, info.Protocol, info.Operation, errorx.CodeOf(err).String()).Add(ctx, 1)
+			durations.With(kind, info.Protocol, info.Operation).Observe(ctx, elapsed.Seconds())
 			return resp, err
 		}
 	}

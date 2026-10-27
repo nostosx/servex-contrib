@@ -23,6 +23,7 @@ type recordingMeter struct {
 	buckets      map[string][]float64
 	counters     map[string]float64   // name{values} -> sum
 	observations map[string][]float64 // name{values} -> observations
+	contexts     []context.Context    // context of every Add and Observe
 }
 
 func newRecordingMeter() *recordingMeter {
@@ -67,9 +68,10 @@ func (c *counter) With(values ...string) metrics.Counter {
 	return &counter{m: c.m, name: c.name, values: values}
 }
 
-func (c *counter) Add(delta float64) {
+func (c *counter) Add(ctx context.Context, delta float64) {
 	c.m.mu.Lock()
 	defer c.m.mu.Unlock()
+	c.m.contexts = append(c.m.contexts, ctx)
 	c.m.counters[series(c.name, c.values)] += delta
 }
 
@@ -83,9 +85,10 @@ func (h *histogram) With(values ...string) metrics.Histogram {
 	return &histogram{m: h.m, name: h.name, values: values}
 }
 
-func (h *histogram) Observe(v float64) {
+func (h *histogram) Observe(ctx context.Context, v float64) {
 	h.m.mu.Lock()
 	defer h.m.mu.Unlock()
+	h.m.contexts = append(h.m.contexts, ctx)
 	key := series(h.name, h.values)
 	h.m.observations[key] = append(h.m.observations[key], v)
 }
@@ -155,6 +158,14 @@ func TestRecordsCalls(t *testing.T) {
 		obs := m.observations["servex_request_duration_seconds{server,http,GET /x}"]
 		if !slices.Equal(obs, []float64{0.2, 0.2, 0, 0}) {
 			t.Fatalf("observations = %v", obs)
+		}
+		if len(m.contexts) != 8 {
+			t.Fatalf("recorded %d contexts, want 8", len(m.contexts))
+		}
+		for i, got := range m.contexts {
+			if got != ctx {
+				t.Fatalf("recording %d did not receive the request context", i)
+			}
 		}
 	})
 }

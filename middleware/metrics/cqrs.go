@@ -37,8 +37,8 @@ func Command[Request, Result any](meter metrics.Meter, opts ...Option) cqrs.Comm
 		return cqrs.CommandFunc[Request, Result](func(ctx context.Context, req Request) (Result, error) {
 			start, code := time.Now(), errorx.Internal
 			defer func() {
-				calls.With(string(meta.Kind), meta.Operation, code.String()).Add(1)
-				durations.With(string(meta.Kind), meta.Operation).Observe(time.Since(start).Seconds())
+				calls.With(string(meta.Kind), meta.Operation, code.String()).Add(ctx, 1)
+				durations.With(string(meta.Kind), meta.Operation).Observe(ctx, time.Since(start).Seconds())
 			}()
 			result, err := next.Handle(ctx, req)
 			code = errorx.CodeOf(err)
