@@ -38,7 +38,7 @@ fallback to ambiguous old names.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/broker/nats@v1.0.0
+go get github.com/nostosx/servex-contrib/broker/nats@v1.1.0
 ```
 
 The example version corresponds to the tag `broker/nats/v1.0.0`;

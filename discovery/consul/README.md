@@ -32,7 +32,7 @@ names and IDs without these characters keep their existing IDs.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/discovery/consul@v1.0.0
+go get github.com/nostosx/servex-contrib/discovery/consul@v1.1.0
 ```
 
 The example version corresponds to the tag `discovery/consul/v1.0.0`;

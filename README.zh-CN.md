@@ -6,14 +6,15 @@
 服务适配器，以及不依赖第三方 SDK 的 `middleware`、`selector` 两个模块。
 核心保留契约及参考实现，本仓库按依赖拆分其他实现。
 
-已发布的 v1.0.0 模块使用 servex 和 kitx v1.0.0，由 Go 模块代理下载。
+2026-10-27 发布的模块（middleware v1.2.0 及其他改动模块的 v1.1.0）需要 servex v1.2.0；
+cache/redis、encoding/proto 和 tracing/otel v1.0.0 需要 servex v1.0.0，也能与 v1.2.0
+一起构建。所有模块都使用 kitx v1.0.0，由 Go 模块代理下载。
 独立检出本仓库即可，无需同级源码或本地替换。
 可运行应用见独立的 [servex-examples](https://github.com/nostosx/servex-examples) 项目。
 
-`middleware/v1.1.0` 新增类型化 CQRS 日志、指标与追踪，使用 servex v1.1.0
-和 kitx v1.0.0；middleware v1.0.0 不包含这些 API。
+middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标与追踪，
 用法见[类型化应用中间件](middleware/README.md#typed-application-middleware)。
-其他模块保留 v1.0.0 依赖，继续独立版本管理。
+各模块的破坏性改动及迁移方式见 CHANGELOG 中该模块的版本小节。
 
 ## 模块
 
@@ -68,7 +69,7 @@ go get github.com/nostosx/servex-contrib/cache/redis@v1.0.0
 本仓库根目录没有 `go.mod`，不要在这里执行这些应用命令。
 一个模块展示多个完整程序时，应将每个程序放在独立目录中。
 
-已发布 v1.0.0 的依赖图选用 servex 和 kitx v1.0.0，无需本地替换。根目录的 `v1.0.0` 标签
+各模块发布版本选用其 CHANGELOG 小节注明的 servex 版本，无需本地替换。根目录的 `v1.0.0` 标签
 不会发布这些嵌套模块。目录前缀用于 Git 标签，`go get` 的版本参数仍是
 `@v1.0.0`。CI 负责验证，不创建标签或发布版本。
 Go 1.27.3 是工具链要求，与模块版本独立。

@@ -6,8 +6,9 @@ separate maintainer decision.
 
 ## Dependency order
 
-Middleware v1.1.0 uses published servex v1.1.0 and kitx v1.0.0. Other
-modules retain their published v1.0.0 dependencies. No replacements are required.
+The releases of 2026-10-27 use published servex v1.2.0; cache/redis,
+encoding/proto and tracing/otel v1.0.0 keep servex v1.0.0. All modules use kitx
+v1.0.0. No replacements are required.
 Before adopting a newer core or utility release, verify that version through
 the public Go proxy, update requirements, tidy and rerun the module gates.
 Contrib modules do not depend on one another and may be released independently.

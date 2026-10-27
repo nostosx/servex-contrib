@@ -8,16 +8,18 @@ that depend on third-party SDKs, plus two collections without third-party SDKs
 standard-library reference implementation each; every further implementation
 lives here.
 
-Published v1.0.0 modules use servex and kitx v1.0.0 dependencies. A
+The releases of 2026-10-27 (middleware v1.2.0 and v1.1.0 of the other changed
+modules) require servex v1.2.0; cache/redis, encoding/proto and tracing/otel
+v1.0.0 require servex v1.0.0 and build with v1.2.0. All use kitx v1.0.0. A
 standalone checkout needs no sibling source directories or local replacements.
 
 Runnable applications composing core and contrib live in
 [servex-examples](https://github.com/nostosx/servex-examples).
 
-`middleware/v1.1.0` adds typed CQRS logging, metrics and tracing and uses
-servex v1.1.0 with kitx v1.0.0. These APIs are absent from middleware v1.0.0.
-See [typed application middleware](middleware/README.md#typed-application-middleware).
-Other modules retain their v1.0.0 dependencies and independent versions.
+Since `middleware/v1.1.0` the middleware module provides typed CQRS logging,
+metrics and tracing; see
+[typed application middleware](middleware/README.md#typed-application-middleware).
+Each module's CHANGELOG section lists its breaking changes and migration.
 
 ## Modules
 
@@ -81,7 +83,7 @@ directory after preparing the example's backend. Do not run these commands
 from this repository root, which has no `go.mod`. For modules with multiple
 complete programs, put each program in a separate directory.
 
-The published v1.0.0 dependency graph selects servex and kitx v1.0.0. Root tags such as
+Each module's release selects the servex version its CHANGELOG section names. Root tags such as
 `v1.0.0` do not release these nested modules. The directory prefix belongs to
 the Git tag; the version argument to `go get` remains `@v1.0.0`.
 The CI workflow validates changes and does not publish releases.

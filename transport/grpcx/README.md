@@ -40,7 +40,7 @@ Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/transport/grpcx@v1.0.0
+go get github.com/nostosx/servex-contrib/transport/grpcx@v1.1.0
 ```
 
 The example version corresponds to the tag `transport/grpcx/v1.0.0`;

@@ -67,7 +67,7 @@ and kitx v1.0.0, without local replacements.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/middleware@v1.1.0
+go get github.com/nostosx/servex-contrib/middleware@v1.2.0
 ```
 
 The example version corresponds to the tag `middleware/v1.1.0`;
