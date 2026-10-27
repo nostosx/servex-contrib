@@ -219,12 +219,12 @@ func (b backend) testRetries(t *testing.T) {
 		{"success", nil, 0, nil, []int{1}, false},
 		{"retryable then success", nil, 2, unavailable, []int{1, 2, 3}, false},
 		{"retryable exhausts default retries", nil, 100, unavailable, []int{1, 2, 3, 4}, true},
-		{"retryable exhausts custom retries", []jobqueue.EnqueueOption{jobqueue.MaxRetry(1)}, 100, unavailable, []int{1, 2}, true},
-		{"zero retries", []jobqueue.EnqueueOption{jobqueue.MaxRetry(0)}, 100, unavailable, []int{1}, true},
-		{"negative retries", []jobqueue.EnqueueOption{jobqueue.MaxRetry(-2)}, 100, unavailable, []int{1}, true},
+		{"retryable exhausts custom retries", []jobqueue.EnqueueOption{jobqueue.WithMaxRetry(1)}, 100, unavailable, []int{1, 2}, true},
+		{"zero retries", []jobqueue.EnqueueOption{jobqueue.WithMaxRetry(0)}, 100, unavailable, []int{1}, true},
+		{"negative retries", []jobqueue.EnqueueOption{jobqueue.WithMaxRetry(-2)}, 100, unavailable, []int{1}, true},
 		{"plain error is not retryable", nil, 100, errors.New("bad"), []int{1}, true},
 		{"explicitly non-retryable", nil, 100, unavailable.WithRetryable(false), []int{1}, true},
-		{"explicitly retryable", []jobqueue.EnqueueOption{jobqueue.MaxRetry(1)}, 100,
+		{"explicitly retryable", []jobqueue.EnqueueOption{jobqueue.WithMaxRetry(1)}, 100,
 			errorx.New(errorx.Internal, "X", "x").WithRetryable(true), []int{1, 2}, true},
 	}
 	for _, tt := range tests {
@@ -318,10 +318,10 @@ func (b backend) testDelay(t *testing.T) {
 		return nil, nil
 	}})
 	begin := time.Now()
-	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Delay(2*time.Second)); err != nil {
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithDelay(2*time.Second)); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Delay(-time.Second)); err != nil {
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithDelay(-time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	first := <-handled
@@ -337,18 +337,18 @@ func (b backend) testDelay(t *testing.T) {
 
 func (b backend) testUnique(t *testing.T) {
 	q := b.newQueue(t)
-	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", b.ttl)); err != nil {
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", b.ttl)); err != nil {
 		t.Fatal(err)
 	}
-	_, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", b.ttl))
+	_, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", b.ttl))
 	if !errors.Is(err, jobqueue.ErrDuplicate) || errorx.CodeOf(err) != errorx.AlreadyExists {
 		t.Fatalf("duplicate Enqueue() = %v, want ErrDuplicate", err)
 	}
-	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("other", b.ttl)); err != nil {
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("other", b.ttl)); err != nil {
 		t.Fatalf("Enqueue(other key) = %v", err)
 	}
 	b.advance(t, b.ttl+100*time.Millisecond)
-	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", b.ttl)); err != nil {
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", b.ttl)); err != nil {
 		t.Fatalf("Enqueue() after the TTL = %v", err)
 	}
 }
@@ -368,7 +368,7 @@ func (b backend) testUniqueWithoutTTL(t *testing.T) {
 		}
 		return nil, errors.New("bad") // fails for good: permits reservation reclamation
 	}})
-	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0)); err != nil {
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0)); err != nil {
 		t.Fatal(err)
 	}
 	eventually(t, "job running", func() bool { return calls.Load() == 1 })
@@ -376,17 +376,17 @@ func (b backend) testUniqueWithoutTTL(t *testing.T) {
 		t.Fatalf("TTL of the reservation = %v, want none", ttl)
 	}
 	b.advance(t, b.ttl+100*time.Millisecond)
-	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0)); !errors.Is(err, jobqueue.ErrDuplicate) {
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0)); !errors.Is(err, jobqueue.ErrDuplicate) {
 		t.Fatalf("Enqueue() while running = %v, want ErrDuplicate", err)
 	}
 	unlock()
 	eventually(t, "reservation reclaimed after completion", func() bool {
-		_, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0))
+		_, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0))
 		return err == nil
 	})
 	eventually(t, "second job failed", func() bool { return calls.Load() == 2 })
 	eventually(t, "reservation reclaimed after failure", func() bool {
-		_, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0))
+		_, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0))
 		return err == nil
 	})
 }
@@ -399,7 +399,7 @@ func (b backend) testUniqueReclaimedAfterPanic(t *testing.T) {
 		calls.Add(1)
 		panic("boom")
 	}})
-	id, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0), jobqueue.MaxRetry(2))
+	id, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0), jobqueue.WithMaxRetry(2))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -411,7 +411,7 @@ func (b backend) testUniqueReclaimedAfterPanic(t *testing.T) {
 		t.Errorf("failed job = %+v, %v; want non-retryable Internal", fails.jobs[0], fails.errs[0])
 	}
 	eventually(t, "panic archived by processor", func() bool {
-		_, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "other"}, jobqueue.Unique("k", 0))
+		_, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "other"}, jobqueue.WithUnique("k", 0))
 		return err == nil
 	})
 }
@@ -427,15 +427,15 @@ func (b backend) testUniqueReclaimedWhenTaskEnds(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			q := b.newQueue(t)
 			insp := asynq.NewInspectorFromRedisClient(q.rdb)
-			id, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0), jobqueue.Delay(time.Hour))
+			id, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0), jobqueue.WithDelay(time.Hour))
 			if err != nil {
 				t.Fatal(err)
 			}
-			ttlID, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("ttl", time.Hour), jobqueue.Delay(time.Hour))
+			ttlID, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("ttl", time.Hour), jobqueue.WithDelay(time.Hour))
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0)); !errors.Is(err, jobqueue.ErrDuplicate) {
+			if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0)); !errors.Is(err, jobqueue.ErrDuplicate) {
 				t.Fatalf("Enqueue() while scheduled = %v, want ErrDuplicate", err)
 			}
 			if err := tt.end(insp, q.opts.queue, id); err != nil {
@@ -445,14 +445,14 @@ func (b backend) testUniqueReclaimedWhenTaskEnds(t *testing.T) {
 				t.Fatal(err)
 			}
 			// The job ended without a handler: Enqueue can reclaim its reservation.
-			if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0)); err != nil {
+			if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0)); err != nil {
 				t.Fatalf("Enqueue() after the task was %s = %v", tt.name, err)
 			}
-			if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0)); !errors.Is(err, jobqueue.ErrDuplicate) {
+			if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0)); !errors.Is(err, jobqueue.ErrDuplicate) {
 				t.Fatalf("Enqueue() after taking over = %v, want ErrDuplicate", err)
 			}
 			// A positive TTL lasts for the TTL whatever happens to the job.
-			if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("ttl", time.Hour)); !errors.Is(err, jobqueue.ErrDuplicate) {
+			if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("ttl", time.Hour)); !errors.Is(err, jobqueue.ErrDuplicate) {
 				t.Fatalf("Enqueue(ttl) after the task was %s = %v, want ErrDuplicate", tt.name, err)
 			}
 		})
@@ -464,12 +464,12 @@ func (b backend) testTaskIDConflict(t *testing.T) {
 	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{ID: "same", Type: "work"}); err != nil {
 		t.Fatal(err)
 	}
-	_, err := q.Enqueue(t.Context(), &jobqueue.Job{ID: "same", Type: "work"}, jobqueue.Unique("u", 0))
+	_, err := q.Enqueue(t.Context(), &jobqueue.Job{ID: "same", Type: "work"}, jobqueue.WithUnique("u", 0))
 	if errorx.CodeOf(err) != errorx.AlreadyExists || errors.Is(err, jobqueue.ErrDuplicate) {
 		t.Fatalf("Enqueue(same ID) = %v, want AlreadyExists", err)
 	}
 	// The unique key reserved for the rejected job was released.
-	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("u", 0)); err != nil {
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("u", 0)); err != nil {
 		t.Fatalf("Enqueue(u) = %v", err)
 	}
 }
@@ -619,6 +619,12 @@ func (b backend) testWorkerInApp(t *testing.T) {
 	defer cancel()
 	runErr := make(chan error, 1)
 	go func() { runErr <- a.Run(ctx) }()
+	// The worker uses RunReady, so its readiness check passes once the
+	// application is running.
+	eventually(t, "app running", func() bool { return a.State() == app.StateRunning })
+	if err := worker.(interface{ Check(context.Context) error }).Check(t.Context()); err != nil {
+		t.Fatalf("worker Check() = %v, want nil while running", err)
+	}
 	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "email", Header: metadata.Pairs("x-id", "42")}); err != nil {
 		t.Fatal(err)
 	}
@@ -640,6 +646,62 @@ func (b backend) testWorkerInApp(t *testing.T) {
 	}
 }
 
+// testRunReady checks that RunReady signals readiness exactly once, before
+// it processes jobs, and returns nil when its context ends.
+func (b backend) testRunReady(t *testing.T) {
+	q := b.newQueue(t)
+	var readyCalls atomic.Int32
+	ready := make(chan struct{})
+	handled := make(chan struct{}, 1)
+	ctx, cancel := context.WithCancel(t.Context())
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		done <- q.RunReady(ctx, map[string]endpoint.Endpoint{
+			"work": func(context.Context, any) (any, error) {
+				select {
+				case <-ready:
+				default:
+					t.Error("job processed before ready")
+				}
+				handled <- struct{}{}
+				return nil, nil
+			},
+		}, func() {
+			if readyCalls.Add(1) == 1 {
+				close(ready)
+			}
+		})
+	}()
+	select {
+	case <-ready:
+	case err := <-done:
+		t.Fatalf("RunReady() = %v before ready", err)
+	case <-time.After(waitTimeout):
+		t.Fatal("RunReady did not become ready")
+	}
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-handled:
+	case <-time.After(waitTimeout):
+		t.Fatal("job not processed")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("RunReady() = %v, want nil", err)
+		}
+	case <-time.After(waitTimeout):
+		t.Fatal("RunReady did not return after cancellation")
+	}
+	if n := readyCalls.Load(); n != 1 {
+		t.Fatalf("ready called %d times, want 1", n)
+	}
+}
+
 // runSuite runs every shared test against b.
 func runSuite(t *testing.T, b backend) {
 	for name, fn := range map[string]func(*testing.T){
@@ -658,6 +720,7 @@ func runSuite(t *testing.T, b backend) {
 		"EnqueueErrors":                  b.testEnqueueErrors,
 		"CloseStopsRun":                  b.testCloseStopsRun,
 		"WorkerInApp":                    b.testWorkerInApp,
+		"RunReady":                       b.testRunReady,
 	} {
 		t.Run(name, fn)
 	}

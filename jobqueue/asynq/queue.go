@@ -23,8 +23,8 @@ import (
 
 // Compile-time interface checks.
 var (
-	_ jobqueue.Enqueuer = (*Queue)(nil)
-	_ jobqueue.Runner   = (*Queue)(nil)
+	_ jobqueue.Enqueuer    = (*Queue)(nil)
+	_ jobqueue.ReadyRunner = (*Queue)(nil)
 )
 
 // errClosed is returned by Enqueue once the Queue is closed.
@@ -51,7 +51,7 @@ redis.call("SET", KEYS[1], ARGV[2], "PX", ARGV[3]) return 1 end
 return 0`)
 )
 
-// Queue implements jobqueue.Enqueuer and jobqueue.Runner with asynq. Its
+// Queue implements jobqueue.Enqueuer and jobqueue.ReadyRunner with asynq. Its
 // methods are safe for concurrent use, and several Run calls, also in
 // different processes, may share the queue. Create one with New or
 // NewFromClient.
@@ -291,6 +291,21 @@ func (q *Queue) confirm(ctx context.Context, key, id string) {
 // job whose handler panics: the panic is logged and reported as a
 // non-retryable errorx.Internal error with reason ASYNQ_PANIC.
 func (q *Queue) Run(ctx context.Context, handlers map[string]endpoint.Endpoint) error {
+	return q.run(ctx, handlers, nil)
+}
+
+// RunReady implements jobqueue.ReadyRunner. It behaves like Run and calls
+// the non-nil ready once, after Redis answered and the asynq server started
+// processing the queue. A Run that returns early, because the Queue is
+// closed, ctx ended or Redis cannot be reached, does not call ready, so
+// jobqueue.NewWorker fails its Start with the error instead of reporting it
+// after the application started.
+func (q *Queue) RunReady(ctx context.Context, handlers map[string]endpoint.Endpoint, ready func()) error {
+	return q.run(ctx, handlers, ready)
+}
+
+// run implements Run and RunReady; ready may be nil.
+func (q *Queue) run(ctx context.Context, handlers map[string]endpoint.Endpoint, ready func()) error {
 	if !q.acquire() {
 		return nil
 	}
@@ -342,6 +357,9 @@ func (q *Queue) Run(ctx context.Context, handlers map[string]endpoint.Endpoint) 
 			return nil
 		}
 		return classify(context.Background(), "run: start", err)
+	}
+	if ready != nil {
+		ready()
 	}
 	var err error
 	select {

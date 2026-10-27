@@ -1,13 +1,13 @@
 # jobqueue/asynq
 
 `github.com/nostosx/servex-contrib/jobqueue/asynq` implements the servex
-`jobqueue.Enqueuer` and `jobqueue.Runner` contracts on the Redis-based task
-queue [asynq](https://github.com/hibiken/asynq).
+`jobqueue.Enqueuer` and `jobqueue.ReadyRunner` contracts on the Redis-based
+task queue [asynq](https://github.com/hibiken/asynq).
 
 - A `jobqueue.Job` maps to an asynq task: `Type` is the task type, `Payload`
   the payload, `ID` the task ID and `Header` the task headers.
-- `jobqueue.Delay` and `jobqueue.MaxRetry` map to asynq's `ProcessIn` and
-  `MaxRetry`. `jobqueue.Unique` keys are reserved by the Queue itself with Redis
+- `jobqueue.WithDelay` and `jobqueue.WithMaxRetry` map to asynq's `ProcessIn`
+  and `MaxRetry`. `jobqueue.WithUnique` keys are reserved by the Queue itself with Redis
   `SET NX`, so they follow the servex semantics exactly (asynq's own uniqueness
   only covers queue, type and payload).
 - Reservations without a positive TTL are reclaimed on the next `Enqueue`
@@ -18,6 +18,9 @@ queue [asynq](https://github.com/hibiken/asynq).
   reused therefore remain stored. Use a positive TTL when bounded retention is
   required. Manually retrying an archived task starts a new lifecycle outside
   the original uniqueness reservation.
+- `RunReady` reports readiness once Redis answered and the asynq server is
+  processing the queue, so a `jobqueue.NewWorker` hook fails `Start` when
+  Redis is unreachable instead of failing the running application later.
 - Non-retryable errors fail the job through `asynq.SkipRetry`. A handler panic
   fails the job immediately with a non-retryable `errorx.Internal`
   (reason `ASYNQ_PANIC`).
@@ -63,8 +66,7 @@ import (
 	"github.com/nostosx/servex/messaging/jobqueue"
 )
 
-func sendEmail(_ context.Context, req any) (any, error) {
-	job := req.(*jobqueue.Job)
+func sendEmail(_ context.Context, job *jobqueue.Job) (any, error) {
 	log.Printf("attempt %d: send %s", job.Attempt, job.Payload)
 	return nil, nil // a retryable error schedules another attempt
 }
@@ -80,15 +82,16 @@ func run() error {
 	defer stop()
 
 	_, err = q.Enqueue(ctx, &jobqueue.Job{Type: "email.send", Payload: []byte("alice@example.com")},
-		jobqueue.Delay(time.Minute),
-		jobqueue.MaxRetry(5),
-		jobqueue.Unique("welcome:alice", time.Hour),
+		jobqueue.WithDelay(time.Minute),
+		jobqueue.WithMaxRetry(5),
+		jobqueue.WithUnique("welcome:alice", time.Hour),
 	)
 	if err != nil { // wraps jobqueue.ErrDuplicate while the unique key is reserved
 		return err
 	}
 
-	worker := jobqueue.NewWorker(q, map[string]endpoint.Endpoint{"email.send": sendEmail})
+	worker := jobqueue.NewWorker(q, map[string]endpoint.Endpoint{"email.send": endpoint.Typed(sendEmail)},
+		jobqueue.WithName("worker:mail"))
 	return app.New(app.WithHooks(worker)).Run(ctx)
 }
 

@@ -181,9 +181,47 @@ func TestRunWithUnreachableRedis(t *testing.T) {
 	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}); errorx.CodeOf(err) != errorx.Unavailable {
 		t.Fatalf("Enqueue() = %v, want Unavailable", err)
 	}
-	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Unique("k", 0)); errorx.CodeOf(err) != errorx.Unavailable {
+	if _, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithUnique("k", 0)); errorx.CodeOf(err) != errorx.Unavailable {
 		t.Fatalf("Enqueue(unique) = %v, want Unavailable", err)
 	}
+}
+
+// TestRunReadyFailures checks that RunReady does not report readiness when it
+// cannot start, so that a worker hook fails its Start.
+func TestRunReadyFailures(t *testing.T) {
+	m := miniredis.RunT(t)
+	addr := m.Addr()
+	m.Close()
+	rdb := redis.NewClient(&redis.Options{Addr: addr, MaxRetries: -1})
+	defer rdb.Close()
+
+	t.Run("unreachable", func(t *testing.T) {
+		q := NewFromClient(rdb, WithLogger(slog.New(slog.DiscardHandler)))
+		defer q.Close()
+		err := q.RunReady(t.Context(), nil, func() { t.Error("ready called") })
+		if errorx.CodeOf(err) != errorx.Unavailable || !errorx.IsRetryable(err) {
+			t.Fatalf("RunReady() = %v, want retryable Unavailable", err)
+		}
+	})
+	t.Run("closed", func(t *testing.T) {
+		q := NewFromClient(rdb, WithLogger(slog.New(slog.DiscardHandler)))
+		q.Close()
+		if err := q.RunReady(t.Context(), nil, func() { t.Error("ready called") }); err != nil {
+			t.Fatalf("RunReady() on a closed Queue = %v, want nil", err)
+		}
+	})
+	t.Run("worker start", func(t *testing.T) {
+		q := NewFromClient(rdb, WithLogger(slog.New(slog.DiscardHandler)))
+		defer q.Close()
+		w := jobqueue.NewWorker(q, map[string]endpoint.Endpoint{})
+		err := w.Start(t.Context())
+		if errorx.CodeOf(err) != errorx.Unavailable {
+			t.Fatalf("worker Start() = %v, want Unavailable", err)
+		}
+		if err := w.Stop(t.Context()); err != nil {
+			t.Fatalf("worker Stop() after failed Start = %v", err)
+		}
+	})
 }
 
 func TestConnectionLoss(t *testing.T) {
@@ -263,7 +301,7 @@ func TestStaleReservation(t *testing.T) {
 	b, _ := miniBackend(t)
 	q := b.newQueue(t)
 	key := q.uniqueKey("k")
-	unique := jobqueue.Unique("k", 0)
+	unique := jobqueue.WithUnique("k", 0)
 
 	// A provisional reservation, whose task is still being enqueued, holds.
 	if err := q.rdb.Set(t.Context(), key, "enqueuing", time.Minute).Err(); err != nil {
@@ -277,7 +315,7 @@ func TestStaleReservation(t *testing.T) {
 	if err := q.rdb.Set(t.Context(), key, "gone", 0).Err(); err != nil {
 		t.Fatal(err)
 	}
-	id, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, unique, jobqueue.Delay(time.Hour))
+	id, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, unique, jobqueue.WithDelay(time.Hour))
 	if err != nil {
 		t.Fatalf("Enqueue() over a stale reservation = %v", err)
 	}

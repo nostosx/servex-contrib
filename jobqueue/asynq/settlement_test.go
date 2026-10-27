@@ -109,7 +109,7 @@ func (b backend) testLateHandlerCannotReleaseReservation(t *testing.T) {
 			if got := q.rdb.Get(t.Context(), key).Val(); got != id {
 				t.Fatalf("late handler changed reservation to %q", got)
 			}
-			_, err = q.Enqueue(t.Context(), &jobqueue.Job{Type: "other"}, jobqueue.Unique("guard", 0), jobqueue.Delay(time.Hour))
+			_, err = q.Enqueue(t.Context(), &jobqueue.Job{Type: "other"}, jobqueue.WithUnique("guard", 0), jobqueue.WithDelay(time.Hour))
 			if tt.state == asynq.TaskStateArchived || tt.state == asynq.TaskStateCompleted {
 				if err != nil {
 					t.Fatalf("terminal reservation not reclaimed: %v", err)

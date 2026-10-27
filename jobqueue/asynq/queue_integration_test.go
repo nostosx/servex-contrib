@@ -52,7 +52,7 @@ func TestIntegrationNew(t *testing.T) {
 	t.Cleanup(func() { _ = q.Close() })
 	insp := asynq.NewInspectorFromRedisClient(q.rdb)
 	t.Cleanup(func() { cleanupQueue(t, q) })
-	id, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.Delay(time.Hour), jobqueue.MaxRetry(7))
+	id, err := q.Enqueue(t.Context(), &jobqueue.Job{Type: "work"}, jobqueue.WithDelay(time.Hour), jobqueue.WithMaxRetry(7))
 	if err != nil {
 		t.Fatal(err)
 	}
