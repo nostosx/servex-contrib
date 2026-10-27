@@ -51,14 +51,16 @@ func run() error {
 
 	// Pass meter to anything that takes a metrics.Meter, such as
 	// servex-contrib/middleware/metrics or storage/database.WithMeter.
-	orders := meter.Counter("orders_total", "Orders placed.", "status")
-	orders.With("ok").Add(1)
-
-	srv := httpx.NewServer(httpx.Address(":8000"))
-	srv.HandleHTTP("GET /metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
-
 	ctx, stop := app.SignalContext(context.Background())
 	defer stop()
+
+	// Recording methods take the context of the measured operation.
+	orders := meter.Counter("orders_total", "Orders placed.", "status")
+	orders.With("ok").Add(ctx, 1)
+
+	srv := httpx.NewServer(httpx.WithAddress(":8000"))
+	srv.HandleHTTP("GET /metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{}))
+
 	return app.New(app.WithHooks(srv)).Run(ctx)
 }
 
@@ -70,6 +72,8 @@ func main() {
 ```
 
 A nil registerer uses `prometheus.DefaultRegisterer`.
+Recording methods accept the context required by servex v1.2.0 metrics but do
+not read it; this adapter records no exemplars.
 
 ## Options
 

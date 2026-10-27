@@ -291,6 +291,16 @@ func (b *binding) complete() bool {
 	return true
 }
 
+// recordContext returns the context passed to an OpenTelemetry instrument:
+// ctx itself, so that the SDK can sample exemplars from the span it carries,
+// or context.Background for a nil ctx.
+func recordContext(ctx context.Context) context.Context {
+	if ctx == nil {
+		return context.Background()
+	}
+	return ctx
+}
+
 // counter is a metrics.Counter.
 type counter struct{ binding }
 
@@ -313,7 +323,7 @@ func (c *counter) With(labelValues ...string) metrics.Counter {
 }
 
 // Add implements metrics.Counter. Negative and NaN deltas are dropped.
-func (c *counter) Add(delta float64) {
+func (c *counter) Add(ctx context.Context, delta float64) {
 	if !c.complete() {
 		return
 	}
@@ -321,7 +331,7 @@ func (c *counter) Add(delta float64) {
 		c.f.warn("update dropped: counter delta must not be negative or NaN", "delta", delta)
 		return
 	}
-	c.f.counter.Add(context.Background(), delta, c.opt)
+	c.f.counter.Add(recordContext(ctx), delta, c.opt)
 }
 
 // series is the tracked value of one gauge label set. mu also serializes
@@ -363,25 +373,25 @@ func (g *gauge) With(labelValues ...string) metrics.Gauge {
 }
 
 // Set implements metrics.Gauge.
-func (g *gauge) Set(v float64) {
+func (g *gauge) Set(ctx context.Context, v float64) {
 	if !g.complete() {
 		return
 	}
 	g.s.mu.Lock()
 	defer g.s.mu.Unlock()
 	g.s.v = v
-	g.f.gauge.Record(context.Background(), v, g.opt)
+	g.f.gauge.Record(recordContext(ctx), v, g.opt)
 }
 
 // Add implements metrics.Gauge.
-func (g *gauge) Add(delta float64) {
+func (g *gauge) Add(ctx context.Context, delta float64) {
 	if !g.complete() {
 		return
 	}
 	g.s.mu.Lock()
 	defer g.s.mu.Unlock()
 	g.s.v += delta
-	g.f.gauge.Record(context.Background(), g.s.v, g.opt)
+	g.f.gauge.Record(recordContext(ctx), g.s.v, g.opt)
 }
 
 // histogram is a metrics.Histogram.
@@ -406,9 +416,9 @@ func (h *histogram) With(labelValues ...string) metrics.Histogram {
 }
 
 // Observe implements metrics.Histogram.
-func (h *histogram) Observe(v float64) {
+func (h *histogram) Observe(ctx context.Context, v float64) {
 	if !h.complete() {
 		return
 	}
-	h.f.histogram.Record(context.Background(), v, h.opt)
+	h.f.histogram.Record(recordContext(ctx), v, h.opt)
 }

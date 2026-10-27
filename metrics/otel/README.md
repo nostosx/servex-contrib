@@ -8,6 +8,9 @@
   explicit bucket boundaries, gauges to `Float64Gauge`. Gauge values are
   tracked per label set by the adapter, so both `Set` and `Add` work.
 - Label values become string attributes keyed by the declared label names.
+- Recording methods pass the operation's context to the instrument, so the
+  SDK can attach exemplars from a sampled span in that context, for example
+  one started by [`tracing/otel`](../../tracing/otel).
 - Invalid definitions and bindings return no-op metrics. Updates with incomplete
   labels or negative or NaN counter deltas are dropped; later valid updates
   still work. Problems are logged, with dropped updates and invalid bindings
@@ -34,6 +37,8 @@ Save a complete program below as `main.go`, then run `go mod tidy` and
 package main
 
 import (
+	"context"
+
 	"go.opentelemetry.io/otel"
 
 	otelmetrics "github.com/nostosx/servex-contrib/metrics/otel"
@@ -45,12 +50,15 @@ func main() {
 	// example an SDK MeterProvider with an OTLP exporter.
 	meter := otelmetrics.New(otel.GetMeterProvider().Meter("shop"))
 
+	// Pass the context of the measured operation; a sampled span in it
+	// becomes the exemplar of the measurement.
+	ctx := context.Background()
 	latency := meter.Histogram("checkout_duration_seconds", "Checkout latency.", metrics.DefaultBuckets, "method")
-	latency.With("card").Observe(0.042)
+	latency.With("card").Observe(ctx, 0.042)
 
 	inflight := meter.Gauge("checkout_inflight", "Checkouts in progress.")
-	inflight.Add(1)
-	inflight.Add(-1)
+	inflight.Add(ctx, 1)
+	inflight.Add(ctx, -1)
 }
 ```
 

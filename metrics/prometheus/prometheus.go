@@ -1,6 +1,7 @@
 package prometheus
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -317,7 +318,7 @@ func (c *counter) With(labelValues ...string) metrics.Counter {
 }
 
 // Add implements metrics.Counter. Negative and NaN deltas are dropped.
-func (c *counter) Add(delta float64) {
+func (c *counter) Add(_ context.Context, delta float64) {
 	switch {
 	case c.c == nil:
 		c.f.warn("update dropped: label values are incomplete", "label_values", c.values)
@@ -363,7 +364,7 @@ func (g *gauge) With(labelValues ...string) metrics.Gauge {
 }
 
 // Set implements metrics.Gauge.
-func (g *gauge) Set(v float64) {
+func (g *gauge) Set(_ context.Context, v float64) {
 	if g.g == nil {
 		g.f.warn("update dropped: label values are incomplete", "label_values", g.values)
 		return
@@ -372,7 +373,7 @@ func (g *gauge) Set(v float64) {
 }
 
 // Add implements metrics.Gauge.
-func (g *gauge) Add(delta float64) {
+func (g *gauge) Add(_ context.Context, delta float64) {
 	if g.g == nil {
 		g.f.warn("update dropped: label values are incomplete", "label_values", g.values)
 		return
@@ -416,7 +417,7 @@ func (h *histogram) With(labelValues ...string) metrics.Histogram {
 }
 
 // Observe implements metrics.Histogram.
-func (h *histogram) Observe(v float64) {
+func (h *histogram) Observe(_ context.Context, v float64) {
 	if h.o == nil {
 		h.f.warn("update dropped: label values are incomplete", "label_values", h.values)
 		return

@@ -18,10 +18,10 @@ func TestIncompleteLabelsDropUpdates(t *testing.T) {
 		name string
 		use  func(m metrics.Meter)
 	}{
-		{"gauge set", func(m metrics.Meter) { m.Gauge("partial", "h", "a", "b").With("x").Set(1) }},
-		{"gauge add", func(m metrics.Meter) { m.Gauge("partial", "h", "a", "b").Add(1) }},
+		{"gauge set", func(m metrics.Meter) { m.Gauge("partial", "h", "a", "b").With("x").Set(t.Context(), 1) }},
+		{"gauge add", func(m metrics.Meter) { m.Gauge("partial", "h", "a", "b").Add(t.Context(), 1) }},
 		{"histogram observe", func(m metrics.Meter) {
-			m.Histogram("partial", "h", nil, "a", "b").With("x").Observe(1)
+			m.Histogram("partial", "h", nil, "a", "b").With("x").Observe(t.Context(), 1)
 		}},
 	}
 	for _, tt := range tests {
@@ -45,14 +45,14 @@ func TestInvalidLabelValuesUseNoop(t *testing.T) {
 	}{
 		{"gauge", func(m metrics.Meter) {
 			g := m.Gauge("utf8", "h", "a")
-			g.With("\xff").Set(1)
+			g.With("\xff").Set(t.Context(), 1)
 			// The family stays usable with valid values.
-			g.With("ok").Set(2)
+			g.With("ok").Set(t.Context(), 2)
 		}},
 		{"histogram", func(m metrics.Meter) {
 			h := m.Histogram("utf8", "h", []float64{1}, "a")
-			h.With("\xff").Observe(1)
-			h.With("ok").Observe(2)
+			h.With("\xff").Observe(t.Context(), 1)
+			h.With("ok").Observe(t.Context(), 2)
 		}},
 	}
 	for _, tt := range tests {
@@ -83,9 +83,9 @@ func TestWithoutValuesReturnsSameMetric(t *testing.T) {
 	if got := h.With(); got != h {
 		t.Errorf("Histogram.With() = %v, want the receiver", got)
 	}
-	c.With().Add(1)
-	g.With().Set(3)
-	h.With().Observe(0.5)
+	c.With().Add(t.Context(), 1)
+	g.With().Set(t.Context(), 3)
+	h.With().Observe(t.Context(), 0.5)
 
 	want := `
 # HELP same_total h
@@ -119,28 +119,28 @@ func TestExistingCollectorOfAnotherType(t *testing.T) {
 			// registered by another Meter collides with the counter.
 			name:     "vector of another kind",
 			existing: prom.NewGaugeVec(prom.GaugeOpts{Name: "taken", Help: "h"}, []string{"l"}),
-			use:      func(m metrics.Meter) { m.Counter("taken", "h", "l").With("x").Add(1) },
+			use:      func(m metrics.Meter) { m.Counter("taken", "h", "l").With("x").Add(t.Context(), 1) },
 			typ:      "*prometheus.GaugeVec",
 			series:   0,
 		},
 		{
 			name:     "counter vector for a histogram",
 			existing: prom.NewCounterVec(prom.CounterOpts{Name: "taken", Help: "h"}, nil),
-			use:      func(m metrics.Meter) { m.Histogram("taken", "h", nil).Observe(1) },
+			use:      func(m metrics.Meter) { m.Histogram("taken", "h", nil).Observe(t.Context(), 1) },
 			typ:      "*prometheus.CounterVec",
 			series:   0,
 		},
 		{
 			name:     "histogram vector for a gauge",
 			existing: prom.NewHistogramVec(prom.HistogramOpts{Name: "taken", Help: "h"}, nil),
-			use:      func(m metrics.Meter) { m.Gauge("taken", "h").Set(1) },
+			use:      func(m metrics.Meter) { m.Gauge("taken", "h").Set(t.Context(), 1) },
 			typ:      "*prometheus.HistogramVec",
 			series:   0,
 		},
 		{
 			name:     "plain metric",
 			existing: prom.NewGauge(prom.GaugeOpts{Name: "taken", Help: "h"}),
-			use:      func(m metrics.Meter) { m.Gauge("taken", "h").Set(1) },
+			use:      func(m metrics.Meter) { m.Gauge("taken", "h").Set(t.Context(), 1) },
 			typ:      "*prometheus.gauge",
 			series:   1,
 		},

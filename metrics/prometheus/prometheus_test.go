@@ -29,9 +29,9 @@ func newMeter(t *testing.T, opts ...prometheus.Option) (metrics.Meter, *prom.Reg
 func TestCounter(t *testing.T) {
 	m, reg, _ := newMeter(t, prometheus.WithNamespace("servex"))
 	c := m.Counter("requests_total", "Total requests.", "method", "code")
-	c.With("GET", "200").Add(1)
-	c.With("GET", "200").Add(2)
-	c.With("POST").With("500").Add(1)
+	c.With("GET", "200").Add(t.Context(), 1)
+	c.With("GET", "200").Add(t.Context(), 2)
+	c.With("POST").With("500").Add(t.Context(), 1)
 
 	want := `
 # HELP servex_requests_total Total requests.
@@ -48,10 +48,10 @@ func TestGauge(t *testing.T) {
 	m, reg, _ := newMeter(t)
 	g := m.Gauge("in_flight", "In-flight requests.", "kind")
 	s := g.With("server")
-	s.Set(5)
-	s.Add(2)
-	s.Add(-3)
-	m.Gauge("temperature", "Unlabelled.").Set(21.5)
+	s.Set(t.Context(), 5)
+	s.Add(t.Context(), 2)
+	s.Add(t.Context(), -3)
+	m.Gauge("temperature", "Unlabelled.").Set(t.Context(), 21.5)
 
 	want := `
 # HELP in_flight In-flight requests.
@@ -69,9 +69,9 @@ temperature 21.5
 func TestHistogram(t *testing.T) {
 	m, reg, _ := newMeter(t)
 	h := m.Histogram("latency_seconds", "Latency.", []float64{0.1, 1}, "op")
-	h.With("get").Observe(0.05)
-	h.With("get").Observe(0.5)
-	h.With("get").Observe(5)
+	h.With("get").Observe(t.Context(), 0.05)
+	h.With("get").Observe(t.Context(), 0.5)
+	h.With("get").Observe(t.Context(), 5)
 
 	want := `
 # HELP latency_seconds Latency.
@@ -89,7 +89,7 @@ latency_seconds_count{op="get"} 3
 
 func TestHistogramDefaultBuckets(t *testing.T) {
 	m, reg, _ := newMeter(t)
-	m.Histogram("d_seconds", "D.", nil).Observe(0.2)
+	m.Histogram("d_seconds", "D.", nil).Observe(t.Context(), 0.2)
 	mfs, err := reg.Gather()
 	if err != nil {
 		t.Fatal(err)
@@ -110,8 +110,8 @@ func TestHistogramDefaultBuckets(t *testing.T) {
 
 func TestSameNameReturnsEquivalentMetric(t *testing.T) {
 	m, reg, _ := newMeter(t)
-	m.Counter("c_total", "C.", "l").With("a").Add(1)
-	m.Counter("c_total", "Other help is ignored.", "l").With("a").Add(1)
+	m.Counter("c_total", "C.", "l").With("a").Add(t.Context(), 1)
+	m.Counter("c_total", "Other help is ignored.", "l").With("a").Add(t.Context(), 1)
 	if got := value(t, reg, "c_total"); got != 2 {
 		t.Fatalf("counter = %v, want 2", got)
 	}
@@ -122,12 +122,12 @@ func TestReusesCollectorAcrossMeters(t *testing.T) {
 	discard := prometheus.WithLogger(slog.New(slog.DiscardHandler))
 	a := prometheus.New(reg, discard)
 	b := prometheus.New(reg, discard)
-	a.Counter("shared_total", "Shared.", "l").With("x").Add(1)
-	b.Counter("shared_total", "Shared.", "l").With("x").Add(2)
-	a.Gauge("shared_gauge", "Shared.").Set(1)
-	b.Gauge("shared_gauge", "Shared.").Add(1)
-	a.Histogram("shared_hist", "Shared.", []float64{1}).Observe(0.5)
-	b.Histogram("shared_hist", "Shared.", []float64{1}).Observe(0.5)
+	a.Counter("shared_total", "Shared.", "l").With("x").Add(t.Context(), 1)
+	b.Counter("shared_total", "Shared.", "l").With("x").Add(t.Context(), 2)
+	a.Gauge("shared_gauge", "Shared.").Set(t.Context(), 1)
+	b.Gauge("shared_gauge", "Shared.").Add(t.Context(), 1)
+	a.Histogram("shared_hist", "Shared.", []float64{1}).Observe(t.Context(), 0.5)
+	b.Histogram("shared_hist", "Shared.", []float64{1}).Observe(t.Context(), 0.5)
 
 	want := `
 # HELP shared_total Shared.
@@ -153,7 +153,7 @@ func TestReuseExistingCollectorRegisteredByCaller(t *testing.T) {
 	existing := prom.NewCounterVec(prom.CounterOpts{Name: "pre_total", Help: "Pre."}, []string{"l"})
 	reg.MustRegister(existing)
 	m := prometheus.New(reg, prometheus.WithLogger(slog.New(slog.DiscardHandler)))
-	m.Counter("pre_total", "Pre.", "l").With("v").Add(4)
+	m.Counter("pre_total", "Pre.", "l").With("v").Add(t.Context(), 4)
 	if got := testutil.ToFloat64(existing.WithLabelValues("v")); got != 4 {
 		t.Fatalf("existing collector = %v, want 4", got)
 	}
@@ -169,74 +169,74 @@ func TestMisuseDoesNotPanic(t *testing.T) {
 			name: "too few label values",
 			use: func(m metrics.Meter) {
 				c := m.Counter("few_total", "h", "a", "b")
-				c.Add(1)
-				c.With("x").Add(1)
+				c.Add(t.Context(), 1)
+				c.With("x").Add(t.Context(), 1)
 			},
 			log: "label values are incomplete",
 		},
 		{
 			name: "too many label values",
 			use: func(m metrics.Meter) {
-				m.Counter("many_total", "h", "a").With("x", "y").Add(1)
-				m.Gauge("many_gauge", "h").With("x").Set(1)
-				m.Histogram("many_hist", "h", nil, "a").With("x").With("y").Observe(1)
+				m.Counter("many_total", "h", "a").With("x", "y").Add(t.Context(), 1)
+				m.Gauge("many_gauge", "h").With("x").Set(t.Context(), 1)
+				m.Histogram("many_hist", "h", nil, "a").With("x").With("y").Observe(t.Context(), 1)
 			},
 			log: "too many label values",
 		},
 		{
 			name: "negative counter delta",
-			use:  func(m metrics.Meter) { m.Counter("neg_total", "h").Add(-1) },
+			use:  func(m metrics.Meter) { m.Counter("neg_total", "h").Add(t.Context(), -1) },
 			log:  "must not be negative",
 		},
 		{
 			name: "NaN counter delta",
-			use:  func(m metrics.Meter) { m.Counter("nan_total", "h").Add(math.NaN()) },
+			use:  func(m metrics.Meter) { m.Counter("nan_total", "h").Add(t.Context(), math.NaN()) },
 			log:  "must not be negative or NaN",
 		},
 		{
 			name: "kind conflict",
 			use: func(m metrics.Meter) {
-				m.Counter("conflict", "h").Add(1)
-				m.Gauge("conflict", "h").Set(1)
+				m.Counter("conflict", "h").Add(t.Context(), 1)
+				m.Gauge("conflict", "h").Set(t.Context(), 1)
 			},
 			log: "different definition",
 		},
 		{
 			name: "label conflict",
 			use: func(m metrics.Meter) {
-				m.Counter("labels_total", "h", "a").With("x").Add(1)
-				m.Counter("labels_total", "h", "b").With("x").Add(1)
+				m.Counter("labels_total", "h", "a").With("x").Add(t.Context(), 1)
+				m.Counter("labels_total", "h", "b").With("x").Add(t.Context(), 1)
 			},
 			log: "different definition",
 		},
 		{
 			name: "unsorted buckets",
-			use:  func(m metrics.Meter) { m.Histogram("bad_buckets", "h", []float64{1, 0.5}).Observe(1) },
+			use:  func(m metrics.Meter) { m.Histogram("bad_buckets", "h", []float64{1, 0.5}).Observe(t.Context(), 1) },
 			log:  "strictly increasing",
 		},
 		{
 			name: "NaN bucket",
-			use:  func(m metrics.Meter) { m.Histogram("nan_buckets", "h", []float64{math.NaN()}).Observe(1) },
+			use:  func(m metrics.Meter) { m.Histogram("nan_buckets", "h", []float64{math.NaN()}).Observe(t.Context(), 1) },
 			log:  "NaN",
 		},
 		{
 			name: "reserved le label",
-			use:  func(m metrics.Meter) { m.Histogram("le_hist", "h", nil, "le").With("x").Observe(1) },
+			use:  func(m metrics.Meter) { m.Histogram("le_hist", "h", nil, "le").With("x").Observe(t.Context(), 1) },
 			log:  "reserved",
 		},
 		{
 			name: "invalid metric name",
-			use:  func(m metrics.Meter) { m.Counter("\xff", "h").Add(1) },
+			use:  func(m metrics.Meter) { m.Counter("\xff", "h").Add(t.Context(), 1) },
 			log:  "cannot register",
 		},
 		{
 			name: "duplicate label names",
-			use:  func(m metrics.Meter) { m.Gauge("dup", "h", "a", "a").With("1", "2").Set(1) },
+			use:  func(m metrics.Meter) { m.Gauge("dup", "h", "a", "a").With("1", "2").Set(t.Context(), 1) },
 			log:  "cannot register",
 		},
 		{
 			name: "invalid UTF-8 label value",
-			use:  func(m metrics.Meter) { m.Counter("utf8_total", "h", "a").With("\xff").Add(1) },
+			use:  func(m metrics.Meter) { m.Counter("utf8_total", "h", "a").With("\xff").Add(t.Context(), 1) },
 			log:  "invalid label values",
 		},
 	}
@@ -258,8 +258,8 @@ func TestMisuseLoggedOncePerMetric(t *testing.T) {
 	m, _, buf := newMeter(t)
 	c := m.Counter("once_total", "h", "a")
 	for range 10 {
-		c.Add(1)
-		c.With("x", "y").Add(1)
+		c.Add(t.Context(), 1)
+		c.With("x", "y").Add(t.Context(), 1)
 	}
 	if n := strings.Count(buf.String(), "\n"); n != 1 {
 		t.Fatalf("logged %d lines, want 1:\n%s", n, buf.String())
@@ -269,8 +269,8 @@ func TestMisuseLoggedOncePerMetric(t *testing.T) {
 func TestBindingDoesNotAliasValues(t *testing.T) {
 	m, reg, _ := newMeter(t)
 	base := m.Counter("alias_total", "h", "a", "b").With("x")
-	base.With("1").Add(1)
-	base.With("2").Add(1)
+	base.With("1").Add(t.Context(), 1)
+	base.With("2").Add(t.Context(), 1)
 	want := `
 # HELP alias_total h
 # TYPE alias_total counter
@@ -295,9 +295,9 @@ func TestConcurrentUse(t *testing.T) {
 	var wg sync.WaitGroup
 	for range 32 {
 		wg.Go(func() {
-			m.Counter("conc_total", "h", "l").With("v").Add(1)
-			m.Gauge("conc_gauge", "h", "l").With("v").Add(1)
-			m.Histogram("conc_hist", "h", metrics.DefaultBuckets, "l").With("v").Observe(0.1)
+			m.Counter("conc_total", "h", "l").With("v").Add(t.Context(), 1)
+			m.Gauge("conc_gauge", "h", "l").With("v").Add(t.Context(), 1)
+			m.Histogram("conc_hist", "h", metrics.DefaultBuckets, "l").With("v").Observe(t.Context(), 0.1)
 		})
 	}
 	wg.Wait()
