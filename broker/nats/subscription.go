@@ -67,8 +67,9 @@ func (b *Broker) newSubscription(ctx context.Context, topic, group string) (*sub
 	return sub, nil
 }
 
-// run consumes messages until ctx ends or the iterator fails.
-func (s *subscription) run(ctx context.Context, h endpoint.Endpoint) error {
+// run consumes messages until ctx ends or the iterator fails. It calls the
+// non-nil ready once the pull subscription is active.
+func (s *subscription) run(ctx context.Context, h endpoint.Endpoint, ready func()) error {
 	// One message at a time: buffered messages would wait for the handler
 	// while their ack deadline runs.
 	iter, err := s.consumer.Messages(jetstream.PullMaxMessages(1))
@@ -76,6 +77,9 @@ func (s *subscription) run(ctx context.Context, h endpoint.Endpoint) error {
 		return classify(ctx, "subscribe: consume", err)
 	}
 	defer iter.Stop()
+	if ready != nil {
+		ready()
+	}
 	for {
 		m, err := iter.Next(jetstream.NextContext(ctx))
 		if err != nil {

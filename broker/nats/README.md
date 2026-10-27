@@ -1,7 +1,7 @@
 # broker/nats
 
 `github.com/nostosx/servex-contrib/broker/nats` implements the servex
-`broker.Publisher` and `broker.Subscriber` contracts on
+`broker.Publisher` and `broker.ReadySubscriber` contracts on
 [NATS JetStream](https://github.com/nats-io/nats.go).
 
 - Topics are subjects bound to a JetStream stream that the application manages;
@@ -11,6 +11,10 @@
   per subscriber that receives messages published after it subscribed.
   Durable names encode each component's UTF-8 bytes as hexadecimal, separated
   by `_`, so different groups and topics never alias.
+- `SubscribeReady` reports readiness once the consumer exists and its pull
+  subscription is active. `broker.NewConsumer` uses it, so the consumer hook's
+  `Start` fails when, for example, no stream is bound to the topic. Group
+  consumers are named `consumer:<topic>:<group>` in app logs and errors.
 - `Message.Header` maps to the NATS headers; `Message.Key` travels in the
   `Servex-Key` header (`HeaderKey`).
 - A retryable rejection is `Nak`ed with a delay. A non-retryable rejection, or
@@ -63,11 +67,12 @@ import (
 
 	"github.com/nostosx/servex-contrib/broker/nats"
 	"github.com/nostosx/servex/app"
+	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/messaging/broker"
 )
 
-func handleOrder(_ context.Context, req any) (any, error) {
-	log.Printf("order: %s", req.(*broker.Message).Body)
+func handleOrder(_ context.Context, msg *broker.Message) (any, error) {
+	log.Printf("order: %s", msg.Body)
 	return nil, nil
 }
 
@@ -100,7 +105,7 @@ func run() error {
 		return err
 	}
 
-	consumer := broker.NewConsumer(b, "orders.created", "billing", handleOrder)
+	consumer := broker.NewConsumer(b, "orders.created", "billing", endpoint.Typed(handleOrder))
 	return app.New(app.WithHooks(consumer)).Run(ctx)
 }
 

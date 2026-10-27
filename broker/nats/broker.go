@@ -21,11 +21,11 @@ const HeaderKey = "Servex-Key"
 
 // Compile-time interface checks.
 var (
-	_ broker.Publisher  = (*Broker)(nil)
-	_ broker.Subscriber = (*Broker)(nil)
+	_ broker.Publisher       = (*Broker)(nil)
+	_ broker.ReadySubscriber = (*Broker)(nil)
 )
 
-// Broker implements broker.Publisher and broker.Subscriber with JetStream. Its
+// Broker implements broker.Publisher and broker.ReadySubscriber with JetStream. Its
 // methods are safe for concurrent use. Create one with New. The Broker does
 // not own the connection of js; closing that connection ends active
 // subscriptions with an error.
@@ -91,6 +91,20 @@ func (b *Broker) Publish(ctx context.Context, msg *broker.Message) error {
 // deleted when Subscribe returns. The context passed to h is canceled when
 // ctx ends.
 func (b *Broker) Subscribe(ctx context.Context, topic, group string, h endpoint.Endpoint) error {
+	return b.subscribe(ctx, topic, group, h, nil)
+}
+
+// SubscribeReady implements broker.ReadySubscriber. It behaves like
+// Subscribe and calls the non-nil ready once the consumer exists and its
+// pull subscription is active, so messages published afterwards are
+// delivered. It returns without calling ready when setup fails, for example
+// because no stream is bound to topic, or when ctx ends first.
+func (b *Broker) SubscribeReady(ctx context.Context, topic, group string, h endpoint.Endpoint, ready func()) error {
+	return b.subscribe(ctx, topic, group, h, ready)
+}
+
+// subscribe implements Subscribe and SubscribeReady; ready may be nil.
+func (b *Broker) subscribe(ctx context.Context, topic, group string, h endpoint.Endpoint, ready func()) error {
 	switch {
 	case topic == "":
 		return invalid("subscribe: empty topic")
@@ -108,7 +122,7 @@ func (b *Broker) Subscribe(ctx context.Context, topic, group string, h endpoint.
 	if fn := b.opts.subscribed; fn != nil {
 		fn(topic, group)
 	}
-	return s.run(ctx, h)
+	return s.run(ctx, h, ready)
 }
 
 // DurableName returns the name of the durable consumer used by group for

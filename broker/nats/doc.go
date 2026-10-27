@@ -1,5 +1,6 @@
-// Package nats implements broker.Publisher and broker.Subscriber on top of
-// NATS JetStream.
+// Package nats implements broker.Publisher and broker.ReadySubscriber on top
+// of NATS JetStream. SubscribeReady reports readiness once the consumer
+// exists and its pull subscription is active.
 //
 // Topics are subjects that must be bound to a JetStream stream managed by the
 // application. A non-empty group maps to a durable pull consumer shared by the
