@@ -129,6 +129,8 @@ func (s *testService) UnaryCall(ctx context.Context, req *testpb.SimpleRequest) 
 		return nil, errUserNotFound.WithMetadata(map[string]string{"id": "404"})
 	case "unavailable":
 		return nil, errorx.New(errorx.Unavailable, "BUSY", "try later")
+	case "draining":
+		return nil, errorx.New(errorx.Unavailable, "DRAINING", "do not retry").WithRetryable(false)
 	case "status":
 		return nil, status.Error(codes.PermissionDenied, "denied")
 	case "plain":

@@ -125,6 +125,14 @@ func TestClientErrorsAreErrorx(t *testing.T) {
 		t.Errorf("unavailable err = %v", err)
 	}
 
+	// An explicit retryability decision survives the network.
+	_, err = client.UnaryCall(t.Context(), simple("draining"))
+	if e, _ := errors.AsType[*errorx.Error](err); e == nil || e.Code != errorx.Unavailable || e.Reason != "DRAINING" || e.Retryable() || errorx.IsRetryable(err) {
+		t.Errorf("draining err = %v", err)
+	} else if _, ok := e.Metadata[grpcx.RetryableMetadataKey]; ok || len(e.Metadata) != 0 {
+		t.Errorf("draining metadata = %v", e.Metadata)
+	}
+
 	ctx, cancel := context.WithCancel(t.Context())
 	errc := make(chan error, 1)
 	go func() {

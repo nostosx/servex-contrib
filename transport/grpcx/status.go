@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"strconv"
 
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
@@ -13,13 +14,23 @@ import (
 	"github.com/nostosx/servex/errorx"
 )
 
+// RetryableMetadataKey is the reserved google.rpc.ErrorInfo metadata key that
+// carries an explicit errorx retryability decision across gRPC. Its value is
+// "true" or "false". The server sets it only when Error.Retryable differs from
+// the default of the transmitted code, for example after
+// WithRetryable(false) on an Unavailable error, and drops any application
+// metadata value under this key. The client restores the decision with
+// Error.WithRetryable and removes the key from Error.Metadata; when the key is
+// absent or not a boolean, retryability follows the code.
+const RetryableMetadataKey = "servex.retryable"
+
 // toStatus converts a handler error into a gRPC status. An *errorx.Error in
 // the chain wins: its Code becomes the status code, its Message the status
-// message, and its Reason and Metadata travel in a google.rpc.ErrorInfo
-// detail. Errors that already carry a gRPC status keep it; any other error
-// is converted with errorx.From. An error with code OK is reported as
-// Unknown, because a status with code OK would turn the failure into a
-// success.
+// message, and its Reason, Metadata and a non-default retryability (see
+// RetryableMetadataKey) travel in a google.rpc.ErrorInfo detail. Errors that
+// already carry a gRPC status keep it; any other error is converted with
+// errorx.From. An error with code OK is reported as Unknown, because a status
+// with code OK would turn the failure into a success.
 func toStatus(err error) *status.Status {
 	e, ok := errors.AsType[*errorx.Error](err)
 	if !ok || e == nil {
@@ -33,10 +44,18 @@ func toStatus(err error) *status.Status {
 		code = codes.Unknown
 	}
 	st := status.New(code, e.Message)
-	if e.Reason == "" && len(e.Metadata) == 0 {
+	md := maps.Clone(e.Metadata)
+	delete(md, RetryableMetadataKey)
+	if retryable := e.Retryable(); retryable != errorx.New(errorx.Code(code), "", "").Retryable() {
+		if md == nil {
+			md = make(map[string]string, 1)
+		}
+		md[RetryableMetadataKey] = strconv.FormatBool(retryable)
+	}
+	if e.Reason == "" && len(md) == 0 {
 		return st
 	}
-	withInfo, derr := st.WithDetails(&errdetails.ErrorInfo{Reason: e.Reason, Metadata: maps.Clone(e.Metadata)})
+	withInfo, derr := st.WithDetails(&errdetails.ErrorInfo{Reason: e.Reason, Metadata: md})
 	if derr != nil {
 		// ErrorInfo always marshals; keep the plain status just in case.
 		return st
@@ -54,7 +73,9 @@ func statusError(err error) error {
 
 // fromStatus converts an error returned by a gRPC call into an
 // *errorx.Error with the same Code and Message, and the Reason and Metadata
-// of the first google.rpc.ErrorInfo detail. Retryability follows the code.
+// of the first google.rpc.ErrorInfo detail. Retryability follows the code
+// unless that detail carries RetryableMetadataKey, which is restored with
+// WithRetryable and removed from Metadata.
 // The original error stays in the cause chain, so status.FromError and
 // status.Code keep working on the result; when ctx has ended and the code is
 // Canceled or DeadlineExceeded, the context error joins the chain too.
@@ -81,9 +102,18 @@ func fromStatus(ctx context.Context, err error) error {
 			break
 		}
 	}
+	raw, explicit := md[RetryableMetadataKey]
+	if explicit {
+		md = maps.Clone(md)
+		delete(md, RetryableMetadataKey)
+	}
 	cause := err
 	if ctxErr := ctx.Err(); ctxErr != nil && (code == errorx.Canceled || code == errorx.DeadlineExceeded) {
 		cause = fmt.Errorf("%w: %w", ctxErr, err)
 	}
-	return errorx.New(code, reason, st.Message()).WithMetadata(md).WithCause(cause)
+	e := errorx.New(code, reason, st.Message()).WithMetadata(md).WithCause(cause)
+	if retryable, perr := strconv.ParseBool(raw); explicit && perr == nil {
+		e = e.WithRetryable(retryable)
+	}
+	return e
 }

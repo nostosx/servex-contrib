@@ -9,7 +9,8 @@
 // Reason and Metadata travel in a google.rpc.ErrorInfo detail. Errors that
 // already carry a gRPC status are sent unchanged, and other errors are
 // classified with errorx.From. On the client, every failed call yields an
-// *errorx.Error restored from the status, whose retryability follows its
-// code; the original status error stays in the cause chain, so
-// status.FromError keeps working.
+// *errorx.Error restored from the status. Its retryability follows the code
+// unless the server sent an explicit decision under RetryableMetadataKey; the
+// original status error stays in the cause chain, so status.FromError keeps
+// working.
 package grpcx

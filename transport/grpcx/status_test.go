@@ -125,3 +125,85 @@ func TestFromStatus(t *testing.T) {
 		t.Errorf("remote canceled = %v", got)
 	}
 }
+
+// errorInfo returns the first ErrorInfo detail of st, or nil.
+func errorInfo(st *status.Status) *errdetails.ErrorInfo {
+	for _, d := range st.Details() {
+		if info, ok := d.(*errdetails.ErrorInfo); ok {
+			return info
+		}
+	}
+	return nil
+}
+
+func TestStatusRetryableRoundTrip(t *testing.T) {
+	tests := []struct {
+		name      string
+		in        *errorx.Error
+		wire      string // RetryableMetadataKey value on the wire; "" means absent
+		retryable bool
+		md        map[string]string
+	}{
+		{"explicit false on Unavailable", errorx.New(errorx.Unavailable, "", "draining").WithRetryable(false), "false", false, nil},
+		{"explicit true on NotFound", errorx.New(errorx.NotFound, "R", "m").WithRetryable(true), "true", true, nil},
+		{"explicit decision keeps metadata", errorx.New(errorx.Aborted, "R", "m").WithMetadata(map[string]string{"k": "v"}).WithRetryable(false), "false", false, map[string]string{"k": "v"}},
+		{"explicit default is not sent", errorx.New(errorx.Unavailable, "", "m").WithRetryable(true), "", true, nil},
+		{"code default is not sent", errorx.New(errorx.ResourceExhausted, "R", "m"), "", true, nil},
+		{"application value under the key is dropped", errorx.New(errorx.NotFound, "R", "m").WithMetadata(map[string]string{RetryableMetadataKey: "true", "k": "v"}), "", false, map[string]string{"k": "v"}},
+		{"application value cannot override the decision", errorx.New(errorx.Internal, "", "m").WithMetadata(map[string]string{RetryableMetadataKey: "false"}).WithRetryable(true), "true", true, nil},
+		{"OK reported as Unknown keeps the decision", errorx.New(errorx.OK, "", "odd").WithRetryable(true), "true", true, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			st := toStatus(tt.in)
+			info := errorInfo(st)
+			got, ok := info.GetMetadata()[RetryableMetadataKey]
+			if tt.wire == "" && ok || tt.wire != "" && got != tt.wire {
+				t.Fatalf("wire %s = %q (present %v), want %q", RetryableMetadataKey, got, ok, tt.wire)
+			}
+			out, _ := errors.AsType[*errorx.Error](fromStatus(t.Context(), st.Err()))
+			if out == nil {
+				t.Fatal("fromStatus did not return *errorx.Error")
+			}
+			if out.Retryable() != tt.retryable || errorx.IsRetryable(out) != tt.retryable {
+				t.Errorf("Retryable() = %v, want %v", out.Retryable(), tt.retryable)
+			}
+			if !maps.Equal(out.Metadata, tt.md) {
+				t.Errorf("Metadata = %v, want %v", out.Metadata, tt.md)
+			}
+			if tt.md == nil && out.Metadata != nil {
+				t.Errorf("Metadata = %v, want nil", out.Metadata)
+			}
+		})
+	}
+}
+
+func TestFromStatusWithoutRetryableKey(t *testing.T) {
+	// Statuses from servers that predate RetryableMetadataKey, or from other
+	// implementations, keep the code-derived retryability.
+	for _, c := range []errorx.Code{errorx.Unavailable, errorx.DeadlineExceeded, errorx.NotFound, errorx.Internal} {
+		want := errorx.New(c, "", "").Retryable()
+		plain := status.New(codes.Code(c), "m")
+		withInfo, err := plain.WithDetails(&errdetails.ErrorInfo{Reason: "R", Metadata: map[string]string{"k": "v"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		invalid, err := plain.WithDetails(&errdetails.ErrorInfo{Metadata: map[string]string{RetryableMetadataKey: "maybe"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for name, st := range map[string]*status.Status{"no details": plain, "ErrorInfo without key": withInfo, "invalid value": invalid} {
+			out, _ := errors.AsType[*errorx.Error](fromStatus(t.Context(), st.Err()))
+			if out == nil || out.Code != c || out.Retryable() != want {
+				t.Errorf("%v %s: out = %+v, Retryable() = %v, want %v", c, name, out, out.Retryable(), want)
+			}
+			if _, ok := out.Metadata[RetryableMetadataKey]; ok {
+				t.Errorf("%v %s: reserved key leaked into Metadata %v", c, name, out.Metadata)
+			}
+		}
+		// The status detail itself is not modified by decoding.
+		if errorInfo(invalid).GetMetadata()[RetryableMetadataKey] != "maybe" {
+			t.Errorf("%v: decoding modified the status detail", c)
+		}
+	}
+}

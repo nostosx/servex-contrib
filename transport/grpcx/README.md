@@ -18,7 +18,11 @@ the core `transport/httpx`.
   Connections are kept per node and closed once the node leaves the set.
 - Errors map between `errorx` and gRPC statuses with the same numeric code;
   `Reason` and `Metadata` travel in a `google.rpc.ErrorInfo` detail and come
-  back as an `*errorx.Error` on the client.
+  back as an `*errorx.Error` on the client. Retryability follows the code; an
+  explicit `WithRetryable` decision that differs from the code default travels
+  under the reserved ErrorInfo metadata key `servex.retryable`
+  (`RetryableMetadataKey`, value `true` or `false`). Application metadata
+  under that key is dropped, and the client removes the key from `Metadata`.
 
 ## Install
 

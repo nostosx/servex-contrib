@@ -23,6 +23,12 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
   DataLoss); client-class codes such as NotFound, InvalidArgument,
   PermissionDenied or Canceled keep the `servex.code` attribute without an
   error status. Client spans still record every failure. Add `IsServerFault`.
+- transport/grpcx: carry an explicit `errorx` retryability decision, such as
+  `WithRetryable(false)` on Unavailable, in the reserved `servex.retryable`
+  ErrorInfo metadata key (`RetryableMetadataKey`). It is sent only when it
+  differs from the code default, any application value under that key is
+  dropped, and clients restore it and remove the key from `Metadata`. Statuses
+  without the key keep code-derived retryability.
 
 ## middleware/v1.1.0
 
