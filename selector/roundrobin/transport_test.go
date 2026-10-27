@@ -101,6 +101,42 @@ func TestTransportClientRotates(t *testing.T) {
 	}
 }
 
+// TestTransportClientInstanceWeights checks that weights registered in
+// discovery reach the selector: transport.Client copies Instance.Weight to
+// Node.Weight.
+func TestTransportClientInstanceWeights(t *testing.T) {
+	reg := memory.New()
+	for i, w := range []int{3, 1} {
+		ins := &discovery.Instance{ID: fmt.Sprint("i", i), Name: "svc", Weight: w, Endpoints: []string{fmt.Sprintf("test://10.0.0.%d:80", i+1)}}
+		if err := reg.Register(t.Context(), ins); err != nil {
+			t.Fatal(err)
+		}
+	}
+	c, err := transport.NewClient(t.Context(), "discovery:///svc",
+		transport.WithDiscoverer(reg),
+		transport.WithScheme("test"),
+		transport.WithSelector(roundrobin.New()),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = c.Close() })
+	rec := &recorder{}
+	ep := c.Endpoint("/svc/Get", rec)
+	for range 8 {
+		if _, err := ep(t.Context(), nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	counts := map[string]int{}
+	for _, addr := range rec.calls() {
+		counts[addr]++
+	}
+	if counts["10.0.0.1:80"] != 6 || counts["10.0.0.2:80"] != 2 {
+		t.Fatalf("calls = %v, want 6 and 2 for weights 3 and 1", counts)
+	}
+}
+
 // TestTransportClientRetryChangesNode checks that a retry wrapped around the
 // client endpoint selects a different node for each attempt.
 func TestTransportClientRetryChangesNode(t *testing.T) {

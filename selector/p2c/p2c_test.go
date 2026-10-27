@@ -429,6 +429,32 @@ func TestPrune(t *testing.T) {
 	}
 }
 
+// TestPruneWhenNodeSetShrinks checks that the state of removed nodes is
+// dropped on the next Select after the node set shrank, even though no new
+// node was offered.
+func TestPruneWhenNodeSetShrinks(t *testing.T) {
+	s, clock := newTest()
+	var all []selector.Node
+	for i := range 10 {
+		all = append(all, selector.Node{Addr: fmt.Sprint("n", i)})
+	}
+	for _, n := range all {
+		s.lookup(all, n.Addr)
+	}
+	remaining := all[:2]
+	call(t, s, clock, remaining, time.Millisecond, nil)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if len(s.stats) != len(remaining) {
+		t.Fatalf("state holds %d entries after the node set shrank to %d", len(s.stats), len(remaining))
+	}
+	for _, n := range remaining {
+		if s.stats[n.Addr] == nil {
+			t.Errorf("state of remaining node %s dropped", n.Addr)
+		}
+	}
+}
+
 func TestInvalidOptionsKeepDefaults(t *testing.T) {
 	s := New(nil, WithDecay(0), WithDecay(-time.Second), WithPenalty(-1), WithClock(nil), WithRandom(nil)).(*p2c)
 	if s.opts.decay != DefaultDecay || s.opts.penalty != DefaultPenalty || s.opts.now == nil || s.opts.intN == nil {

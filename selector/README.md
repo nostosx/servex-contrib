@@ -9,6 +9,13 @@ servex and its kitx dependency.
 | `roundrobin` | `New()` | Smooth weighted round-robin (the nginx algorithm): picks follow `Node.Weight` exactly over every cycle and are spread evenly instead of in bursts. |
 | `p2c` | `New(opts...)` | Power of Two Choices: samples two nodes and picks the one with the lower load, estimated from a peak EWMA of latency and the number of in-flight calls. Outcomes reported through `Done` update the estimate; failures add a latency penalty so failing nodes are avoided until they recover. |
 
+Both honor `Node.Weight` (values `<= 0` count as 1), which `transport.Client`
+copies from `discovery.Instance.Weight` since servex v1.2.0; registries such
+as `discovery/consul`, `discovery/etcd` and `discovery/nacos` carry it. Per-node
+state follows the node sets passed to `Select`: state of nodes that left the
+set is dropped on a later call, so no `transport.WithNodeObserver` wiring is
+needed.
+
 The core default is `selector.Random()` (weighted random). Because node
 selection is the innermost step of a client call, every retry selects again
 and every outcome is reported to the selector.

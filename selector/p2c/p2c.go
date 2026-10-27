@@ -101,8 +101,11 @@ func WithRandom(intN func(n int) int) Option {
 // errors, such as InvalidArgument, show that the node served the call and
 // record its latency like a success.
 //
-// State is kept per Addr and survives changes of the node set; nodes that
-// disappear are eventually forgotten. The selector is safe for concurrent
+// Node weights come from Node.Weight, which transport.Client copies from
+// discovery.Instance.Weight. State is kept per Addr and survives changes of
+// the node set; once the state holds more than twice as many nodes as a
+// Select is offered, the nodes outside that set are forgotten, so a shrinking
+// node set is pruned on the next call. The selector is safe for concurrent
 // use.
 func New(opts ...Option) selector.Selector {
 	o := options{
@@ -124,7 +127,7 @@ type p2c struct {
 	opts options
 
 	mu    sync.Mutex
-	stats map[string]*stats // Addr -> state; pruned when it outgrows the nodes
+	stats map[string]*stats // Addr -> state; pruned when it outgrows the offered nodes
 	seen  map[string]bool   // scratch set used for pruning
 }
 
@@ -158,8 +161,10 @@ func (p *p2c) lookup(nodes []selector.Node, addr string) *stats {
 	if !ok {
 		s = &stats{decay: float64(p.opts.decay), stamp: p.opts.now()}
 		p.stats[addr] = s
-		p.prune(nodes)
 	}
+	// Also checked for known nodes, so that a node set that shrank without
+	// new nodes is pruned as well.
+	p.prune(nodes)
 	return s
 }
 
