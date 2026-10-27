@@ -215,3 +215,38 @@ func TestClientKeepsConnectionsOfRemainingNodes(t *testing.T) {
 		t.Errorf("dials = %d, want 2", n.dials.Load())
 	}
 }
+
+// TestClientEvictsIdleConnectionWithoutCalls checks that the idle
+// connection of a node that left discovery is closed as soon as the node set
+// changes, without waiting for another call.
+func TestClientEvictsIdleConnectionWithoutCalls(t *testing.T) {
+	const addrA, addrB = "127.0.0.1:9114", "127.0.0.1:9115"
+	n := newNetwork()
+	startServer(t, n, addrA)
+	startServer(t, n, addrB)
+	reg := memory.New()
+	insA := &discovery.Instance{ID: "a", Name: "svc", Endpoints: []string{"grpc://" + addrA}}
+	insB := &discovery.Instance{ID: "b", Name: "svc", Endpoints: []string{"grpc://" + addrB}}
+	for _, ins := range []*discovery.Instance{insA, insB} {
+		if err := reg.Register(t.Context(), ins); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sel := &pinned{}
+	c := newClient(t, n, "discovery:///svc", grpcx.WithDiscoverer(reg), grpcx.WithSelector(sel))
+	client := testpb.NewTestServiceClient(c.Conn())
+	for _, addr := range []string{addrA, addrB} {
+		sel.pin(addr)
+		if _, err := client.UnaryCall(t.Context(), simple("x")); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := c.ConnAddrs(); !slices.Equal(got, []string{addrA, addrB}) {
+		t.Fatalf("conns = %v, want both nodes", got)
+	}
+	if err := reg.Deregister(t.Context(), insB); err != nil {
+		t.Fatal(err)
+	}
+	eventually(t, "B's idle connection to be evicted", func() bool { return slices.Equal(c.ConnAddrs(), []string{addrA}) })
+	eventually(t, "B's network connection to close", func() bool { return n.open.Load() == 1 })
+}

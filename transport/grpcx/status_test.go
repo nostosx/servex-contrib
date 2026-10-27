@@ -207,3 +207,78 @@ func TestFromStatusWithoutRetryableKey(t *testing.T) {
 		}
 	}
 }
+
+// TestFromStatusMarksRemote checks that decoded statuses are remote errors:
+// retryable for this hop as before, but not propagated as retryable.
+func TestFromStatusMarksRemote(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		in        *errorx.Error
+		retryable bool
+	}{
+		{"code default", errorx.New(errorx.Unavailable, "BUSY", "m"), true},
+		{"explicit false", errorx.New(errorx.Unavailable, "", "draining").WithRetryable(false), false},
+		{"explicit true", errorx.New(errorx.NotFound, "R", "m").WithRetryable(true), true},
+		{"not retryable", errorx.New(errorx.NotFound, "R", "m"), false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			out, _ := errors.AsType[*errorx.Error](fromStatus(t.Context(), toStatus(tt.in).Err()))
+			if out == nil || !out.Remote() {
+				t.Fatalf("out = %+v, want a remote error", out)
+			}
+			if out.Retryable() != tt.retryable {
+				t.Errorf("Retryable() = %v, want %v", out.Retryable(), tt.retryable)
+			}
+			if out.PropagatedRetryable() {
+				t.Error("PropagatedRetryable() = true, want false for a remote error")
+			}
+		})
+	}
+	// Statuses produced by gRPC itself, such as a failed connection, cannot
+	// be told apart and are remote too.
+	out, _ := errors.AsType[*errorx.Error](fromStatus(t.Context(), status.Error(codes.Unavailable, "connection refused")))
+	if out == nil || !out.Remote() || !out.Retryable() {
+		t.Errorf("connection failure = %+v, want a retryable remote error", out)
+	}
+	// The end of the caller's own context is local.
+	ctx, cancel := context.WithCancel(t.Context())
+	cancel()
+	for _, c := range []codes.Code{codes.Canceled, codes.DeadlineExceeded} {
+		if out, _ := errors.AsType[*errorx.Error](fromStatus(ctx, status.Error(c, "ctx"))); out == nil || out.Remote() {
+			t.Errorf("%v after the context ended = %+v, want a local error", c, out)
+		}
+	}
+	// Without a local cancellation the codes are remote.
+	if out, _ := errors.AsType[*errorx.Error](fromStatus(t.Context(), status.Error(codes.DeadlineExceeded, "x"))); out == nil || !out.Remote() {
+		t.Errorf("remote DeadlineExceeded = %+v, want remote", out)
+	}
+}
+
+// TestToStatusPropagatesRetryable checks the retry decision a server sends
+// for errors it received from another service.
+func TestToStatusPropagatesRetryable(t *testing.T) {
+	remote := errorx.New(errorx.Unavailable, "BUSY", "m").WithRemote()
+	for _, tt := range []struct {
+		name string
+		err  error
+		wire string // "" means absent
+	}{
+		{"remote error is not retried again", remote, "false"},
+		{"wrapped remote error", fmt.Errorf("call inventory: %w", remote), "false"},
+		{"remote error retried on purpose", remote.WithRetryable(true), ""},
+		{"remote non-retryable error", errorx.New(errorx.NotFound, "R", "m").WithRemote(), ""},
+		{"local error keeps the code default", errorx.New(errorx.Unavailable, "BUSY", "m"), ""},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			st := toStatus(tt.err)
+			got, ok := errorInfo(st).GetMetadata()[RetryableMetadataKey]
+			if tt.wire == "" && ok || tt.wire != "" && got != tt.wire {
+				t.Fatalf("wire %s = %q (present %v), want %q", RetryableMetadataKey, got, ok, tt.wire)
+			}
+			out, _ := errors.AsType[*errorx.Error](fromStatus(t.Context(), st.Err()))
+			if want := errorx.From(tt.err).PropagatedRetryable(); out == nil || out.Retryable() != want {
+				t.Errorf("caller sees Retryable() = %v, want %v", out.Retryable(), want)
+			}
+		})
+	}
+}

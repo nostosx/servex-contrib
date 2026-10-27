@@ -56,8 +56,15 @@ func TestClientUnaryMiddlewareAndHeader(t *testing.T) {
 				info, _ := metadata.FromContext(ctx)
 				if name == "first" {
 					seen = info
-					if r, ok := req.(*testpb.SimpleRequest); !ok || string(r.GetPayload().GetBody()) != "hello" {
-						t.Errorf("req = %v", req)
+					// Typed rejects a request of another type with a TypeError.
+					check := endpoint.Typed(func(_ context.Context, r *testpb.SimpleRequest) (any, error) {
+						if string(r.GetPayload().GetBody()) != "hello" {
+							t.Errorf("req = %v", r)
+						}
+						return nil, nil
+					})
+					if _, err := check(ctx, req); err != nil {
+						t.Errorf("req = %T: %v", req, err)
 					}
 				}
 				info.Header.Add("x-chain", name)
@@ -333,5 +340,65 @@ func TestClientStream(t *testing.T) {
 	var reply testpb.StreamingOutputCallResponse
 	if err := bidi.RecvMsg(&reply); errorx.CodeOf(err) != errorx.Unimplemented {
 		t.Errorf("FullDuplexCall err = %v, want Unimplemented", err)
+	}
+}
+
+// forwarder is a TestService whose UnaryCall forwards to next and returns
+// its error unchanged or, with retry set, marked retryable for its caller.
+type forwarder struct {
+	testpb.UnimplementedTestServiceServer
+	next  testpb.TestServiceClient
+	retry bool
+}
+
+func (f *forwarder) UnaryCall(ctx context.Context, req *testpb.SimpleRequest) (*testpb.SimpleResponse, error) {
+	resp, err := f.next.UnaryCall(ctx, req)
+	if err != nil && f.retry {
+		return nil, errorx.From(err).WithRetryable(true)
+	}
+	return resp, err
+}
+
+// TestRetryDecisionAcrossHops checks that an error received from another
+// service is retryable for the hop that received it, but reported as not
+// retryable to the next caller unless the handler decides otherwise.
+func TestRetryDecisionAcrossHops(t *testing.T) {
+	for _, tt := range []struct {
+		name  string
+		retry bool
+	}{{"returned unchanged", false}, {"retried on purpose", true}} {
+		t.Run(tt.name, func(t *testing.T) {
+			n := newNetwork()
+			startServer(t, n, "127.0.0.1:9130")
+			// The middle hop records how its own client classifies the error.
+			var hopRetryable, hopRemote bool
+			record := func(next endpoint.Endpoint) endpoint.Endpoint {
+				return func(ctx context.Context, req any) (any, error) {
+					resp, err := next(ctx, req)
+					hopRetryable, hopRemote = errorx.IsRetryable(err), errorx.From(err).Remote()
+					return resp, err
+				}
+			}
+			down := newClient(t, n, "grpc://127.0.0.1:9130", grpcx.WithClientMiddleware(record))
+			mid := grpcx.NewServer(grpcx.WithListener(n.listen("127.0.0.1:9131")))
+			testpb.RegisterTestServiceServer(mid, &forwarder{next: testpb.NewTestServiceClient(down.Conn()), retry: tt.retry})
+			if err := mid.Start(t.Context()); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = mid.Stop(context.Background()) })
+
+			top := testpb.NewTestServiceClient(newClient(t, n, "grpc://127.0.0.1:9131").Conn())
+			_, err := top.UnaryCall(t.Context(), simple("unavailable"))
+			if !hopRetryable || !hopRemote {
+				t.Errorf("middle hop: retryable %v, remote %v; want a retryable remote error", hopRetryable, hopRemote)
+			}
+			e := errorx.From(err)
+			if e.Code != errorx.Unavailable || e.Reason != "BUSY" || !e.Remote() {
+				t.Fatalf("top error = %+v, want a remote Unavailable BUSY", e)
+			}
+			if got := errorx.IsRetryable(err); got != tt.retry {
+				t.Errorf("top caller sees retryable %v, want %v", got, tt.retry)
+			}
+		})
 	}
 }

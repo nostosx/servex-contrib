@@ -69,8 +69,9 @@ func WithDialOptions(o ...grpc.DialOption) ClientOption {
 // Client calls gRPC services through a transport.Client. It keeps one
 // *grpc.ClientConn per node address, created on first use. When a node
 // leaves the node set, its connection is closed as soon as the unary calls
-// and streams using it have finished. Node set changes are noticed lazily,
-// by the next call that selects a node. All methods are safe for concurrent
+// and streams using it have finished, or right away when it is idle. The
+// Client follows node set changes through transport.WithNodeObserver, so
+// they apply without waiting for a call. All methods are safe for concurrent
 // use.
 type Client struct {
 	tc         *transport.Client
@@ -82,14 +83,10 @@ type Client struct {
 	conns  map[string]*nodeConn
 	unary  map[string]endpoint.Endpoint // per method
 	closed bool
-	// live holds the addresses of the node set last offered to the
-	// selector; it is nil until the first selection.
+	// live holds the addresses of the latest node set reported by the
+	// transport.Client, which reports the initial set before NewClient
+	// returns; it is nil only while NewClient runs.
 	live map[string]struct{}
-	// seen and seenLen identify that node set. The transport.Client
-	// replaces its node set on every change and never mutates it, so a
-	// different first element or length means a new set.
-	seen    *selector.Node
-	seenLen int
 }
 
 // nodeConn is the pooled connection to one node.
@@ -134,7 +131,8 @@ func NewClient(ctx context.Context, target string, opts ...ClientOption) (*Clien
 	}
 	topts := []transport.ClientOption{
 		transport.WithScheme(scheme),
-		transport.WithSelector(liveSelector{inner: sel, c: c}),
+		transport.WithSelector(sel),
+		transport.WithNodeObserver(c.observe),
 	}
 	if o.discoverer != nil {
 		topts = append(topts, transport.WithDiscoverer(o.discoverer))
@@ -147,34 +145,16 @@ func NewClient(ctx context.Context, target string, opts ...ClientOption) (*Clien
 	return c, nil
 }
 
-// liveSelector passes every node set offered to the configured Selector to
-// the Client first, so that connections to nodes that left the set can be
-// closed.
-type liveSelector struct {
-	inner selector.Selector
-	c     *Client
-}
-
-// Select implements selector.Selector.
-func (s liveSelector) Select(ctx context.Context, nodes []selector.Node) (selector.Node, selector.Done, error) {
-	s.c.observe(nodes)
-	return s.inner.Select(ctx, nodes)
-}
-
-// observe records nodes as the live node set when it differs from the last
-// one, and closes the idle connections to nodes outside it. Connections in
-// use are closed when their last call or stream finishes.
+// observe is the node observer of the transport.Client, called whenever its
+// node set changes. It records nodes as the live node set and closes the
+// idle connections to nodes outside it. Connections in use are closed when
+// their last call or stream finishes.
 func (c *Client) observe(nodes []selector.Node) {
-	var first *selector.Node
-	if len(nodes) > 0 {
-		first = &nodes[0]
-	}
 	c.mu.Lock()
-	if c.closed || (c.live != nil && first == c.seen && len(nodes) == c.seenLen) {
+	if c.closed {
 		c.mu.Unlock()
 		return
 	}
-	c.seen, c.seenLen = first, len(nodes)
 	c.live = make(map[string]struct{}, len(nodes))
 	for _, n := range nodes {
 		c.live[n.Addr] = struct{}{}

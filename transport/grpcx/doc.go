@@ -12,5 +12,7 @@
 // *errorx.Error restored from the status. Its retryability follows the code
 // unless the server sent an explicit decision under RetryableMetadataKey; the
 // original status error stays in the cause chain, so status.FromError keeps
-// working.
+// working. Restored errors are marked remote (errorx.WithRemote), so a server
+// returning them sends errorx.Error.PropagatedRetryable and its caller does
+// not retry a failure the receiving hop may already have retried.
 package grpcx

@@ -16,18 +16,21 @@ import (
 
 // RetryableMetadataKey is the reserved google.rpc.ErrorInfo metadata key that
 // carries an explicit errorx retryability decision across gRPC. Its value is
-// "true" or "false". The server sets it only when Error.Retryable differs from
-// the default of the transmitted code, for example after
-// WithRetryable(false) on an Unavailable error, and drops any application
-// metadata value under this key. The client restores the decision with
-// Error.WithRetryable and removes the key from Error.Metadata; when the key is
-// absent or not a boolean, retryability follows the code.
+// "true" or "false". The server sends Error.PropagatedRetryable under it when
+// that differs from the default of the transmitted code, for example after
+// WithRetryable(false) on an Unavailable error, or for a remote error the
+// handler returns unchanged, which its caller must not retry again. Any
+// application metadata value under this key is dropped. The client restores
+// the decision with Error.WithRetryable and removes the key from
+// Error.Metadata; when the key is absent or not a boolean, retryability
+// follows the code.
 const RetryableMetadataKey = "servex.retryable"
 
 // toStatus converts a handler error into a gRPC status. An *errorx.Error in
 // the chain wins: its Code becomes the status code, its Message the status
-// message, and its Reason, Metadata and a non-default retryability (see
-// RetryableMetadataKey) travel in a google.rpc.ErrorInfo detail. Errors that
+// message, and its Reason, Metadata and a non-default propagated
+// retryability (see RetryableMetadataKey) travel in a google.rpc.ErrorInfo
+// detail. Errors that
 // already carry a gRPC status keep it; any other error is converted with
 // errorx.From. An error with code OK is reported as Unknown, because a status
 // with code OK would turn the failure into a success.
@@ -46,7 +49,7 @@ func toStatus(err error) *status.Status {
 	st := status.New(code, e.Message)
 	md := maps.Clone(e.Metadata)
 	delete(md, RetryableMetadataKey)
-	if retryable := e.Retryable(); retryable != errorx.New(errorx.Code(code), "", "").Retryable() {
+	if retryable := e.PropagatedRetryable(); retryable != errorx.New(errorx.Code(code), "", "").Retryable() {
 		if md == nil {
 			md = make(map[string]string, 1)
 		}
@@ -75,7 +78,12 @@ func statusError(err error) error {
 // *errorx.Error with the same Code and Message, and the Reason and Metadata
 // of the first google.rpc.ErrorInfo detail. Retryability follows the code
 // unless that detail carries RetryableMetadataKey, which is restored with
-// WithRetryable and removed from Metadata.
+// WithRetryable and removed from Metadata. The result is marked remote with
+// errorx.WithRemote: retry middleware of this client may still retry it, but
+// a servex server returning it tells its own caller not to retry. That
+// includes the statuses gRPC reports for connection failures, which a client
+// cannot tell apart from statuses sent by the peer. Canceled and
+// DeadlineExceeded caused by the end of ctx are local and not marked.
 // The original error stays in the cause chain, so status.FromError and
 // status.Code keep working on the result; when ctx has ended and the code is
 // Canceled or DeadlineExceeded, the context error joins the chain too.
@@ -108,12 +116,19 @@ func fromStatus(ctx context.Context, err error) error {
 		delete(md, RetryableMetadataKey)
 	}
 	cause := err
-	if ctxErr := ctx.Err(); ctxErr != nil && (code == errorx.Canceled || code == errorx.DeadlineExceeded) {
+	ctxErr := ctx.Err()
+	local := ctxErr != nil && (code == errorx.Canceled || code == errorx.DeadlineExceeded)
+	if local {
 		cause = fmt.Errorf("%w: %w", ctxErr, err)
 	}
 	e := errorx.New(code, reason, st.Message()).WithMetadata(md).WithCause(cause)
 	if retryable, perr := strconv.ParseBool(raw); explicit && perr == nil {
 		e = e.WithRetryable(retryable)
+	}
+	if !local {
+		// After WithRetryable, so that the peer's decision applies to this
+		// hop only.
+		e = e.WithRemote()
 	}
 	return e
 }

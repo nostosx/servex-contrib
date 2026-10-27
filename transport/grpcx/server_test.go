@@ -48,8 +48,10 @@ func TestServerUnaryMiddlewareAndInfo(t *testing.T) {
 				order = append(order, name)
 				if name == "outer" {
 					seen, _ = metadata.FromContext(ctx)
-					if _, ok := req.(*testpb.SimpleRequest); !ok {
-						t.Errorf("req = %T, want *SimpleRequest", req)
+					// Typed rejects a request of another type with a TypeError.
+					check := endpoint.Typed(func(context.Context, *testpb.SimpleRequest) (any, error) { return nil, nil })
+					if _, err := check(ctx, req); err != nil {
+						t.Errorf("req = %T, want *SimpleRequest: %v", req, err)
 					}
 				}
 				resp, err := next(ctx, req)
@@ -66,6 +68,12 @@ func TestServerUnaryMiddlewareAndInfo(t *testing.T) {
 	}
 	if srv.Name() != "grpc" {
 		t.Errorf("Name = %q", srv.Name())
+	}
+	if got := grpcx.NewServer(grpcx.WithName("grpc:admin")).Name(); got != "grpc:admin" {
+		t.Errorf("Name with WithName = %q, want grpc:admin", got)
+	}
+	if got := grpcx.NewServer(grpcx.WithName("")).Name(); got != "grpc" {
+		t.Errorf("Name with an empty WithName = %q, want grpc", got)
 	}
 	if _, ok := srv.GetServiceInfo()["grpc.testing.TestService"]; !ok {
 		t.Error("TestService not in GetServiceInfo")

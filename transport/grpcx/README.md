@@ -15,14 +15,23 @@ the core `transport/httpx`.
   (`pb.NewGreeterClient(c.Conn())`). Every unary call runs the client
   middleware, selects a node (direct `grpc://host:port` or
   `discovery:///<name>` target) and is made on that node's connection.
-  Connections are kept per node and closed once the node leaves the set.
+  Connections are kept per node and closed once the node leaves the set: the
+  client follows node set changes through `transport.WithNodeObserver`, so an
+  idle connection closes as soon as discovery reports the change, and one in
+  use after its last call or stream.
 - Errors map between `errorx` and gRPC statuses with the same numeric code;
   `Reason` and `Metadata` travel in a `google.rpc.ErrorInfo` detail and come
-  back as an `*errorx.Error` on the client. Retryability follows the code; an
-  explicit `WithRetryable` decision that differs from the code default travels
-  under the reserved ErrorInfo metadata key `servex.retryable`
-  (`RetryableMetadataKey`, value `true` or `false`). Application metadata
-  under that key is dropped, and the client removes the key from `Metadata`.
+  back as an `*errorx.Error` on the client. Retryability follows the code; a
+  different decision travels under the reserved ErrorInfo metadata key
+  `servex.retryable` (`RetryableMetadataKey`, value `true` or `false`).
+  Application metadata under that key is dropped, and the client removes the
+  key from `Metadata`.
+- Client errors are marked remote (`errorx.WithRemote`): this client's retry
+  middleware may retry them, but a server returning such an error, directly
+  or wrapped, sends `PropagatedRetryable`, so its caller does not retry it
+  again. Set `errorx.From(err).WithRetryable(true)` in the handler to let the
+  caller retry. Statuses gRPC reports for connection failures are remote too;
+  `Canceled` and `DeadlineExceeded` caused by the caller's own context are not.
 
 ## Install
 
@@ -128,6 +137,7 @@ Server:
 
 | Option | Default | Description |
 |---|---|---|
+| `WithName(name)` | `grpc` | Hook name in app logs and errors; give several gRPC servers of one App distinct names. |
 | `Address(addr)` | `:9000` | Listen address; `:0` picks a free port reported by `URL()`. |
 | `Middleware(m...)` | none | servex server middleware for unary calls, `m[0]` outermost. |
 | `GRPCOptions(o...)` | none | Options for the underlying `grpc.Server` (credentials, keepalive, ...). |

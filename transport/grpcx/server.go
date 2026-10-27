@@ -35,12 +35,24 @@ type ServerOption func(*serverOptions)
 
 // serverOptions holds the configuration collected from ServerOptions.
 type serverOptions struct {
+	name           string
 	addr           string
 	middleware     []endpoint.Middleware
 	grpcOpts       []grpc.ServerOption
 	health         health.Checker
 	healthInterval time.Duration
 	listener       net.Listener
+}
+
+// WithName sets the hook name of the server, which identifies it in app logs
+// and errors. The default is "grpc"; give each gRPC server of an App its own
+// name. An empty name keeps the default.
+func WithName(name string) ServerOption {
+	return func(o *serverOptions) {
+		if name != "" {
+			o.name = name
+		}
+	}
 }
 
 // Address sets the TCP address the server listens on. The default is
@@ -84,6 +96,7 @@ func Health(c health.Checker) ServerOption {
 // Info. Errors returned by handlers and middleware are converted into gRPC
 // statuses as described in the package documentation.
 type Server struct {
+	name       string
 	addr       string
 	middleware endpoint.Middleware
 	srv        *grpc.Server
@@ -101,13 +114,14 @@ type Server struct {
 
 // NewServer creates a Server. Services must be registered before Start.
 func NewServer(opts ...ServerOption) *Server {
-	o := serverOptions{addr: ":9000", healthInterval: defaultHealthInterval}
+	o := serverOptions{name: "grpc", addr: ":9000", healthInterval: defaultHealthInterval}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&o)
 		}
 	}
 	s := &Server{
+		name:       o.name,
 		addr:       o.addr,
 		middleware: endpoint.Chain(o.middleware...),
 		errc:       make(chan error, 1),
@@ -126,8 +140,8 @@ func NewServer(opts ...ServerOption) *Server {
 	return s
 }
 
-// Name returns "grpc".
-func (s *Server) Name() string { return "grpc" }
+// Name returns the name set with WithName, "grpc" by default.
+func (s *Server) Name() string { return s.name }
 
 // RegisterService registers a service and its implementation. It is called
 // by generated code and must be invoked before Start; like grpc.Server it
