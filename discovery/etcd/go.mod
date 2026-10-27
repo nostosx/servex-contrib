@@ -3,7 +3,7 @@ module github.com/nostosx/servex-contrib/discovery/etcd
 go 1.27.3
 
 require (
-	github.com/nostosx/servex v1.0.0
+	github.com/nostosx/servex v1.2.0
 	go.etcd.io/etcd/api/v3 v3.7.2
 	go.etcd.io/etcd/client/v3 v3.7.2
 	go.etcd.io/etcd/server/v3 v3.7.2

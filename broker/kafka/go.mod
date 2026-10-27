@@ -3,7 +3,7 @@ module github.com/nostosx/servex-contrib/broker/kafka
 go 1.27.3
 
 require (
-	github.com/nostosx/servex v1.0.0
+	github.com/nostosx/servex v1.2.0
 	github.com/twmb/franz-go v1.22.2
 	github.com/twmb/franz-go/pkg/kadm v1.19.0
 	github.com/twmb/franz-go/pkg/kfake v0.0.0-20261020234411-c06330b92452

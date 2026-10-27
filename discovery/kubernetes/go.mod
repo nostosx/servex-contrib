@@ -3,7 +3,7 @@ module github.com/nostosx/servex-contrib/discovery/kubernetes
 go 1.27.3
 
 require (
-	github.com/nostosx/servex v1.0.0
+	github.com/nostosx/servex v1.2.0
 	k8s.io/api v0.37.0
 	k8s.io/apimachinery v0.37.0
 	k8s.io/client-go v0.37.0

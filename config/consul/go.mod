@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/hashicorp/consul/api v1.35.0
-	github.com/nostosx/servex v1.0.0
+	github.com/nostosx/servex v1.2.0
 )
 
 require (

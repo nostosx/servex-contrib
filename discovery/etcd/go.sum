@@ -52,8 +52,8 @@ github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/nostosx/kitx v1.0.0 h1:EMfdh57DXbW+FPZD9/e+Mrxju1qx6EyEjrotpR+nso0=
 github.com/nostosx/kitx v1.0.0/go.mod h1:zNZAYv7ZyA2UkijHptpgnsSQKMmWIHp9E0e2TGBgDZE=
-github.com/nostosx/servex v1.0.0 h1:BnNod/LDpqxcTr+sTnMEF0CMHrcaszfxYTeiCxKRaNI=
-github.com/nostosx/servex v1.0.0/go.mod h1:9Qp0pyoc7lcNd11ke3OlEEWWcNnqEBxqlWtP4Yk37kw=
+github.com/nostosx/servex v1.2.0 h1:gKJ6cilurDYEPIdTBzXaF+PIqkN3PhVv5YPg3eC6JH4=
+github.com/nostosx/servex v1.2.0/go.mod h1:9Qp0pyoc7lcNd11ke3OlEEWWcNnqEBxqlWtP4Yk37kw=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
