@@ -46,7 +46,10 @@ unchanged against v1.2.0; encoding/proto only updates its example to the
   the next caller as not retryable. **Breaking:** a service forwarding a
   downstream failure no longer invites its callers to retry; set
   `errorx.From(err).WithRetryable(true)` to restore that. Add the `WithName`
-  server option (default `"grpc"`). Connections of removed nodes are now
+  server option (default `"grpc"`). **Breaking:** the server options
+  `Address`, `Middleware`, `GRPCOptions` and `Health` are renamed
+  `WithAddress`, `WithMiddleware`, `WithGRPCOptions` and `WithHealth`, matching
+  servex httpx. Connections of removed nodes are now
   tracked with `transport.WithNodeObserver`, so idle connections close as soon
   as discovery reports the change instead of on the next call.
 - middleware: `metrics` passes the call context to `Add` and `Observe`;

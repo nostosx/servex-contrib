@@ -62,7 +62,7 @@ func TestServerUnaryMiddlewareAndInfo(t *testing.T) {
 			}
 		}
 	}
-	srv, svc := startServer(t, n, "127.0.0.1:9001", grpcx.Middleware(mark("outer"), mark("inner")))
+	srv, svc := startServer(t, n, "127.0.0.1:9001", grpcx.WithMiddleware(mark("outer"), mark("inner")))
 	if got := srv.URL().String(); got != "grpc://127.0.0.1:9001" {
 		t.Errorf("URL = %s", got)
 	}
@@ -110,7 +110,7 @@ func TestServerMiddlewareShortCircuit(t *testing.T) {
 			return nil, errorx.New(errorx.Unauthenticated, "NO_TOKEN", "missing token")
 		}
 	}
-	_, svc := startServer(t, n, "127.0.0.1:9002", grpcx.Middleware(deny))
+	_, svc := startServer(t, n, "127.0.0.1:9002", grpcx.WithMiddleware(deny))
 	_, err := testpb.NewTestServiceClient(rawConn(t, n, "127.0.0.1:9002")).UnaryCall(t.Context(), simple("hi"))
 	st := status.Convert(err)
 	if st.Code() != codes.Unauthenticated || st.Message() != "missing token" {
@@ -126,7 +126,7 @@ func TestServerMiddlewareDroppingContext(t *testing.T) {
 	drop := func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(_ context.Context, req any) (any, error) { return next(context.Background(), req) }
 	}
-	startServer(t, n, "127.0.0.1:9003", grpcx.Middleware(drop))
+	startServer(t, n, "127.0.0.1:9003", grpcx.WithMiddleware(drop))
 	_, err := testpb.NewTestServiceClient(rawConn(t, n, "127.0.0.1:9003")).UnaryCall(t.Context(), simple("hi"))
 	if status.Code(err) != codes.Unknown {
 		t.Fatalf("err = %v, want Unknown", err)
@@ -170,7 +170,7 @@ func TestServerStreamInfoWithoutMiddleware(t *testing.T) {
 			return next(ctx, req)
 		}
 	}
-	_, svc := startServer(t, n, "127.0.0.1:9005", grpcx.Middleware(count))
+	_, svc := startServer(t, n, "127.0.0.1:9005", grpcx.WithMiddleware(count))
 	client := testpb.NewTestServiceClient(rawConn(t, n, "127.0.0.1:9005"))
 	ctx := grpcmd.AppendToOutgoingContext(t.Context(), "x-user", "trinity")
 	stream, err := client.StreamingOutputCall(ctx, &testpb.StreamingOutputCallRequest{
@@ -221,7 +221,7 @@ func TestServerHealth(t *testing.T) {
 		}
 	}
 	srv, _ := startServer(t, n, "127.0.0.1:9006",
-		grpcx.Health(checker), grpcx.WithHealthInterval(5*time.Millisecond), grpcx.Middleware(mw))
+		grpcx.WithHealth(checker), grpcx.WithHealthInterval(5*time.Millisecond), grpcx.WithMiddleware(mw))
 	hc := grpc_health_v1.NewHealthClient(rawConn(t, n, "127.0.0.1:9006"))
 
 	check := func(service string) (grpc_health_v1.HealthCheckResponse_ServingStatus, error) {
@@ -298,7 +298,7 @@ func TestServerHealth(t *testing.T) {
 }
 
 func TestServerLifecycle(t *testing.T) {
-	srv := grpcx.NewServer(grpcx.Address("127.0.0.1:0"))
+	srv := grpcx.NewServer(grpcx.WithAddress("127.0.0.1:0"))
 	if srv.URL() != nil {
 		t.Error("URL before Start != nil")
 	}
@@ -340,7 +340,7 @@ func TestServerLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer ln.Close()
-	busy := grpcx.NewServer(grpcx.Address(ln.Addr().String()))
+	busy := grpcx.NewServer(grpcx.WithAddress(ln.Addr().String()))
 	if err := busy.Start(t.Context()); err == nil {
 		_ = busy.Stop(t.Context()) // best-effort cleanup of the unexpected server
 		t.Error("Start on a busy address succeeded")

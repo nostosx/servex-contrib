@@ -42,8 +42,8 @@ func TestEndToEndThroughDiscovery(t *testing.T) {
 	svc := &testService{id: "user-1", blocked: make(chan struct{}, 1)}
 	srv := grpcx.NewServer(
 		grpcx.WithListener(n.listen("127.0.0.1:9300")),
-		grpcx.Middleware(audit),
-		grpcx.Health(health.CheckerFunc(func(ctx context.Context) error { return a.Check(ctx) })),
+		grpcx.WithMiddleware(audit),
+		grpcx.WithHealth(health.CheckerFunc(func(ctx context.Context) error { return a.Check(ctx) })),
 	)
 	testpb.RegisterTestServiceServer(srv, svc)
 	a = app.New(

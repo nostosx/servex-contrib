@@ -55,33 +55,33 @@ func WithName(name string) ServerOption {
 	}
 }
 
-// Address sets the TCP address the server listens on. The default is
+// WithAddress sets the TCP address the server listens on. The default is
 // ":9000"; ":0" picks a free port, which URL reports after Start.
-func Address(addr string) ServerOption {
+func WithAddress(addr string) ServerOption {
 	return func(o *serverOptions) { o.addr = addr }
 }
 
-// Middleware appends server middleware. It wraps every unary call, in the
+// WithMiddleware appends server middleware. It wraps every unary call, in the
 // order given; m[0] is the outermost layer. Streaming calls do not pass
 // through it.
-func Middleware(m ...endpoint.Middleware) ServerOption {
+func WithMiddleware(m ...endpoint.Middleware) ServerOption {
 	return func(o *serverOptions) { o.middleware = append(o.middleware, m...) }
 }
 
-// GRPCOptions appends options for the underlying grpc.Server, such as
+// WithGRPCOptions appends options for the underlying grpc.Server, such as
 // credentials or keepalive parameters. Interceptors given here run inside
 // the servex interceptors, except a grpc.UnaryInterceptor or
 // grpc.StreamInterceptor, which grpc always places outermost.
-func GRPCOptions(o ...grpc.ServerOption) ServerOption {
+func WithGRPCOptions(o ...grpc.ServerOption) ServerOption {
 	return func(so *serverOptions) { so.grpcOpts = append(so.grpcOpts, o...) }
 }
 
-// Health registers the grpc.health.v1.Health service. The status of the
+// WithHealth registers the grpc.health.v1.Health service. The status of the
 // whole server (the empty service name) and of every registered service
 // follows c.Check: SERVING when it returns nil, NOT_SERVING otherwise.
 // Unknown service names yield NotFound from Check and SERVICE_UNKNOWN from
 // Watch. An app.App satisfies health.Checker through its Check method.
-func Health(c health.Checker) ServerOption {
+func WithHealth(c health.Checker) ServerOption {
 	return func(o *serverOptions) { o.health = c }
 }
 

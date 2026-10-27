@@ -69,9 +69,9 @@ import (
 func run() error {
 	var a *app.App
 	srv := grpcx.NewServer(
-		grpcx.Address(":9000"),
-		grpcx.Health(health.CheckerFunc(func(ctx context.Context) error { return a.Check(ctx) })),
-		// grpcx.Middleware(...) adds servex server middleware for unary calls.
+		grpcx.WithAddress(":9000"),
+		grpcx.WithHealth(health.CheckerFunc(func(ctx context.Context) error { return a.Check(ctx) })),
+		// grpcx.WithMiddleware(...) adds servex server middleware for unary calls.
 	)
 	// pb.RegisterGreeterServer(srv, &greeter{})
 
