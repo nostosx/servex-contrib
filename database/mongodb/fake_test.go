@@ -64,6 +64,7 @@ type recMeter struct {
 	buckets map[string][]float64
 	counts  map[string]float64
 	obs     map[string][]float64
+	ctxs    []context.Context // context of every Add and Observe
 }
 
 func newRecMeter() *recMeter {
@@ -101,6 +102,12 @@ func (m *recMeter) Histogram(name, _ string, buckets []float64, labelNames ...st
 	return &recHistogram{m: m, name: name}
 }
 
+func (m *recMeter) contexts() []context.Context {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return slices.Clone(m.ctxs)
+}
+
 func (m *recMeter) count(name string, values ...string) float64 {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -123,8 +130,9 @@ func (c *recCounter) With(values ...string) metrics.Counter {
 	return &recCounter{m: c.m, name: c.name, values: slices.Concat(c.values, values)}
 }
 
-func (c *recCounter) Add(delta float64) {
+func (c *recCounter) Add(ctx context.Context, delta float64) {
 	c.m.mu.Lock()
+	c.m.ctxs = append(c.m.ctxs, ctx)
 	c.m.counts[seriesKey(c.name, c.values)] += delta
 	c.m.mu.Unlock()
 }
@@ -139,8 +147,9 @@ func (h *recHistogram) With(values ...string) metrics.Histogram {
 	return &recHistogram{m: h.m, name: h.name, values: slices.Concat(h.values, values)}
 }
 
-func (h *recHistogram) Observe(v float64) {
+func (h *recHistogram) Observe(ctx context.Context, v float64) {
 	h.m.mu.Lock()
+	h.m.ctxs = append(h.m.ctxs, ctx)
 	key := seriesKey(h.name, h.values)
 	h.m.obs[key] = append(h.m.obs[key], v)
 	h.m.mu.Unlock()

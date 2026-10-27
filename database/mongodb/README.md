@@ -9,6 +9,7 @@ servex, in the same way the core `storage/database` package does for
   client span per command (`db.system`, `db.operation`, `db.name`,
   `db.mongodb.collection`) and records `db_client_operations_total` and
   `db_client_operation_duration_seconds`, the metrics the core records for SQL.
+  Metrics receive the command span context, so exemplars link to the span.
   Command documents are never recorded. A nil tracer or meter disables that
   part.
 - `Hook(name, client)` is an `app.Hook`: Start pings the deployment (an

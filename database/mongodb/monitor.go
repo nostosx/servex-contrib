@@ -49,7 +49,9 @@ const (
 // "error") and db_client_operation_duration_seconds{system,operation}
 // (metrics.DefaultBuckets, seconds, using the duration measured by the
 // driver), the same metrics the core storage/database package records for
-// SQL databases.
+// SQL databases. The metrics receive the context of the command span, so a
+// meter recording exemplars links them to that span; a finished event
+// without a started event uses the context of the finished event.
 //
 // Started and finished events are correlated by connection and request ID,
 // so the monitor is safe for concurrent commands. A nil t or m disables
@@ -74,7 +76,7 @@ func newMonitor(t tracing.Tracer, m metrics.Meter) *monitor {
 		durations: m.Histogram(metricDuration,
 			"Duration of database client operations in seconds.",
 			metrics.DefaultBuckets, "system", "operation"),
-		spans: make(map[spanKey]tracing.Span),
+		spans: make(map[spanKey]pendingCommand),
 	}
 }
 
@@ -95,6 +97,12 @@ type spanKey struct {
 	id   int64
 }
 
+// pendingCommand is a command whose span has not ended.
+type pendingCommand struct {
+	ctx  context.Context // context holding span
+	span tracing.Span
+}
+
 // monitor holds the spans of in-flight commands.
 type monitor struct {
 	tracer    tracing.Tracer
@@ -102,11 +110,11 @@ type monitor struct {
 	durations metrics.Histogram
 
 	mu    sync.Mutex
-	spans map[spanKey]tracing.Span
+	spans map[spanKey]pendingCommand
 }
 
 func (m *monitor) started(ctx context.Context, e *event.CommandStartedEvent) {
-	_, span := m.tracer.Start(ctx, e.CommandName, tracing.SpanKindClient)
+	spanCtx, span := m.tracer.Start(ctx, e.CommandName, tracing.SpanKindClient)
 	span.SetAttribute(attrSystem, system)
 	span.SetAttribute(attrOperation, e.CommandName)
 	if e.DatabaseName != "" {
@@ -116,45 +124,49 @@ func (m *monitor) started(ctx context.Context, e *event.CommandStartedEvent) {
 		span.SetAttribute(attrCollection, coll)
 	}
 	m.mu.Lock()
-	m.spans[spanKey{conn: e.ConnectionID, id: e.RequestID}] = span
+	m.spans[spanKey{conn: e.ConnectionID, id: e.RequestID}] = pendingCommand{ctx: spanCtx, span: span}
 	m.mu.Unlock()
 }
 
-func (m *monitor) succeeded(_ context.Context, e *event.CommandSucceededEvent) {
-	m.finish(&e.CommandFinishedEvent, nil)
+func (m *monitor) succeeded(ctx context.Context, e *event.CommandSucceededEvent) {
+	m.finish(ctx, &e.CommandFinishedEvent, nil)
 }
 
-func (m *monitor) failed(_ context.Context, e *event.CommandFailedEvent) {
+func (m *monitor) failed(ctx context.Context, e *event.CommandFailedEvent) {
 	err := e.Failure
 	if err == nil {
 		// Never expected from the driver, but a failed command must still
 		// count as an error.
 		err = errUnknownFailure
 	}
-	m.finish(&e.CommandFinishedEvent, err)
+	m.finish(ctx, &e.CommandFinishedEvent, err)
 }
 
 // finish ends the span of the command and records its metrics. A finished
-// event without a matching started event still updates the metrics.
-func (m *monitor) finish(e *event.CommandFinishedEvent, err error) {
+// event without a matching started event still updates the metrics, with
+// the context ctx of the finished event.
+func (m *monitor) finish(ctx context.Context, e *event.CommandFinishedEvent, err error) {
 	key := spanKey{conn: e.ConnectionID, id: e.RequestID}
 	m.mu.Lock()
-	span, ok := m.spans[key]
+	cmd, ok := m.spans[key]
 	delete(m.spans, key)
 	m.mu.Unlock()
+	if ok {
+		ctx = cmd.ctx
+	}
 
 	status := "ok"
 	if err != nil {
 		status = "error"
 	}
-	m.ops.With(system, e.CommandName, status).Add(1)
-	m.durations.With(system, e.CommandName).Observe(e.Duration.Seconds())
+	m.ops.With(system, e.CommandName, status).Add(ctx, 1)
+	m.durations.With(system, e.CommandName).Observe(ctx, e.Duration.Seconds())
 
 	if ok {
 		if err != nil {
-			span.RecordError(err)
+			cmd.span.RecordError(err)
 		}
-		span.End()
+		cmd.span.End()
 	}
 }
 

@@ -107,6 +107,17 @@ func TestSucceededCommand(t *testing.T) {
 	if got := m.observations(metricDuration, "mongodb", "find"); !slices.Equal(got, []float64{0.25}) {
 		t.Errorf("durations = %v, want [0.25]", got)
 	}
+	// Metrics are recorded with the command span's context, a child of the
+	// operation context, so that exemplars link to the command span.
+	ctxs := m.contexts()
+	if len(ctxs) != 2 {
+		t.Fatalf("metric contexts = %d, want 2", len(ctxs))
+	}
+	for _, got := range ctxs {
+		if tracing.SpanFromContext(got) != s || got.Value(ctxKey{}) != "op" {
+			t.Fatal("metrics not recorded with the command span context")
+		}
+	}
 }
 
 func TestFailedCommand(t *testing.T) {
@@ -149,7 +160,8 @@ func TestFailedCommandWithoutFailure(t *testing.T) {
 
 func TestFinishedWithoutStarted(t *testing.T) {
 	mon, tr, m := newTestMonitor()
-	mon.Succeeded(t.Context(), &event.CommandSucceededEvent{
+	ctx := context.WithValue(t.Context(), ctxKey{}, "finished")
+	mon.Succeeded(ctx, &event.CommandSucceededEvent{
 		CommandFinishedEvent: finished("c1", 99, "db", "find", time.Millisecond),
 	})
 	if len(tr.all()) != 0 {
@@ -157,6 +169,11 @@ func TestFinishedWithoutStarted(t *testing.T) {
 	}
 	if got := m.count(metricOps, "mongodb", "find", "ok"); got != 1 {
 		t.Errorf("ok count = %v", got)
+	}
+	for _, got := range m.contexts() {
+		if got.Value(ctxKey{}) != "finished" {
+			t.Fatal("metrics not recorded with the finished event context")
+		}
 	}
 }
 
