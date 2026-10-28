@@ -5,9 +5,15 @@ using [coreos/go-oidc](https://github.com/coreos/go-oidc). It provides a typed
 verification callback; it does not install HTTP routes, manage login sessions,
 or import another contrib module.
 
-This module is unreleased and requires Go 1.27.3. It adds one direct SDK
+Version v1.0.0 requires Go 1.27.3. It adds one direct SDK
 dependency, `github.com/coreos/go-oidc/v3 v3.21.0` (Apache-2.0). This module's
 own license is MIT.
+
+## Installation
+
+```sh
+go get github.com/nostosx/servex-contrib/auth/oidc@v1.0.0
+```
 
 ## API
 

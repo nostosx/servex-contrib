@@ -88,17 +88,17 @@ middleware must honor context cancellation and must not call `Close` on its own
 client. An unhandled client middleware panic becomes `Internal` (`STREAM_PANIC`);
 install recovery middleware for application logging and server handler panics.
 
-Stream options and middleware are additive APIs in the unreleased module; the
-published v1.1.0 module does not contain them.
+Stream options and middleware are available since v1.2.0; v1.1.0 does not
+contain them.
 
 ## Install
 
-Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
+Requires Go 1.27.3. Uses published servex v1.3.0 and kitx v1.0.0.
 
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/transport/grpcx@v1.1.0
+go get github.com/nostosx/servex-contrib/transport/grpcx@v1.2.0
 ```
 
 The example version corresponds to the tag `transport/grpcx/v1.0.0`;

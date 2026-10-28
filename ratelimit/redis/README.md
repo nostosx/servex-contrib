@@ -1,14 +1,22 @@
 # Redis rate limiting
 
-This unreleased module provides a token bucket shared by service replicas.
+Version v1.0.0 provides a token bucket shared by service replicas.
 It uses one atomic Redis script and Redis server time. An idle bucket expires
 after its full refill interval. Standalone, Sentinel and Cluster clients are
 supported through `redis.UniversalClient`; the application owns the client.
 Use identical rates and bursts for every replica sharing a prefix.
 
 The adapter's `AllowContext(ctx, key) (bool, time.Duration, error)` method
-structurally satisfies the unreleased `middleware/ratelimit.ContextLimiter`.
-The modules never import each other. Assemble them in the application:
+structurally satisfies `middleware/ratelimit.ContextLimiter` (middleware v1.3.0).
+The modules never import each other. Install the two independent modules in
+your application:
+
+```sh
+go get github.com/nostosx/servex-contrib/ratelimit/redis@v1.0.0
+go get github.com/nostosx/servex-contrib/middleware@v1.3.0
+```
+
+Assemble them in the application:
 
 ```go
 client := redis.NewClient(&redis.Options{

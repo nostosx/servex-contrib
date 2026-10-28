@@ -20,9 +20,9 @@ are injected through functions and interfaces.
 | `circuitbreaker` | client | `New(WithKey, WithK, WithWindow, WithBuckets, WithMinRequests, ...)`, `ErrOpen` | Google SRE adaptive throttling per operation; rejects with a non-retryable `Unavailable` (reason `CIRCUIT_OPEN`), so an outer retry stops. |
 | `timeout` | client | `New(d)` | Bounds a single attempt; an exceeded deadline is `DeadlineExceeded` (reason `TIMEOUT`). |
 
-## Distributed rate limiting and gRPC streams (unreleased)
+## Distributed rate limiting and gRPC streams
 
-`ratelimit.NewContext` accepts a `ContextLimiter` with caller context, a
+Since middleware v1.3.0, `ratelimit.NewContext` accepts a `ContextLimiter` with caller context, a
 retry-delay hint and backend errors. It supports distributed adapters such as
 `servex-contrib/ratelimit/redis` without a cross-module import. Backend errors
 reject by default; `WithFailOpen(true)` explicitly admits calls on a backend
