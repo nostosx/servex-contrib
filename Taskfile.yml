@@ -9,7 +9,10 @@ vars:
   ALL_MODULES:
     sh: |
       for file in */go.mod */*/go.mod; do
-        if [ -f "$file" ]; then printf '%s\n' "${file%/go.mod}"; fi
+        if [ -f "$file" ]; then
+          module_file=$(printf '%s' "$file" | tr '\\' '/')
+          printf '%s\n' "${module_file%/go.mod}"
+        fi
       done | sort | tr -d '\r'
   # An explicitly empty MODULES value must fail rather than select every module.
   MODULES: '{{if hasKey . "MODULES"}}{{.MODULES}}{{else}}{{.ALL_MODULES}}{{end}}'
@@ -25,7 +28,7 @@ tasks:
           for module in $selected; do
             case " $(printf '%s' "$available" | tr '\n' ' ') " in
               *" $module "*) ;;
-              *) exit 1 ;;
+              *) printf 'Unknown module <%s>; available modules: %s\n' "$module" "$available" >&2; exit 1 ;;
             esac
           done
         msg: 'No modules selected or unknown MODULES; select existing module paths.'

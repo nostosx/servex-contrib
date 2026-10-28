@@ -13,6 +13,9 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- Normalize native Windows glob path separators before stripping go.mod in Task
+  module discovery, and include the available modules in selection diagnostics.
+
 - Normalize CRLF output from Windows module discovery before validating Task
   selections; preserve rejection of empty, unknown and outside module paths.
 
