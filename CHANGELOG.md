@@ -13,6 +13,9 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- Correct per-module installation tags, declared core requirements and API
+  availability in module READMEs. No additional library release is needed.
+
 - Development tooling: expose only check, test, build, lint, vulncheck, fmt,
   fix and tidy; make check the default and keep validation details internal.
   Remove redundant all/help/fix-check/clean task wrappers.

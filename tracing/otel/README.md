@@ -16,7 +16,7 @@ the servex tracing API.
 
 ## Install
 
-Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
+Requires Go 1.27.3. Uses published servex v1.0.0 and kitx v1.0.0 dependencies.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh

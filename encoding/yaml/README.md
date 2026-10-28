@@ -12,7 +12,7 @@ concurrent use.
 
 ## Install
 
-Requires Go 1.27.3. Uses published servex and kitx v1.0.0 dependencies.
+Requires Go 1.27.3. Uses published servex v1.2.0 and kitx v1.0.0 dependencies.
 
 Run this in your application module (create one with `go mod init` if needed):
 
@@ -20,7 +20,7 @@ Run this in your application module (create one with `go mod init` if needed):
 go get github.com/nostosx/servex-contrib/encoding/yaml@v1.1.0
 ```
 
-The example version corresponds to the tag `encoding/yaml/v1.0.0`;
+The example version corresponds to the tag `encoding/yaml/v1.1.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage

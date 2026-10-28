@@ -75,15 +75,15 @@ errors pass back unchanged, including nonzero results returned together with err
 
 ## Install
 
-Requires Go 1.27.3 or later. Version v1.1.0 uses published servex v1.1.0
+Requires Go 1.27.3 or later. Version v1.3.0 uses published servex v1.3.0
 and kitx v1.0.0, without local replacements.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/middleware@v1.2.0
+go get github.com/nostosx/servex-contrib/middleware@v1.3.0
 ```
 
-The example version corresponds to the tag `middleware/v1.1.0`;
+The example version corresponds to the tag `middleware/v1.3.0`;
 see [module versioning](../README.md#versioning).
 
 ## Usage
