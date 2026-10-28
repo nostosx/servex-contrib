@@ -1,0 +1,241 @@
+# Each repository owns this file; no sibling checkout or shared include is required.
+version: '3'
+
+vars:
+  GO: '{{.GO | default "go"}}'
+  GOFMT: '{{.GOFMT | default "gofmt"}}'
+  GOLANGCI_LINT: '{{.GOLANGCI_LINT | default "golangci-lint"}}'
+  GOVULNCHECK: '{{.GOVULNCHECK | default "govulncheck"}}'
+  ALL_MODULES:
+    sh: |
+      for file in */go.mod */*/go.mod; do
+        if [ -f "$file" ]; then printf '%s\n' "${file%/go.mod}"; fi
+      done | sort
+  # An explicitly empty MODULES value must fail rather than select every module.
+  MODULES: '{{if hasKey . "MODULES"}}{{.MODULES}}{{else}}{{.ALL_MODULES}}{{end}}'
+
+tasks:
+  fmt:
+    desc: Apply Go formatting
+    preconditions: &modules-valid
+      - sh: |
+          selected={{.MODULES | shellQuote}}
+          available={{.ALL_MODULES | shellQuote}}
+          test -n "$(printf '%s' "$selected" | tr -d '[:space:]')" || exit 1
+          for module in $selected; do
+            case " $(printf '%s' "$available" | tr '\n' ' ') " in
+              *" $module "*) ;;
+              *) exit 1 ;;
+            esac
+          done
+        msg: 'No modules selected or unknown MODULES; select existing module paths.'
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" fmt
+            (cd "$module"; {{.GOFMT | shellQuote}} -w .)
+          done
+
+  fmt-check:
+    internal: true
+    desc: Reject unformatted Go files
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" fmt-check
+            (cd "$module"; out=$({{.GOFMT | shellQuote}} -l .); if [ -n "$out" ]; then printf 'gofmt needed:\n%s\n' "$out"; exit 1; fi)
+          done
+
+  fix:
+    desc: Apply Go modernizers in normal and integration builds
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" fix
+            (cd "$module"; for tags in '' integration; do {{.GO | shellQuote}} fix -tags "$tags" ./...; done)
+          done
+
+  modernize-check:
+    internal: true
+    desc: Reject Go modernizer changes in both builds
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" modernize-check
+            (cd "$module"; for tags in '' integration; do out=$({{.GO | shellQuote}} fix -tags "$tags" -diff ./...); if [ -n "$out" ]; then printf '%s\n' "$out"; exit 1; fi; done)
+          done
+
+  tidy:
+    desc: Apply module dependency changes
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" tidy
+            (cd "$module"; {{.GO | shellQuote}} mod tidy)
+          done
+
+  tidy-check:
+    internal: true
+    desc: Reject module dependency changes
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" tidy-check
+            (cd "$module"; out=$({{.GO | shellQuote}} mod tidy -diff); if [ -n "$out" ]; then printf '%s\n' "$out"; exit 1; fi)
+          done
+
+  vet:
+    internal: true
+    desc: Vet normal and integration builds
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" vet
+            (cd "$module"; for tags in '' integration; do {{.GO | shellQuote}} vet -tags "$tags" ./...; done)
+          done
+
+  build:
+    desc: Build normal and integration configurations
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" build
+            (cd "$module"; for tags in '' integration; do {{.GO | shellQuote}} build -tags "$tags" ./...; done)
+          done
+
+  test:
+    desc: Run tests; optional RACE=true, COVER=true or INTEGRATION=true
+    preconditions: *modules-valid
+    vars:
+      RACE: '{{.RACE | default "false"}}'
+      COVER: '{{.COVER | default "false"}}'
+      INTEGRATION: '{{.INTEGRATION | default "false"}}'
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for option in {{.RACE | shellQuote}} {{.COVER | shellQuote}} {{.INTEGRATION | shellQuote}}; do
+            case "$option" in true|false) ;; *) echo 'Test options must be true or false' >&2; exit 1 ;; esac
+          done
+          if [ {{.INTEGRATION | shellQuote}} = true ]; then
+            found=0
+            for module in $modules; do
+              if ls "$module/"*_integration_test.go >/dev/null 2>&1; then
+                found=1
+                bash .github/scripts/integration.sh "$module"
+              fi
+            done
+            test "$found" = 1 || { echo 'No integration modules selected'; exit 1; }
+            exit 0
+          fi
+          set -- -shuffle=on -count=1
+          if [ {{.RACE | shellQuote}} = true ] || [ {{.COVER | shellQuote}} = true ]; then
+            set -- "$@" -race
+          fi
+          {{.GO | shellQuote}} test "$@" .github/scripts/integrationcheck/*.go
+          {{.GO | shellQuote}} test "$@" .github/scripts/matrices/*.go
+          {{.GO | shellQuote}} run .github/scripts/matrices/main.go
+          for module in $modules; do
+            printf '\n==> %s: test\n' "$module"
+            (cd "$module"
+              if [ {{.COVER | shellQuote}} = true ]; then
+                set -- "$@" -coverprofile=coverage.out -covermode=atomic
+              fi
+              {{.GO | shellQuote}} test "$@" ./...
+              if [ {{.COVER | shellQuote}} = true ]; then
+                {{.GO | shellQuote}} tool cover -func=coverage.out
+              fi
+            )
+          done
+
+  lint:
+    desc: Lint both builds with golangci-lint v2.15.0
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" lint
+            (cd "$module"; for tags in '' integration; do {{.GOLANGCI_LINT | shellQuote}} run --config={{printf "%s/.golangci.yml" .ROOT_DIR | shellQuote}} --build-tags="$tags" ./...; done)
+          done
+
+  vulncheck:
+    desc: Scan both builds with govulncheck v1.9.0
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" vulncheck
+            (cd "$module"; for tags in '' integration; do {{.GOVULNCHECK | shellQuote}} -tags "$tags" ./...; done)
+          done
+
+  check:
+    aliases: [default]
+    desc: Check formatting, modernization, dependencies, builds and shuffled race tests
+    preconditions: *modules-valid
+    cmds:
+      - task: fmt-check
+      - task: modernize-check
+      - task: tidy-check
+      - task: vet
+      - task: build
+      - task: deps-check
+      - task: test
+        vars:
+          RACE: 'true'
+
+  deps-check:
+    internal: true
+    desc: Check dependency boundaries
+    preconditions: *modules-valid
+    cmds:
+      - |
+          set -eu
+          export GOWORK=off GO={{.GO | shellQuote}}
+          modules={{.MODULES | shellQuote}}
+          for module in $modules; do
+            printf '\n==> %s: %s\n' "$module" deps-check
+            (cd "$module"; if [ "$module" = middleware ] || [ "$module" = selector ]; then
+              own=$({{.GO | shellQuote}} list -m);
+              deps=$({{.GO | shellQuote}} list -m -f '{{"{{.Path}}"}}' all);
+              foreign=$(printf '%s\n' "$deps" | awk -v own="$own" 'NF && $0 != own && $0 != "github.com/nostosx/servex" && $0 != "github.com/nostosx/kitx"');
+              if [ -n "$foreign" ]; then printf 'unexpected dependencies:\n%s\n' "$foreign"; exit 1; fi;
+            fi)
+          done

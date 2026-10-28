@@ -8,4 +8,4 @@ if [ "$module" = "$PWD" ]; then
   echo 'Run check-module.sh from a module in this repository' >&2
   exit 1
 fi
-exec make -C "$root" MODULES="$module" fmt-check modernize-check tidy-check vet build deps-check
+exec task --dir "$root" MODULES="$module" fmt-check modernize-check tidy-check vet build deps-check

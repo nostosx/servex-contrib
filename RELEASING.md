@@ -1,14 +1,15 @@
 # Releasing servex-contrib
 
-Each of the 21 modules is versioned independently, starting at v1.0.0.
+Each module is versioned independently, starting at v1.0.0. This includes
+auth/oidc, di/do and ratelimit/redis.
 The CI workflow does not create tags or publish releases. Publication is a
 separate maintainer decision.
 
 ## Dependency order
 
-The releases of 2026-10-27 use published servex v1.2.0; cache/redis,
-encoding/proto and tracing/otel v1.0.0 keep servex v1.0.0. All modules use kitx
-v1.0.0. No replacements are required.
+The 2026-10-28 modules with a core dependency use published servex v1.3.0;
+auth/oidc has no core requirement. Other modules keep their recorded dependency
+versions. Where required, kitx remains v1.0.0. No replacements are required.
 Before adopting a newer core or utility release, verify that version through
 the public Go proxy, update requirements, tidy and rerun the module gates.
 Contrib modules do not depend on one another and may be released independently.
@@ -25,14 +26,14 @@ Update servex-examples only after the modules it imports are available.
    root, for example:
 
    ```sh
-   MODULES='cache/redis' make check lint vulncheck
+   MODULES='cache/redis' task check lint vulncheck
    ```
 
 3. For modules with service-backed tests, provision dedicated disposable
    services, export the required addresses, and run the matching acceptance:
 
    ```sh
-   SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='cache/redis' make integration
+   SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='cache/redis' task test INTEGRATION=true
    ```
 
    Require actual integration execution; skipped tests or compilation-only

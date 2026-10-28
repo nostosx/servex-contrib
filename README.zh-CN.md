@@ -6,10 +6,10 @@
 服务适配器，以及不依赖第三方 SDK 的 `middleware`、`selector` 两个模块。
 核心保留契约及参考实现，本仓库按依赖拆分其他实现。
 
-2026-10-27 发布的模块（middleware v1.2.0 及其他改动模块的 v1.1.0）需要 servex v1.2.0；
-cache/redis、encoding/proto 和 tracing/otel v1.0.0 需要 servex v1.0.0，也能与 v1.2.0
-一起构建。所有模块都使用 kitx v1.0.0，由 Go 模块代理下载。
-独立检出本仓库即可，无需同级源码或本地替换。
+2026-10-28 发布 middleware v1.3.0、transport/grpcx v1.2.0，以及 auth/oidc、di/do、
+ratelimit/redis 的首个 v1.0.0。有核心依赖的模块使用 servex v1.3.0；auth/oidc 不依赖核心。
+其他模块保留各自版本及声明的核心依赖，具体见 CHANGELOG。依赖均通过 Go 模块代理下载，
+独立检出即可，无需同级源码或本地替换。
 可运行应用见独立的 [servex-examples](https://github.com/nostosx/servex-examples) 项目。
 
 middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标与追踪，
@@ -23,6 +23,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 
 | 模块 | 实现 | 主要依赖 |
 |---|---|---|
+| [`auth/oidc`](auth/oidc) | OIDC 发现、ID Token 签名与 JWKS 验证，供应用鉴权回调使用 | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | Apache Kafka 上的 `broker.Publisher`、`broker.Subscriber` | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | NATS JetStream 上的发布与订阅 | `github.com/nats-io/nats.go` |
 | [`broker/rabbitmq`](broker/rabbitmq) | RabbitMQ（AMQP 0-9-1）上的发布与订阅 | `github.com/rabbitmq/amqp091-go` |
@@ -31,6 +32,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`config/etcd`](config/etcd) | etcd 上的配置读取与监听 | `go.etcd.io/etcd/client/v3` |
 | [`config/nacos`](config/nacos) | Nacos 配置服务上的读取与监听 | `github.com/nacos-group/nacos-sdk-go/v2` |
 | [`database/mongodb`](database/mongodb) | MongoDB 驱动的追踪、指标、生命周期与健康检查 | `go.mongodb.org/mongo-driver/v2` |
+| [`di/do`](di/do) | 基于 samber/do 实现 `di.Container`，接入生命周期与就绪检查，提供集中装配示例 | `github.com/samber/do/v2` |
 | [`discovery/consul`](discovery/consul) | Consul agent 上的 `discovery.Registrar`、`discovery.Discoverer` | `github.com/hashicorp/consul/api` |
 | [`discovery/etcd`](discovery/etcd) | 基于 etcd lease 的注册与发现 | `go.etcd.io/etcd/client/v3` |
 | [`discovery/kubernetes`](discovery/kubernetes) | 基于 EndpointSlice 的服务发现 | `k8s.io/client-go` |
@@ -41,6 +43,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`metrics/otel`](metrics/otel) | OpenTelemetry 上的 `metrics.Meter` | `go.opentelemetry.io/otel/metric` |
 | [`metrics/prometheus`](metrics/prometheus) | Prometheus 上的 `metrics.Meter` | `github.com/prometheus/client_golang` |
 | [`middleware`](middleware) | 鉴权、熔断、日志、指标、限流、恢复、重试、超时、追踪与校验 | 标准库、servex、kitx |
+| [`ratelimit/redis`](ratelimit/redis) | 多副本共享的 Redis 原子令牌桶，支持 context、等待提示和后端错误 | `github.com/redis/go-redis/v9` |
 | [`selector`](selector) | 平滑加权轮询与 P2C 节点选择 | 标准库、servex、kitx |
 | [`tracing/otel`](tracing/otel) | OpenTelemetry 上的 `tracing.Tracer`、`tracing.Propagator` | `go.opentelemetry.io/otel/trace` |
 | [`transport/grpcx`](transport/grpcx) | gRPC 服务端及支持中间件、发现和节点选择的客户端 | `google.golang.org/grpc` |
@@ -52,7 +55,12 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 
 ## 版本
 
-21 个模块的首个正式版本均为 v1.0.0。各模块独立发布，标签包含完整目录前缀，
+auth/oidc、di/do、ratelimit/redis 自 v1.0.0 起提供；gRPC 流式中间件自
+transport/grpcx v1.2.0、`ratelimit.NewContext` 自 middleware v1.3.0 起提供。
+流式调用需要显式配置 `WithStreamMiddleware` / `WithClientStreamMiddleware`，不会自动重放消息。
+OIDC 模块验证 ID Token，不替代任意 OAuth Access Token 的验证或 introspection。
+
+24 个模块的首个正式版本均为 v1.0.0。各模块独立发布，标签包含完整目录前缀，
 例如 `broker/kafka/v1.0.0` 或 `middleware/v1.0.0`：
 
 在应用自身的 Go 模块中执行 `go get`。新应用可以从以下步骤开始：
@@ -89,24 +97,25 @@ SDK 客户端上完成这些配置。监听所有网卡的服务器用于本地�
 
 ## 开发
 
-使用 Go 1.27.3、GNU Make、Bash 和 Python 3。独立检出本仓库，所有模块均通过已发布版本解析依赖，无需核心源码覆盖或开发模块代理。
+使用 Go 1.27.3、Task v3.53.1 和 Bash。各模块均通过已发布版本解析依赖，
+不需要同级源码或本地替换。
 
-根目录不是 Go 模块。在根目录运行下列命令，Make 会逐模块执行并设置 `GOWORK=off`：
+根目录不是 Go 模块。在根目录运行下列命令，Task 会逐模块执行并设置 `GOWORK=off`：
 
 ```sh
-make check
-make lint
-make vulncheck
+task check
+task lint
+task vulncheck
 ```
 
 `check` 检查格式、现代化和 tidy 差异，覆盖默认及 `integration` 构建的 vet、构建，
 检查 middleware、selector 的依赖边界，并运行随机顺序 race 测试。
-`lint` 和漏洞扫描也覆盖两种构建。`make fmt`、`make fix`、`make tidy` 会修改文件。
+`lint` 和漏洞扫描也覆盖两种构建。`task fmt`、`task fix`、`task tidy` 会修改文件。
 通过 `MODULES` 选择模块：
 
 ```sh
-MODULES='cache/redis' make check lint vulncheck
-MODULES='middleware selector' make check
+MODULES='cache/redis' task check lint vulncheck
+MODULES='middleware selector' task check
 ```
 
 工具安装、依赖边界和测试要求见 [CONTRIBUTING.md](CONTRIBUTING.md)，
@@ -129,7 +138,7 @@ miniredis、client-go fake、httptest 与 OpenTelemetry 内存 exporter。
 | `SERVEX_IT_KAFKA_BROKERS` | `broker/kafka` | `127.0.0.1:9092`，多个地址以逗号分隔 |
 | `SERVEX_IT_NATS_URL` | `broker/nats` | `nats://127.0.0.1:4222`，启用 JetStream |
 | `SERVEX_IT_RABBITMQ_URL` | `broker/rabbitmq` | `amqp://guest:guest@127.0.0.1:5672/` |
-| `SERVEX_IT_REDIS_ADDR` | `cache/redis`、`jobqueue/asynq` | `127.0.0.1:6379` |
+| `SERVEX_IT_REDIS_ADDR` | `cache/redis`、`jobqueue/asynq`、`ratelimit/redis` | `127.0.0.1:6379` |
 | `SERVEX_IT_CONSUL_ADDR` | `config/consul`、`discovery/consul` | `127.0.0.1:8500` |
 | `SERVEX_IT_ETCD_ENDPOINTS` | `config/etcd`、`discovery/etcd` | `127.0.0.1:2379`，多个地址以逗号分隔 |
 | `SERVEX_IT_NACOS_ADDR` | `config/nacos`、`discovery/nacos` | `127.0.0.1:8848`，HTTP API |
@@ -140,14 +149,14 @@ miniredis、client-go fake、httptest 与 OpenTelemetry 内存 exporter。
 准备独立的临时服务后运行，例如：
 
 ```sh
-SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='cache/redis' make integration
+SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='cache/redis' task test INTEGRATION=true
 ```
 
-Make 不启动服务。集成入口会拒绝缺少配置、缺失测试、跳过或失败的结果。
+Task 不启动服务。集成入口会拒绝缺少配置、缺失测试、跳过或失败的结果。
 没有服务集成测试的模块会被略过；所选模块全部没有集成测试时，入口报错。
-`make check` 仍是独立的单元与静态检查入口。
+`task check` 仍是独立的单元与静态检查入口。
 
-[CI 工作流](.github/workflows/ci.yml) 包含 21 模块检查矩阵、独立 lint 与漏洞扫描、
+[CI 工作流](.github/workflows/ci.yml) 包含所有模块的检查矩阵、独立 lint 与漏洞扫描、
 8 组临时 Docker 服务任务，以及 Kubernetes kind 任务。
 矩阵检查会核对模块及集成测试目录；服务任务等待就绪后只运行 `TestIntegration*`，
 拒绝缺失、跳过、失败或未完成的结果，并清理服务容器或 kind 集群。

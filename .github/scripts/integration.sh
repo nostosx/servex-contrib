@@ -7,7 +7,7 @@ case "$module" in
   broker/kafka) required=SERVEX_IT_KAFKA_BROKERS ;;
   broker/nats) required=SERVEX_IT_NATS_URL ;;
   broker/rabbitmq) required=SERVEX_IT_RABBITMQ_URL ;;
-  cache/redis|jobqueue/asynq) required=SERVEX_IT_REDIS_ADDR ;;
+  cache/redis|jobqueue/asynq|ratelimit/redis) required=SERVEX_IT_REDIS_ADDR ;;
   database/mongodb) required=SERVEX_IT_MONGODB_URI ;;
   config/consul|discovery/consul) required=SERVEX_IT_CONSUL_ADDR ;;
   config/etcd|discovery/etcd) required=SERVEX_IT_ETCD_ENDPOINTS ;;
@@ -28,5 +28,5 @@ cd "$root/$module"
 # absent/skipped integration tests cannot be confused with unit-test success.
 status=0
 GOWORK=off "${GO:-go}" test -race -shuffle=on -count=1 -timeout=15m -tags integration -run '^TestIntegration' -json ./... | tee "$result" || status=$?
-"${PYTHON:-python3}" "$root/.github/scripts/check-integration.py" "$result"
+GOWORK=off "${GO:-go}" run "$root/.github/scripts/integrationcheck/main.go" "$result"
 exit "$status"

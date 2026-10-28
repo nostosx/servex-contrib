@@ -8,10 +8,12 @@ that depend on third-party SDKs, plus two collections without third-party SDKs
 standard-library reference implementation each; every further implementation
 lives here.
 
-The releases of 2026-10-27 (middleware v1.2.0 and v1.1.0 of the other changed
-modules) require servex v1.2.0; cache/redis, encoding/proto and tracing/otel
-v1.0.0 require servex v1.0.0 and build with v1.2.0. All use kitx v1.0.0. A
-standalone checkout needs no sibling source directories or local replacements.
+The 2026-10-28 releases are middleware v1.3.0, transport/grpcx v1.2.0 and
+the initial v1.0.0 releases of auth/oidc, di/do and ratelimit/redis. These use
+servex v1.3.0 where applicable; auth/oidc has no core dependency. Earlier modules
+retain their independent versions and declared
+core requirements. All resolve published dependencies without sibling checkouts
+or local replacements; see each version section in CHANGELOG.md.
 
 Runnable applications composing core and contrib live in
 [servex-examples](https://github.com/nostosx/servex-examples).
@@ -30,6 +32,7 @@ public servex packages and never each other.
 
 | Module | Implements | Key dependency |
 |---|---|---|
+| [`auth/oidc`](auth/oidc) | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | `broker.Publisher` and `broker.Subscriber` on Apache Kafka | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | `broker.Publisher` and `broker.Subscriber` on NATS JetStream | `github.com/nats-io/nats.go` |
 | [`broker/rabbitmq`](broker/rabbitmq) | `broker.Publisher` and `broker.Subscriber` on RabbitMQ (AMQP 0-9-1) | `github.com/rabbitmq/amqp091-go` |
@@ -38,6 +41,7 @@ public servex packages and never each other.
 | [`config/etcd`](config/etcd) | `config.Source` and `config.Watchable` on etcd | `go.etcd.io/etcd/client/v3` |
 | [`config/nacos`](config/nacos) | `config.Source` and `config.Watchable` on the Nacos configuration service | `github.com/nacos-group/nacos-sdk-go/v2` |
 | [`database/mongodb`](database/mongodb) | Tracing and metrics for the MongoDB driver, lifecycle Hook and health check | `go.mongodb.org/mongo-driver/v2` |
+| [`di/do`](di/do) | `di.Container` on samber/do with lifecycle and readiness integration, plus centralized wiring examples | `github.com/samber/do/v2` |
 | [`discovery/consul`](discovery/consul) | `discovery.Registrar` and `discovery.Discoverer` on the Consul agent | `github.com/hashicorp/consul/api` |
 | [`discovery/etcd`](discovery/etcd) | `discovery.Registrar` and `discovery.Discoverer` on etcd leases | `go.etcd.io/etcd/client/v3` |
 | [`discovery/kubernetes`](discovery/kubernetes) | `discovery.Discoverer` on Kubernetes EndpointSlices | `k8s.io/client-go` |
@@ -48,6 +52,7 @@ public servex packages and never each other.
 | [`metrics/otel`](metrics/otel) | `metrics.Meter` on an OpenTelemetry meter | `go.opentelemetry.io/otel/metric` |
 | [`metrics/prometheus`](metrics/prometheus) | `metrics.Meter` on the Prometheus client | `github.com/prometheus/client_golang` |
 | [`middleware`](middleware) | `endpoint.Middleware`: auth, circuitbreaker, logging, metrics, ratelimit, recovery, retry, timeout, tracing, validate | standard library, servex and kitx |
+| [`ratelimit/redis`](ratelimit/redis) | Atomic shared Redis token buckets with caller context, retry hints and backend errors | `github.com/redis/go-redis/v9` |
 | [`selector`](selector) | `selector.Selector`: roundrobin (smooth weighted), p2c (Power of Two Choices) | standard library, servex and kitx |
 | [`tracing/otel`](tracing/otel) | `tracing.Tracer` and `tracing.Propagator` on OpenTelemetry | `go.opentelemetry.io/otel/trace` |
 | [`transport/grpcx`](transport/grpcx) | `transport.Server` and a gRPC client with servex middleware, discovery and node selection | `google.golang.org/grpc` |
@@ -64,7 +69,12 @@ Common conventions:
 
 ## Versioning
 
-Each of the 21 modules starts at v1.0.0 and is versioned independently with
+auth/oidc, di/do and ratelimit/redis are available at v1.0.0. Stream middleware
+is available in transport/grpcx v1.2.0; ratelimit.NewContext is available in
+middleware v1.3.0. Streams require explicit middleware selection and are never
+replayed. OIDC verifies ID Tokens, not arbitrary OAuth access tokens.
+
+Each of the 24 modules starts at v1.0.0 and is versioned independently with
 tags prefixed by its directory, for example `broker/kafka/v1.0.0` or
 `middleware/v1.0.0`:
 
@@ -107,28 +117,28 @@ same host.
 
 ## Development
 
-Clone this repository on its own. All module dependencies resolve from published
-versions; no core source override or development module proxy is required.
+Use Go 1.27.3, Task v3.53.1 and Bash. All dependencies resolve from published
+module versions.
 
-Requires Go 1.27.3, GNU Make, Bash and Python 3. The repository root is not a
+The repository root is not a
 module. Run the common targets from this root; they apply to every module and
 export `GOWORK=off`:
 
 ```sh
-make check
-make lint
-make vulncheck
+task check
+task lint
+task vulncheck
 ```
 
 `check` rejects formatting, modernizer and tidy changes, vets and builds normal
 and `integration` configurations, verifies the middleware and selector dependency
 boundaries, and runs shuffled race tests. `lint` and `vulncheck` also inspect
-both build configurations. `make fmt`, `make fix` and `make tidy` explicitly
+both build configurations. `task fmt`, `task fix` and `task tidy` explicitly
 modify files. Use `MODULES` to select one or more modules:
 
 ```sh
-MODULES='cache/redis' make check lint vulncheck
-MODULES='middleware selector' make check
+MODULES='cache/redis' task check lint vulncheck
+MODULES='middleware selector' task check
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for tool installation, architecture
@@ -157,7 +167,7 @@ it does not prove the service integrations ran.
 | `SERVEX_IT_KAFKA_BROKERS` | `broker/kafka` | `127.0.0.1:9092` (comma separated) |
 | `SERVEX_IT_NATS_URL` | `broker/nats` | `nats://127.0.0.1:4222` (JetStream enabled) |
 | `SERVEX_IT_RABBITMQ_URL` | `broker/rabbitmq` | `amqp://guest:guest@127.0.0.1:5672/` |
-| `SERVEX_IT_REDIS_ADDR` | `cache/redis`, `jobqueue/asynq` | `127.0.0.1:6379` |
+| `SERVEX_IT_REDIS_ADDR` | `cache/redis`, `jobqueue/asynq`, `ratelimit/redis` | `127.0.0.1:6379` |
 | `SERVEX_IT_CONSUL_ADDR` | `config/consul`, `discovery/consul` | `127.0.0.1:8500` |
 | `SERVEX_IT_ETCD_ENDPOINTS` | `config/etcd`, `discovery/etcd` | `127.0.0.1:2379` (comma separated) |
 | `SERVEX_IT_NACOS_ADDR` | `config/nacos`, `discovery/nacos` | `127.0.0.1:8848` (HTTP API) |
@@ -168,16 +178,16 @@ it does not prove the service integrations ran.
 For example, after preparing a dedicated local Redis instance:
 
 ```sh
-SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='cache/redis' make integration
+SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='cache/redis' task test INTEGRATION=true
 ```
 
-Make does not provision services. The integration helper rejects missing
+Task does not provision services. The integration helper rejects missing
 configuration, absent tests, skipped tests and failures. Modules without
 service integration tests are omitted; the target fails if the selection
-contains none. `make check` remains the separate unit and static check entry
+contains none. `task check` remains the separate unit and static check entry
 point.
 
-The [CI workflow](.github/workflows/ci.yml) defines a 21-module check
+The [CI workflow](.github/workflows/ci.yml) defines an all-module check
 matrix, independent lint and vulnerability jobs, eight disposable Docker
 service jobs and a kind job for Kubernetes. A matrix check compares the matrices to the module
 and integration-test directories. Each service job waits for readiness,
@@ -185,8 +195,8 @@ exports the required variable, runs only `TestIntegration*` tests and rejects
 absent, skipped, failed or unfinished integration results. The service
 container is removed even on failure; kind-action cleans up its cluster.
 The jobs are independent and run on pull requests, pushes to `main` or manual
-dispatch. Each job resolves the pinned published dependencies from a standalone
-checkout. Passing unit checks does not substitute for service integration.
+dispatch. Jobs resolve pinned published dependencies without sibling sources.
+Passing unit checks does not substitute for service integration.
 
 ## License
 

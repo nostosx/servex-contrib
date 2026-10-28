@@ -6,18 +6,78 @@ public API; minor releases may contain breaking changes, each marked
 **Breaking** with its migration. Record subsequent changes under
 `Unreleased`, identifying the module.
 
-All modules require Go 1.27.3 or later and use published servex and kitx
+All modules require Go 1.27.3 or later. Released modules use published servex and kitx
 versions without replacements: the releases of 2026-10-27 require servex
 v1.2.0, cache/redis, encoding/proto and tracing/otel v1.0.0 require servex
 v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- Development tooling: expose only check, test, build, lint, vulncheck, fmt,
+  fix and tidy; make check the default and keep validation details internal.
+  Remove redundant all/help/fix-check/clean task wrappers.
+
+- Development tooling: consolidate unit, race, coverage, tooling regression and
+  service tests under `task test`; select variants with `RACE`, `COVER` and
+  `INTEGRATION`. CI matrix validation runs with ordinary tests, and `check`
+  reuses the race variant.
+
+- Development tooling: replace Python integration validators and regression
+  fixtures with Go standard-library tools; no Python runtime is required.
+
+- Development tooling (all modules): replace Make entry points with Task v3.53.1 in local
+  checks, CI and contribution/release instructions. Use `task check`, `task lint`
+  and `task vulncheck`; check coverage, build tags and failure gates are preserved.
+
 - cache/redis, encoding/proto and tracing/otel: document standalone application
   setup, dependency tidying and nested-module version selection. These modules
   build unchanged against servex v1.2.0 and keep their v1.0.0 releases;
   encoding/proto's README example uses the v1.2.0 `httpx.With*` options and
   `httpx.RouteFunc`.
+
+## di/do/v1.0.0
+
+Release date: 2026-10-28. Requires servex v1.3.0.
+
+- Implement core di.Container with samber/do/v2, lazy singleton construction,
+  exact interface bindings, cycle detection and preserved error identities.
+- Connect dependency-ordered shutdown and readiness to servex app.Hook and
+  health.Checker. Supply transfers ownership even for unused resources.
+- Include centralized do/Fx assembly examples; per-package module files are
+  optional. servex remains the owner of server startup and shutdown.
+
+## auth/oidc/v1.0.0
+
+Release date: 2026-10-28. No servex dependency is required.
+
+- Add OIDC discovery/JWKS and ID Token verification with issuer, audience and
+  expiry validation for application authentication callbacks. This does not
+  substitute for arbitrary OAuth access-token validation or introspection.
+
+## ratelimit/redis/v1.0.0
+
+Release date: 2026-10-28. Requires servex v1.3.0.
+
+- Add shared Redis token buckets using server time, atomic quota checks,
+  context cancellation, retry hints and expiring idle keys.
+- Validate multi-replica quota behavior with a real disposable Redis fixture.
+
+## middleware/v1.3.0
+
+Release date: 2026-10-28. Requires servex v1.3.0.
+
+- Add structural ContextLimiter and ratelimit.NewContext with backend errors,
+  retry hints and explicit fail-open configuration. Preserve the local Limiter
+  API; callers choose fail-open deliberately.
+
+## transport/grpcx/v1.2.0
+
+Release date: 2026-10-28. Requires servex v1.3.0.
+
+- Add explicit server/client stream middleware chains with whole-stream
+  observation, message counts, cancellation and managed client shutdown.
+- Unary chains stay independent. Streams and messages are never replayed
+  automatically; configure WithStreamMiddleware/WithClientStreamMiddleware.
 
 ## transport/grpcx/v1.1.0
 
