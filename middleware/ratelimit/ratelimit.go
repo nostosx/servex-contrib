@@ -21,7 +21,8 @@ type Limiter interface {
 type Option func(*options)
 
 type options struct {
-	key func(ctx context.Context, req any) string
+	key      func(ctx context.Context, req any) string
+	failOpen bool
 }
 
 // WithKey sets the function deriving the limiter key of a call, for example

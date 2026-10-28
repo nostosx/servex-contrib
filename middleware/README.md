@@ -20,6 +20,19 @@ are injected through functions and interfaces.
 | `circuitbreaker` | client | `New(WithKey, WithK, WithWindow, WithBuckets, WithMinRequests, ...)`, `ErrOpen` | Google SRE adaptive throttling per operation; rejects with a non-retryable `Unavailable` (reason `CIRCUIT_OPEN`), so an outer retry stops. |
 | `timeout` | client | `New(d)` | Bounds a single attempt; an exceeded deadline is `DeadlineExceeded` (reason `TIMEOUT`). |
 
+## Distributed rate limiting and gRPC streams (unreleased)
+
+`ratelimit.NewContext` accepts a `ContextLimiter` with caller context, a
+retry-delay hint and backend errors. It supports distributed adapters such as
+`servex-contrib/ratelimit/redis` without a cross-module import. Backend errors
+reject by default; `WithFailOpen(true)` explicitly admits calls on a backend
+failure. Caller cancellation and quota rejection are never bypassed. `New`
+and the local `TokenBucket` remain unchanged.
+
+For gRPC streams, explicitly assemble `grpcx.WithStreamMiddleware` or
+`grpcx.WithClientStreamMiddleware`; the unary chain does not apply to streams.
+See the grpcx README for lifecycle and retry constraints.
+
 ## Typed application middleware
 
 Version v1.1.0 also provides `logging.Command[C,R]` / `Query[Q,R]`,
