@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"google.golang.org/grpc"
@@ -35,13 +36,14 @@ type ServerOption func(*serverOptions)
 
 // serverOptions holds the configuration collected from ServerOptions.
 type serverOptions struct {
-	name           string
-	addr           string
-	middleware     []endpoint.Middleware
-	grpcOpts       []grpc.ServerOption
-	health         health.Checker
-	healthInterval time.Duration
-	listener       net.Listener
+	name             string
+	addr             string
+	middleware       []endpoint.Middleware
+	streamMiddleware []endpoint.Middleware
+	grpcOpts         []grpc.ServerOption
+	health           health.Checker
+	healthInterval   time.Duration
+	listener         net.Listener
 }
 
 // WithName sets the hook name of the server, which identifies it in app logs
@@ -68,6 +70,15 @@ func WithMiddleware(m ...endpoint.Middleware) ServerOption {
 	return func(o *serverOptions) { o.middleware = append(o.middleware, m...) }
 }
 
+// WithStreamMiddleware appends middleware run once around each complete
+// streaming RPC, with a *StreamInfo as its request. It is separate from the
+// unary middleware: auth, recovery, logging, metrics and tracing can be reused,
+// but retry and request validation must not be applied to a stream.
+// Health Watch streams bypass this chain, like unary health probes.
+func WithStreamMiddleware(m ...endpoint.Middleware) ServerOption {
+	return func(o *serverOptions) { o.streamMiddleware = append(o.streamMiddleware, m...) }
+}
+
 // WithGRPCOptions appends options for the underlying grpc.Server, such as
 // credentials or keepalive parameters. Interceptors given here run inside
 // the servex interceptors, except a grpc.UnaryInterceptor or
@@ -92,17 +103,18 @@ func WithHealth(c health.Checker) ServerOption {
 //
 // Every unary call runs the server middleware with a context carrying
 // metadata.Info{Kind: server, Protocol: "grpc", Operation: full method,
-// Header: incoming metadata}. Streaming calls and health probes only get the
-// Info. Errors returned by handlers and middleware are converted into gRPC
+// Header: incoming metadata}. Streaming calls run the separately configured
+// stream middleware; health probes only get the Info. Errors are converted into gRPC
 // statuses as described in the package documentation.
 type Server struct {
-	name       string
-	addr       string
-	middleware endpoint.Middleware
-	srv        *grpc.Server
-	errc       chan error
-	stopping   chan struct{} // closed when Stop begins
-	listener   net.Listener  // preset listener, used instead of addr when non-nil
+	name             string
+	addr             string
+	middleware       endpoint.Middleware
+	streamMiddleware endpoint.Middleware
+	srv              *grpc.Server
+	errc             chan error
+	stopping         chan struct{} // closed when Stop begins
+	listener         net.Listener  // preset listener, used instead of addr when non-nil
 	// listen opens the listener.
 	listen func(ctx context.Context, network, address string) (net.Listener, error)
 
@@ -121,13 +133,14 @@ func NewServer(opts ...ServerOption) *Server {
 		}
 	}
 	s := &Server{
-		name:       o.name,
-		addr:       o.addr,
-		middleware: endpoint.Chain(o.middleware...),
-		errc:       make(chan error, 1),
-		stopping:   make(chan struct{}),
-		listener:   o.listener,
-		listen:     new(net.ListenConfig).Listen,
+		name:             o.name,
+		addr:             o.addr,
+		middleware:       endpoint.Chain(o.middleware...),
+		streamMiddleware: endpoint.Chain(o.streamMiddleware...),
+		errc:             make(chan error, 1),
+		stopping:         make(chan struct{}),
+		listener:         o.listener,
+		listen:           new(net.ListenConfig).Listen,
 	}
 	gopts := slices.Concat([]grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(s.unaryInterceptor),
@@ -271,8 +284,8 @@ func callHandler(ctx context.Context, req any) (any, error) {
 	return h(ctx, req)
 }
 
-// streamInterceptor writes metadata.Info into the stream context and
-// converts the handler error into a gRPC status.
+// streamInterceptor runs the streaming chain for the complete RPC and
+// converts its result into a gRPC status.
 func (s *Server) streamInterceptor(srv any, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 	ctx := metadata.NewContext(ss.Context(), metadata.Info{
 		Kind:      metadata.KindServer,
@@ -280,14 +293,44 @@ func (s *Server) streamInterceptor(srv any, ss grpc.ServerStream, info *grpc.Str
 		Operation: info.FullMethod,
 		Header:    incomingMD(ss.Context()),
 	})
-	return statusError(handler(srv, &serverStream{ServerStream: ss, ctx: ctx}))
+	if _, ok := srv.(*healthServer); ok {
+		return statusError(handler(srv, &serverStream{ServerStream: ss, ctx: ctx}))
+	}
+	var called atomic.Bool
+	streamInfo := &StreamInfo{ClientStreams: info.IsClientStream, ServerStreams: info.IsServerStream}
+	_, err := s.streamMiddleware(func(ctx context.Context, _ any) (any, error) {
+		if !called.CompareAndSwap(false, true) {
+			return nil, errStreamReplayed
+		}
+		return nil, handler(srv, &serverStream{ServerStream: ss, ctx: ctx, info: streamInfo})
+	})(ctx, streamInfo)
+	return statusError(err)
 }
 
 // serverStream overrides the context of a grpc.ServerStream.
 type serverStream struct {
 	grpc.ServerStream
-	ctx context.Context
+	ctx  context.Context
+	info *StreamInfo
 }
 
 // Context returns the stream context carrying metadata.Info.
 func (s *serverStream) Context() context.Context { return s.ctx }
+
+// SendMsg records a message only after gRPC accepts it.
+func (s *serverStream) SendMsg(message any) error {
+	err := s.ServerStream.SendMsg(message)
+	if err == nil && s.info != nil {
+		s.info.sent.Add(1)
+	}
+	return err
+}
+
+// RecvMsg records each message received by the handler.
+func (s *serverStream) RecvMsg(message any) error {
+	err := s.ServerStream.RecvMsg(message)
+	if err == nil && s.info != nil {
+		s.info.received.Add(1)
+	}
+	return err
+}

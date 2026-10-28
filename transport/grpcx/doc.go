@@ -3,6 +3,8 @@
 // servex endpoint middleware, and Client exposes a grpc.ClientConnInterface
 // whose calls go through a transport.Client for middleware, service
 // discovery and node selection.
+// Unary and streaming middleware are configured independently. Stream chains
+// receive *StreamInfo and cover the full RPC, with no automatic stream replay.
 //
 // Errors are mapped between errorx and gRPC statuses. On the server, an
 // *errorx.Error becomes a status with the same numeric code and message; its

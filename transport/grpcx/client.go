@@ -35,10 +35,11 @@ type ClientOption func(*clientOptions)
 
 // clientOptions holds the configuration collected from ClientOptions.
 type clientOptions struct {
-	discoverer discovery.Discoverer
-	selector   selector.Selector
-	middleware []endpoint.Middleware
-	dialOpts   []grpc.DialOption
+	discoverer       discovery.Discoverer
+	selector         selector.Selector
+	middleware       []endpoint.Middleware
+	streamMiddleware []endpoint.Middleware
+	dialOpts         []grpc.DialOption
 }
 
 // WithDiscoverer sets the Discoverer used to resolve "discovery:///<name>"
@@ -59,6 +60,15 @@ func WithClientMiddleware(m ...endpoint.Middleware) ClientOption {
 	return func(o *clientOptions) { o.middleware = append(o.middleware, m...) }
 }
 
+// WithClientStreamMiddleware appends middleware run once for each complete
+// streaming RPC, with a *StreamInfo request. It runs on a managed goroutine
+// until gRPC reports the final status, so deferred logging and tracing include
+// the whole stream. Middleware must honor ctx and invoke next at most once;
+// unary retries and per-attempt timeouts do not belong in this chain.
+func WithClientStreamMiddleware(m ...endpoint.Middleware) ClientOption {
+	return func(o *clientOptions) { o.streamMiddleware = append(o.streamMiddleware, m...) }
+}
+
 // WithDialOptions appends options used to create the connection to every
 // node. Connections use insecure transport credentials unless these options
 // set others, for example with grpc.WithTransportCredentials.
@@ -74,15 +84,18 @@ func WithDialOptions(o ...grpc.DialOption) ClientOption {
 // they apply without waiting for a call. All methods are safe for concurrent
 // use.
 type Client struct {
-	tc         *transport.Client
-	middleware []endpoint.Middleware
-	dialOpts   []grpc.DialOption
-	cc         *conn
+	tc               *transport.Client
+	middleware       []endpoint.Middleware
+	streamMiddleware []endpoint.Middleware
+	dialOpts         []grpc.DialOption
+	cc               *conn
 
-	mu     sync.Mutex
-	conns  map[string]*nodeConn
-	unary  map[string]endpoint.Endpoint // per method
-	closed bool
+	mu       sync.Mutex
+	conns    map[string]*nodeConn
+	unary    map[string]endpoint.Endpoint // per method
+	closed   bool
+	streams  map[*clientStreamCall]context.CancelFunc
+	streamWG sync.WaitGroup
 	// live holds the addresses of the latest node set reported by the
 	// transport.Client, which reports the initial set before NewClient
 	// returns; it is nil only while NewClient runs.
@@ -119,10 +132,12 @@ func NewClient(ctx context.Context, target string, opts ...ClientOption) (*Clien
 		return nil, fmt.Errorf("grpcx: unsupported target scheme in %q: want grpc or discovery", target)
 	}
 	c := &Client{
-		middleware: slices.Clone(o.middleware),
-		dialOpts:   slices.Concat([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}, o.dialOpts),
-		conns:      make(map[string]*nodeConn),
-		unary:      make(map[string]endpoint.Endpoint),
+		middleware:       slices.Clone(o.middleware),
+		streamMiddleware: slices.Clone(o.streamMiddleware),
+		dialOpts:         slices.Concat([]grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}, o.dialOpts),
+		conns:            make(map[string]*nodeConn),
+		unary:            make(map[string]endpoint.Endpoint),
+		streams:          make(map[*clientStreamCall]context.CancelFunc),
 	}
 	c.cc = &conn{c: c}
 	sel := o.selector
@@ -185,8 +200,8 @@ func (c *Client) observe(nodes []selector.Node) {
 // outgoing gRPC metadata, in addition to metadata already on the context.
 // Failed calls return an *errorx.Error.
 //
-// Streams select a node the same way but skip the client middleware; errors
-// returned by the stream are converted like unary errors, except io.EOF.
+// Streams select a node the same way and use only the separately configured
+// stream middleware; errors are converted like unary errors, except io.EOF.
 func (c *Client) Conn() grpc.ClientConnInterface { return c.cc }
 
 // Close stops the transport.Client and closes the connections to all
@@ -200,8 +215,15 @@ func (c *Client) Close() error {
 	}
 	c.closed = true
 	conns := c.conns
+	streams := make([]context.CancelFunc, 0, len(c.streams))
+	for _, cancel := range c.streams {
+		streams = append(streams, cancel)
+	}
 	c.conns = nil
 	c.mu.Unlock()
+	for _, cancel := range streams {
+		cancel()
+	}
 
 	errs := []error{c.tc.Close()}
 	for addr, nc := range conns {
@@ -209,6 +231,7 @@ func (c *Client) Close() error {
 			errs = append(errs, fmt.Errorf("grpcx: close connection to %s: %w", addr, err))
 		}
 	}
+	c.streamWG.Wait()
 	return errors.Join(errs...)
 }
 
@@ -316,10 +339,13 @@ func (cn *conn) Invoke(ctx context.Context, method string, args, reply any, opts
 	return err
 }
 
-// NewStream selects a node and opens a stream on its connection. The client
+// NewStream selects a node and opens a stream on its connection. Unary
 // middleware is not applied.
 func (cn *conn) NewStream(ctx context.Context, desc *grpc.StreamDesc, method string, opts ...grpc.CallOption) (grpc.ClientStream, error) {
 	c := cn.c
+	if len(c.streamMiddleware) != 0 {
+		return c.newMiddlewareStream(ctx, desc, method, opts)
+	}
 	ep := c.tc.Endpoint(method, transport.InvokerFunc(func(ctx context.Context, addr string, _ any) (any, error) {
 		cc, release, err := c.acquire(addr)
 		if err != nil {
@@ -357,7 +383,21 @@ type clientStream struct {
 	grpc.ClientStream
 	ctx           context.Context
 	serverStreams bool
-	release       func() // idempotent
+	release       func()       // idempotent
+	result        func() error // waits for the middleware outcome, when configured
+	info          *StreamInfo
+	activity      *streamActivity
+}
+
+// finish joins the middleware before exposing the terminal result to callers.
+func (s *clientStream) finish(err error) error {
+	s.release()
+	if s.result != nil {
+		if final := s.result(); final != nil {
+			return fromStatus(s.ctx, final)
+		}
+	}
+	return s.convert(err)
 }
 
 // convert maps a stream error.
@@ -372,7 +412,7 @@ func (s *clientStream) convert(err error) error {
 func (s *clientStream) Header() (md grpcmd.MD, err error) {
 	md, err = s.ClientStream.Header()
 	if err != nil && !errors.Is(err, io.EOF) {
-		s.release()
+		return md, s.finish(err)
 	}
 	return md, s.convert(err)
 }
@@ -380,9 +420,9 @@ func (s *clientStream) Header() (md grpcmd.MD, err error) {
 // SendMsg sends m on the stream. io.EOF means the server ended the stream,
 // whose status RecvMsg then returns; other errors abort the stream.
 func (s *clientStream) SendMsg(m any) error {
-	err := s.ClientStream.SendMsg(m)
+	err := s.transfer(m, true)
 	if err != nil && !errors.Is(err, io.EOF) {
-		s.release()
+		return s.finish(err)
 	}
 	return s.convert(err)
 }
@@ -392,11 +432,31 @@ func (s *clientStream) SendMsg(m any) error {
 // without server streaming, which is the last message generated
 // CloseAndRecv reads.
 func (s *clientStream) RecvMsg(m any) error {
-	err := s.ClientStream.RecvMsg(m)
+	err := s.transfer(m, false)
 	if err != nil || !s.serverStreams {
-		s.release()
+		return s.finish(err)
 	}
 	return s.convert(err)
+}
+
+// transfer counts a completed message before middleware observes the final
+// RPC status. Leaving the activity also on panic avoids retaining the worker.
+func (s *clientStream) transfer(message any, send bool) error {
+	if s.activity != nil {
+		defer s.activity.enter()()
+	}
+	if send {
+		err := s.ClientStream.SendMsg(message)
+		if err == nil && s.info != nil {
+			s.info.sent.Add(1)
+		}
+		return err
+	}
+	err := s.ClientStream.RecvMsg(message)
+	if err == nil && s.info != nil {
+		s.info.received.Add(1)
+	}
+	return err
 }
 
 // CloseSend closes the send direction of the stream.
