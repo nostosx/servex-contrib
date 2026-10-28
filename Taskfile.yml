@@ -10,7 +10,7 @@ vars:
     sh: |
       for file in */go.mod */*/go.mod; do
         if [ -f "$file" ]; then printf '%s\n' "${file%/go.mod}"; fi
-      done | sort
+      done | sort | tr -d '\r'
   # An explicitly empty MODULES value must fail rather than select every module.
   MODULES: '{{if hasKey . "MODULES"}}{{.MODULES}}{{else}}{{.ALL_MODULES}}{{end}}'
 

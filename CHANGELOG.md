@@ -13,6 +13,9 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- Normalize CRLF output from Windows module discovery before validating Task
+  selections; preserve rejection of empty, unknown and outside module paths.
+
 - Correct per-module installation tags, declared core requirements and API
   availability in module READMEs. No additional library release is needed.
 
