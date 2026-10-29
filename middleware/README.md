@@ -84,7 +84,7 @@ Run this in your application module (create one with `go mod init` if needed):
 go get github.com/nostosx/servex-contrib/middleware@v1.4.0
 ```
 
-The example version corresponds to the tag `middleware/v1.3.0`;
+The example version corresponds to the tag `middleware/v1.4.0`;
 see [module versioning](../README.md#versioning).
 
 ## Usage

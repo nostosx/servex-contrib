@@ -8,7 +8,7 @@ Values must implement `proto.Message`; anything else yields an
 
 ## Install
 
-Requires Go 1.27.3. Uses published servex v1.0.0 and kitx v1.0.0 dependencies.
+Requires Go 1.27.3. Uses published servex v1.4.0.
 
 Run this in your application module (create one with `go mod init` if needed):
 
@@ -16,7 +16,7 @@ Run this in your application module (create one with `go mod init` if needed):
 go get github.com/nostosx/servex-contrib/encoding/proto@v1.1.0 github.com/nostosx/servex@v1.4.0
 ```
 
-The example version corresponds to the tag `encoding/proto/v1.0.0`;
+The example version corresponds to the tag `encoding/proto/v1.1.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage

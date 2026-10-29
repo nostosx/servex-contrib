@@ -6,8 +6,8 @@
 节点选择算法、遥测后端与中间件。核心保留契约和共享运行机制；仅依赖标准库或 kitx 的
 具体实现同样放在本仓库。
 
-当前配置、日志和后端迁移尚未发布，需要通过临时 modfile 验证配套的 core/contrib 源码。
-清单中声明的已发布基线版本尚不包含这些新 API，迁移说明见核心的 `BACKEND-MIGRATION.md`。
+2026-10-29 的配套发布使用 servex v1.4.0 核心契约。下表各模块均通过公开
+Go 代理解析依赖，无需本地源码替换。API 迁移见核心 BACKEND-MIGRATION.md。
 
 2026-10-28 发布 middleware v1.3.0、transport/grpcx v1.2.0，以及 auth/oidc、di/do、
 ratelimit/redis 的首个 v1.0.0。有核心依赖的模块使用 servex v1.3.0；auth/oidc 不依赖核心。
@@ -25,52 +25,52 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 模块使用 servex 的公开 API，并可显式依赖 JSON、selector、Noop 遥测等基础实现。
 依赖保持单向，避免引入无关后端 SDK；互操作测试可以显式组合多个实现。
 
-| 模块 | 实现 | 主要依赖 |
-|---|---|---|
-| [`cache/loader`](cache/loader) | 显式 Codec、owner 共享执行与写回策略的缓存加载器 | 标准库、core、kitx/singleflight |
-| [`transport/client`](transport/client) | HTTP/gRPC 复用的发现、选择与调用引擎 | 标准库、core、kitx/backoff |
-| [`transport/httpx`](transport/httpx) | HTTP 服务端与客户端 | net/http、JSON 编解码器、selector |
-| [`tracing/noop`](tracing/noop) | `tracing.Tracer` / `Propagator` 空操作后端 | 标准库、core |
-| [`metrics/noop`](metrics/noop) | `metrics.Meter` 空操作后端 | 标准库、core |
-| [`jobqueue/memory`](jobqueue/memory) | 内存任务队列 `jobqueue.Enqueuer` / `Runner` | 标准库、core、kitx |
-| [`encoding/json`](encoding/json) | JSON `encoding.Codec` | encoding/json/v2 |
-| [`discovery/memory`](discovery/memory) | 内存注册与发现 | 标准库、core |
-| [`database/sql`](database/sql) | database/sql 追踪、指标、生命周期与就绪检查 | 标准库、core、Noop 遥测 |
-| [`cache/memory`](cache/memory) | 内存 `cache.Cache` | kitx/ttlcache |
-| [`broker/memory`](broker/memory) | 内存发布与订阅 | 标准库、core、kitx |
-| [`auth/oidc`](auth/oidc) | OIDC 发现、ID Token 签名与 JWKS 验证，供应用鉴权回调使用 | `github.com/coreos/go-oidc/v3` |
-| [`broker/kafka`](broker/kafka) | Apache Kafka 上的 `broker.Publisher`、`broker.Subscriber` | `github.com/twmb/franz-go` |
-| [`broker/nats`](broker/nats) | NATS JetStream 上的发布与订阅 | `github.com/nats-io/nats.go` |
-| [`broker/rabbitmq`](broker/rabbitmq) | RabbitMQ（AMQP 0-9-1）上的发布与订阅 | `github.com/rabbitmq/amqp091-go` |
-| [`cache/redis`](cache/redis) | 单机、哨兵或集群 Redis 上的 `cache.Cache` | `github.com/redis/go-redis/v9` |
-| [`config/consul`](config/consul) | Consul KV 上的 `config.Source`、`config.Watchable` | `github.com/hashicorp/consul/api` |
-| [`config/etcd`](config/etcd) | etcd 上的配置读取与监听 | `go.etcd.io/etcd/client/v3` |
-| [`config/nacos`](config/nacos) | Nacos 配置服务上的读取与监听 | `github.com/nacos-group/nacos-sdk-go/v2` |
-| [`config/viper`](config/viper) | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
-| [`database/mongodb`](database/mongodb) | MongoDB 驱动的追踪、指标、生命周期与健康检查 | `go.mongodb.org/mongo-driver/v2` |
-| [`di/do`](di/do) | 基于 samber/do 实现 `di.Container`，接入生命周期与就绪检查，提供集中装配示例 | `github.com/samber/do/v2` |
-| [`discovery/consul`](discovery/consul) | Consul agent 上的 `discovery.Registrar`、`discovery.Discoverer` | `github.com/hashicorp/consul/api` |
-| [`discovery/etcd`](discovery/etcd) | 基于 etcd lease 的注册与发现 | `go.etcd.io/etcd/client/v3` |
-| [`discovery/kubernetes`](discovery/kubernetes) | 基于 EndpointSlice 的服务发现 | `k8s.io/client-go` |
-| [`discovery/nacos`](discovery/nacos) | Nacos naming 服务上的注册与发现 | `github.com/nacos-group/nacos-sdk-go/v2` |
-| [`encoding/proto`](encoding/proto) | 名为 `proto` 的 `encoding.Codec` | `google.golang.org/protobuf` |
-| [`encoding/yaml`](encoding/yaml) | 名为 `yaml` 的 `encoding.Codec` | `go.yaml.in/yaml/v3` |
-| [`jobqueue/asynq`](jobqueue/asynq) | asynq 上的 `jobqueue.Enqueuer`、`jobqueue.Runner` | `github.com/hibiken/asynq` |
-| [`logger/slog`](logger/slog) | `logger.Logger` | `log/slog` |
-| [`logger/zap`](logger/zap) | `logger.Logger` | `go.uber.org/zap` |
-| [`metrics/otel`](metrics/otel) | OpenTelemetry 上的 `metrics.Meter` | `go.opentelemetry.io/otel/metric` |
-| [`metrics/prometheus`](metrics/prometheus) | Prometheus 上的 `metrics.Meter` | `github.com/prometheus/client_golang` |
-| [`middleware`](middleware) | 鉴权、熔断、日志、指标、限流、恢复、重试、超时、追踪与校验 | 标准库、servex、kitx、Noop 遥测 |
-| [`ratelimit/rate`](ratelimit/rate) | 有 key 数量上限的本地令牌桶，供通用限流中间件使用，尚未发布 | `golang.org/x/time/rate` |
-| [`ratelimit/redis`](ratelimit/redis) | 多副本共享的 Redis 原子令牌桶，支持 context、等待提示和后端错误 | `github.com/redis/go-redis/v9` |
-| [`selector`](selector) | 加权随机、平滑加权轮询与 P2C 节点选择 | 标准库、servex、kitx |
-| [`tracing/otel`](tracing/otel) | OpenTelemetry 上的 `tracing.Tracer`、`tracing.Propagator` | `go.opentelemetry.io/otel/trace` |
-| [`transport/grpcx`](transport/grpcx) | gRPC 服务端及支持中间件、发现和节点选择的客户端 | `google.golang.org/grpc` |
-| [`transport/ssex`](transport/ssex) | SSE 事件/心跳发送及有界流式客户端，尚未发布 | 标准库 |
-| [`transport/websocketx`](transport/websocketx) | WebSocket 握手、消息、Ping、大小限制与关闭状态，尚未发布 | `github.com/coder/websocket` |
-| [`transport/connectx`](transport/connectx) | Connect/gRPC/gRPC-Web 类型化 unary 与流式 RPC，尚未发布 | `connectrpc.com/connect` |
-| [`validation/playground`](validation/playground) | 基于结构体标签的校验 `endpoint.Middleware`，尚未发布 | `github.com/go-playground/validator/v10` |
-| [`validation/protovalidate`](validation/protovalidate) | 基于 Protobuf schema/CEL 的校验 `endpoint.Middleware`，尚未发布 | `buf.build/go/protovalidate` |
+| 模块 | 版本 | 实现 | 主要依赖 |
+|---|---|---|---|
+| [`cache/loader`](cache/loader) | v1.0.0 | 显式 Codec、owner 共享执行与写回策略的缓存加载器 | 标准库、core、kitx/singleflight |
+| [`transport/client`](transport/client) | v1.0.0 | HTTP/gRPC 复用的发现、选择与调用引擎 | 标准库、core、kitx/backoff |
+| [`transport/httpx`](transport/httpx) | v1.0.0 | HTTP 服务端与客户端 | net/http、JSON 编解码器、selector |
+| [`tracing/noop`](tracing/noop) | v1.0.0 | `tracing.Tracer` / `Propagator` 空操作后端 | 标准库、core |
+| [`metrics/noop`](metrics/noop) | v1.0.0 | `metrics.Meter` 空操作后端 | 标准库、core |
+| [`jobqueue/memory`](jobqueue/memory) | v1.0.0 | 内存任务队列 `jobqueue.Enqueuer` / `Runner` | 标准库、core、kitx |
+| [`encoding/json`](encoding/json) | v1.0.0 | JSON `encoding.Codec` | encoding/json/v2 |
+| [`discovery/memory`](discovery/memory) | v1.0.0 | 内存注册与发现 | 标准库、core |
+| [`database/sql`](database/sql) | v1.0.0 | database/sql 追踪、指标、生命周期与就绪检查 | 标准库、core、Noop 遥测 |
+| [`cache/memory`](cache/memory) | v1.0.0 | 内存 `cache.Cache` | kitx/ttlcache |
+| [`broker/memory`](broker/memory) | v1.0.0 | 内存发布与订阅 | 标准库、core、kitx |
+| [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC 发现、ID Token 签名与 JWKS 验证，供应用鉴权回调使用 | `github.com/coreos/go-oidc/v3` |
+| [`broker/kafka`](broker/kafka) | v1.2.0 | Apache Kafka 上的 `broker.Publisher`、`broker.Subscriber` | `github.com/twmb/franz-go` |
+| [`broker/nats`](broker/nats) | v1.2.0 | NATS JetStream 上的发布与订阅 | `github.com/nats-io/nats.go` |
+| [`broker/rabbitmq`](broker/rabbitmq) | v1.2.0 | RabbitMQ（AMQP 0-9-1）上的发布与订阅 | `github.com/rabbitmq/amqp091-go` |
+| [`cache/redis`](cache/redis) | v1.1.0 | 单机、哨兵或集群 Redis 上的 `cache.Cache` | `github.com/redis/go-redis/v9` |
+| [`config/consul`](config/consul) | v1.2.0 | Consul KV 上的 `config.Source`、`config.Watchable` | `github.com/hashicorp/consul/api` |
+| [`config/etcd`](config/etcd) | v1.2.0 | etcd 上的配置读取与监听 | `go.etcd.io/etcd/client/v3` |
+| [`config/nacos`](config/nacos) | v1.2.0 | Nacos 配置服务上的读取与监听 | `github.com/nacos-group/nacos-sdk-go/v2` |
+| [`config/viper`](config/viper) | v1.0.0 | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
+| [`database/mongodb`](database/mongodb) | v1.2.0 | MongoDB 驱动的追踪、指标、生命周期与健康检查 | `go.mongodb.org/mongo-driver/v2` |
+| [`di/do`](di/do) | v1.1.0 | 基于 samber/do 实现 `di.Container`，接入生命周期与就绪检查，提供集中装配示例 | `github.com/samber/do/v2` |
+| [`discovery/consul`](discovery/consul) | v1.2.0 | Consul agent 上的 `discovery.Registrar`、`discovery.Discoverer` | `github.com/hashicorp/consul/api` |
+| [`discovery/etcd`](discovery/etcd) | v1.2.0 | 基于 etcd lease 的注册与发现 | `go.etcd.io/etcd/client/v3` |
+| [`discovery/kubernetes`](discovery/kubernetes) | v1.2.0 | 基于 EndpointSlice 的服务发现 | `k8s.io/client-go` |
+| [`discovery/nacos`](discovery/nacos) | v1.2.0 | Nacos naming 服务上的注册与发现 | `github.com/nacos-group/nacos-sdk-go/v2` |
+| [`encoding/proto`](encoding/proto) | v1.1.0 | 名为 `proto` 的 `encoding.Codec` | `google.golang.org/protobuf` |
+| [`encoding/yaml`](encoding/yaml) | v1.2.0 | 名为 `yaml` 的 `encoding.Codec` | `go.yaml.in/yaml/v3` |
+| [`jobqueue/asynq`](jobqueue/asynq) | v1.2.0 | asynq 上的 `jobqueue.Enqueuer`、`jobqueue.Runner` | `github.com/hibiken/asynq` |
+| [`logger/slog`](logger/slog) | v1.0.0 | `logger.Logger` | `log/slog` |
+| [`logger/zap`](logger/zap) | v1.0.0 | `logger.Logger` | `go.uber.org/zap` |
+| [`metrics/otel`](metrics/otel) | v1.2.0 | OpenTelemetry 上的 `metrics.Meter` | `go.opentelemetry.io/otel/metric` |
+| [`metrics/prometheus`](metrics/prometheus) | v1.2.0 | Prometheus 上的 `metrics.Meter` | `github.com/prometheus/client_golang` |
+| [`middleware`](middleware) | v1.4.0 | 鉴权、熔断、日志、指标、限流、恢复、重试、超时、追踪与校验 | 标准库、servex、kitx、Noop 遥测 |
+| [`ratelimit/rate`](ratelimit/rate) | v1.0.0 | 有 key 数量上限的本地令牌桶，供通用限流中间件使用 | `golang.org/x/time/rate` |
+| [`ratelimit/redis`](ratelimit/redis) | v1.0.0 | 多副本共享的 Redis 原子令牌桶，支持 context、等待提示和后端错误 | `github.com/redis/go-redis/v9` |
+| [`selector`](selector) | v1.2.0 | 加权随机、平滑加权轮询与 P2C 节点选择 | 标准库、servex、kitx |
+| [`tracing/otel`](tracing/otel) | v1.1.0 | OpenTelemetry 上的 `tracing.Tracer`、`tracing.Propagator` | `go.opentelemetry.io/otel/trace` |
+| [`transport/grpcx`](transport/grpcx) | v1.3.0 | gRPC 服务端及支持中间件、发现和节点选择的客户端 | `google.golang.org/grpc` |
+| [`transport/ssex`](transport/ssex) | v1.0.0 | SSE 事件/心跳发送及有界流式客户端 | 标准库 |
+| [`transport/websocketx`](transport/websocketx) | v1.0.0 | WebSocket 握手、消息、Ping、大小限制与关闭状态 | `github.com/coder/websocket` |
+| [`transport/connectx`](transport/connectx) | v1.0.0 | Connect/gRPC/gRPC-Web 类型化 unary 与流式 RPC | `connectrpc.com/connect` |
+| [`validation/playground`](validation/playground) | v1.0.0 | 基于结构体标签的校验 `endpoint.Middleware` | `github.com/go-playground/validator/v10` |
+| [`validation/protovalidate`](validation/protovalidate) | v1.0.0 | 基于 Protobuf schema/CEL 的校验 `endpoint.Middleware` | `buf.build/go/protovalidate` |
 
 校验 SDK 和 x/time/rate 仅由对应的可选模块持有，core 与通用 middleware
 保持现有依赖边界。校验适配器显式接收已配置的 SDK validator；本地限流器传入
@@ -89,7 +89,7 @@ transport/grpcx v1.2.0、`ratelimit.NewContext` 自 middleware v1.3.0 起提供�
 流式调用需要显式配置 `WithStreamMiddleware` / `WithClientStreamMiddleware`，不会自动重放消息。
 OIDC 模块验证 ID Token，不替代任意 OAuth Access Token 的验证或 introspection。
 
-现有已发布模块的首个正式版本均为 v1.0.0；本轮迁出的后端及新增协议适配器尚未发布。各模块独立发布，标签包含完整目录前缀，
+现有已发布模块的首个正式版本均为 v1.0.0；本轮后端与协议适配器已按下表版本发布。各模块独立发布，标签包含完整目录前缀，
 例如 `broker/kafka/v1.0.0` 或 `middleware/v1.0.0`：
 
 在应用自身的 Go 模块中执行 `go get`。新应用可以从以下步骤开始：
@@ -98,7 +98,7 @@ OIDC 模块验证 ID Token，不替代任意 OAuth Access Token 的验证或 int
 mkdir servex-demo
 cd servex-demo
 go mod init example.com/servex-demo
-go get github.com/nostosx/servex-contrib/cache/redis@v1.0.0
+go get github.com/nostosx/servex-contrib/cache/redis@v1.1.0
 ```
 
 从模块表选择所需实现，将对应 Usage 中的完整示例保存为 `main.go`，
@@ -131,7 +131,7 @@ HTTP/gRPC、编解码与常用中间件的基准结果、profile 发现、测量
 后续四项优化的行为回归、分配变化和前后对比见[优化结果](PERFORMANCE-OPTIMIZATION.md)。
 
 使用 Go 1.27.3、Task v3.53.1 和 Bash。已发布版本通过 Go 模块代理解析依赖；
-当前尚未发布的迁移需要前述配套源码验证。
+本轮配套版本无需本地源码替换。
 
 根目录不是 Go 模块。在根目录运行下列命令，Task 会逐模块执行并设置 `GOWORK=off`：
 
@@ -201,6 +201,6 @@ Task 不启动服务。集成入口会拒绝缺少配置、缺失测试、跳过
 
 采用 [MIT 许可证](LICENSE)。每个模块目录均保留许可证副本，供独立模块归档使用。
 
-配置、日志及后端迁移尚未发布，需要配套 core 源码。本轮从核心迁出九个后端模块，
+配置、日志及后端迁移使用公开发布的 servex v1.4.0。本轮从核心迁出九个后端模块，
 加权随机选择加入现有 selector 模块的 `selector/random` 包。第二批新增 cache/loader 和 transport/client 两个模块，承载 Loader 与共享客户端引擎。
 App、health.Group、注册生命周期与轻量 Consumer/Worker 适配明确保留在核心。API 变更见核心的 `BACKEND-MIGRATION.md`。

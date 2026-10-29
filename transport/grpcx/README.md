@@ -93,7 +93,7 @@ contain them.
 
 ## Install
 
-Requires Go 1.27.3. Uses published servex v1.3.0 and kitx v1.0.0.
+Requires Go 1.27.3. Uses published servex v1.4.0 and kitx v1.0.0.
 
 Run this in your application module (create one with `go mod init` if needed):
 
@@ -101,7 +101,7 @@ Run this in your application module (create one with `go mod init` if needed):
 go get github.com/nostosx/servex-contrib/transport/grpcx@v1.3.0
 ```
 
-The example version corresponds to the tag `transport/grpcx/v1.2.0`;
+The example version corresponds to the tag `transport/grpcx/v1.3.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage

@@ -20,7 +20,7 @@
 
 ## Install
 
-Requires Go 1.27.3. Uses published servex v1.2.0 and kitx v1.0.0 dependencies.
+Requires Go 1.27.3. Uses published servex v1.4.0 and kitx v1.0.0.
 
 Earlier pre-release checkouts joined unescaped components. If either component
 contains `%` or `-`, stop and deregister the old registration before upgrading,
@@ -32,10 +32,10 @@ names and IDs without these characters keep their existing IDs.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/discovery/consul@v1.1.0
+go get github.com/nostosx/servex-contrib/discovery/consul@v1.2.0
 ```
 
-The example version corresponds to the tag `discovery/consul/v1.1.0`;
+The example version corresponds to the tag `discovery/consul/v1.2.0`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
@@ -112,3 +112,11 @@ SERVEX_IT_CONSUL_ADDR=127.0.0.1:8500 GOWORK=off go test -race -count=1 -tags int
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+## Release
+
+Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/discovery/consul@v1.2.0
+```

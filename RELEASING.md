@@ -10,8 +10,8 @@ separate maintainer decision.
 The 2026-10-28 modules with a core dependency use published servex v1.3.0;
 auth/oidc has no core requirement. Other modules keep their recorded dependency
 versions. Where required, kitx remains v1.0.0. Those released snapshots require
-no local replacements. Current unreleased extractions require matching sources
-through temporary modfiles until the coordinated publication.
+no local replacements. The 2026-10-29 extraction requires published servex
+v1.4.0 and the matching independently versioned contrib releases.
 Before adopting a newer core or utility release, verify that version through
 the public Go proxy, update requirements, tidy and rerun the module gates.
 Contrib dependencies must form a directed graph. After the core, publish

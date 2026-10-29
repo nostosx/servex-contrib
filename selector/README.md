@@ -2,7 +2,7 @@
 
 `github.com/nostosx/servex-contrib/selector` is one module holding node selection
 `selector.Selector` implementations. It depends only on the standard library,
-servex and its kitx dependency.
+the published servex contracts.
 
 | Package | Constructor | Strategy |
 |---|---|---|
@@ -31,7 +31,7 @@ Run this in your application module (create one with `go mod init` if needed):
 go get github.com/nostosx/servex-contrib/selector@v1.2.0
 ```
 
-The example version corresponds to the tag `selector/v1.1.0`;
+The example version corresponds to the tag `selector/v1.2.0`;
 see [module versioning](../README.md#versioning).
 
 ## Usage

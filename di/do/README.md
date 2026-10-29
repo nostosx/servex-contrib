@@ -6,7 +6,7 @@ container cleanup and health checks to servex. Constructors
 remain ordinary Go functions. Keep registration in one application entry point
 or `app.go`; neither do nor Fx requires a `module.go` in each package.
 
-Version v1.0.0 requires servex v1.4.0, Go 1.27.3 and samber/do/v2 v2.1.0.
+Version v1.1.0 requires servex v1.4.0, Go 1.27.3 and samber/do/v2 v2.1.0.
 Install it in the application module; no sibling checkout or local replacement
 is required:
 

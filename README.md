@@ -7,10 +7,10 @@ contracts: backend adapters, codecs, selection algorithms, telemetry and
 middleware. Core owns contracts and shared runtime mechanisms; implementations
 live here even when they use only the standard library or kitx.
 
-The current configuration, logging and backend extraction changes are
-unreleased. They require matching core/contrib sources through temporary
-modfiles until a coordinated release. Declared baseline versions do not yet
-provide the new APIs; see core's `BACKEND-MIGRATION.md`.
+The 2026-10-29 coordinated release uses servex v1.4.0 for the extracted
+configuration, logging and backend contracts. All module versions below resolve
+from the public Go proxy without source replacements. See the core
+`BACKEND-MIGRATION.md` for changed import paths and constructors.
 
 The 2026-10-28 releases are middleware v1.3.0, transport/grpcx v1.2.0 and
 the initial v1.0.0 releases of auth/oidc, di/do and ratelimit/redis. These use
@@ -35,52 +35,52 @@ are `github.com/nostosx/servex-contrib/<directory>`. Production modules depend o
 contrib implementations where needed. Keep dependencies directed and avoid
 unrelated backend SDKs. Interoperability tests may compose implementations.
 
-| Module | Implements | Key dependency |
-|---|---|---|
-| [`cache/loader`](cache/loader) | Read-through cache loading with explicit codec, shared owner and write-back policy | standard library, core, kitx/singleflight |
-| [`transport/client`](transport/client) | Shared discovery, selection and invocation engine for HTTP/gRPC adapters | standard library, core, kitx/backoff |
-| [`transport/httpx`](transport/httpx) | HTTP transport server/client | net/http, JSON codec, selector |
-| [`tracing/noop`](tracing/noop) | `tracing.Tracer` / `Propagator` no-op backend | standard library, core |
-| [`metrics/noop`](metrics/noop) | `metrics.Meter` no-op backend | standard library, core |
-| [`jobqueue/memory`](jobqueue/memory) | `jobqueue.Enqueuer` / `Runner` in memory | standard library, core, kitx |
-| [`encoding/json`](encoding/json) | `encoding.Codec` JSON backend | encoding/json/v2 |
-| [`discovery/memory`](discovery/memory) | `discovery.Registrar` / `Discoverer` in memory | standard library, core |
-| [`database/sql`](database/sql) | database/sql tracing, metrics, lifecycle and readiness | standard library, core, no-op telemetry |
-| [`cache/memory`](cache/memory) | `cache.Cache` in memory | kitx/ttlcache |
-| [`broker/memory`](broker/memory) | `broker.Publisher` / `Subscriber` in memory | standard library, core, kitx |
-| [`auth/oidc`](auth/oidc) | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
-| [`broker/kafka`](broker/kafka) | `broker.Publisher` and `broker.Subscriber` on Apache Kafka | `github.com/twmb/franz-go` |
-| [`broker/nats`](broker/nats) | `broker.Publisher` and `broker.Subscriber` on NATS JetStream | `github.com/nats-io/nats.go` |
-| [`broker/rabbitmq`](broker/rabbitmq) | `broker.Publisher` and `broker.Subscriber` on RabbitMQ (AMQP 0-9-1) | `github.com/rabbitmq/amqp091-go` |
-| [`cache/redis`](cache/redis) | `cache.Cache` on Redis (standalone, sentinel or cluster) | `github.com/redis/go-redis/v9` |
-| [`config/consul`](config/consul) | `config.Source` and `config.Watchable` on the Consul KV store | `github.com/hashicorp/consul/api` |
-| [`config/etcd`](config/etcd) | `config.Source` and `config.Watchable` on etcd | `go.etcd.io/etcd/client/v3` |
-| [`config/nacos`](config/nacos) | `config.Source` and `config.Watchable` on the Nacos configuration service | `github.com/nacos-group/nacos-sdk-go/v2` |
-| [`config/viper`](config/viper) | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
-| [`database/mongodb`](database/mongodb) | Tracing and metrics for the MongoDB driver, lifecycle Hook and health check | `go.mongodb.org/mongo-driver/v2` |
-| [`di/do`](di/do) | `di.Container` on samber/do with lifecycle and readiness integration, plus centralized wiring examples | `github.com/samber/do/v2` |
-| [`discovery/consul`](discovery/consul) | `discovery.Registrar` and `discovery.Discoverer` on the Consul agent | `github.com/hashicorp/consul/api` |
-| [`discovery/etcd`](discovery/etcd) | `discovery.Registrar` and `discovery.Discoverer` on etcd leases | `go.etcd.io/etcd/client/v3` |
-| [`discovery/kubernetes`](discovery/kubernetes) | `discovery.Discoverer` on Kubernetes EndpointSlices | `k8s.io/client-go` |
-| [`discovery/nacos`](discovery/nacos) | `discovery.Registrar` and `discovery.Discoverer` on the Nacos naming service | `github.com/nacos-group/nacos-sdk-go/v2` |
-| [`encoding/proto`](encoding/proto) | `encoding.Codec` named `proto` | `google.golang.org/protobuf` |
-| [`encoding/yaml`](encoding/yaml) | `encoding.Codec` named `yaml` | `go.yaml.in/yaml/v3` |
-| [`jobqueue/asynq`](jobqueue/asynq) | `jobqueue.Enqueuer` and `jobqueue.Runner` on asynq (Redis) | `github.com/hibiken/asynq` |
-| [`logger/slog`](logger/slog) | `logger.Logger` | `log/slog` |
-| [`logger/zap`](logger/zap) | `logger.Logger` | `go.uber.org/zap` |
-| [`metrics/otel`](metrics/otel) | `metrics.Meter` on an OpenTelemetry meter | `go.opentelemetry.io/otel/metric` |
-| [`metrics/prometheus`](metrics/prometheus) | `metrics.Meter` on the Prometheus client | `github.com/prometheus/client_golang` |
-| [`middleware`](middleware) | `endpoint.Middleware`: auth, circuitbreaker, logging, metrics, ratelimit, recovery, retry, timeout, tracing, validate | standard library, servex, kitx and no-op telemetry |
-| [`ratelimit/rate`](ratelimit/rate) | Bounded keyed local token buckets for the generic rate-limit middleware (unreleased) | `golang.org/x/time/rate` |
-| [`ratelimit/redis`](ratelimit/redis) | Atomic shared Redis token buckets with caller context, retry hints and backend errors | `github.com/redis/go-redis/v9` |
-| [`selector`](selector) | `selector.Selector`: weighted random, roundrobin (smooth weighted), p2c (Power of Two Choices) | standard library, servex and kitx |
-| [`tracing/otel`](tracing/otel) | `tracing.Tracer` and `tracing.Propagator` on OpenTelemetry | `go.opentelemetry.io/otel/trace` |
-| [`transport/grpcx`](transport/grpcx) | `transport.Server` and a gRPC client with servex middleware, discovery and node selection | `google.golang.org/grpc` |
-| [`transport/ssex`](transport/ssex) | SSE acceptor/sender and bounded streaming client (unreleased) | standard library |
-| [`transport/websocketx`](transport/websocketx) | WebSocket handshakes, message I/O, Ping and close status (unreleased) | `github.com/coder/websocket` |
-| [`transport/connectx`](transport/connectx) | Typed unary/streaming RPC over Connect, gRPC and gRPC-Web (unreleased) | `connectrpc.com/connect` |
-| [`validation/playground`](validation/playground) | Struct-tag validation as `endpoint.Middleware` (unreleased) | `github.com/go-playground/validator/v10` |
-| [`validation/protovalidate`](validation/protovalidate) | Protobuf schema/CEL validation as `endpoint.Middleware` (unreleased) | `buf.build/go/protovalidate` |
+| Module | Version | Implements | Key dependency |
+|---|---|---|---|
+| [`cache/loader`](cache/loader) | v1.0.0 | Read-through cache loading with explicit codec, shared owner and write-back policy | standard library, core, kitx/singleflight |
+| [`transport/client`](transport/client) | v1.0.0 | Shared discovery, selection and invocation engine for HTTP/gRPC adapters | standard library, core, kitx/backoff |
+| [`transport/httpx`](transport/httpx) | v1.0.0 | HTTP transport server/client | net/http, JSON codec, selector |
+| [`tracing/noop`](tracing/noop) | v1.0.0 | `tracing.Tracer` / `Propagator` no-op backend | standard library, core |
+| [`metrics/noop`](metrics/noop) | v1.0.0 | `metrics.Meter` no-op backend | standard library, core |
+| [`jobqueue/memory`](jobqueue/memory) | v1.0.0 | `jobqueue.Enqueuer` / `Runner` in memory | standard library, core, kitx |
+| [`encoding/json`](encoding/json) | v1.0.0 | `encoding.Codec` JSON backend | encoding/json/v2 |
+| [`discovery/memory`](discovery/memory) | v1.0.0 | `discovery.Registrar` / `Discoverer` in memory | standard library, core |
+| [`database/sql`](database/sql) | v1.0.0 | database/sql tracing, metrics, lifecycle and readiness | standard library, core, no-op telemetry |
+| [`cache/memory`](cache/memory) | v1.0.0 | `cache.Cache` in memory | kitx/ttlcache |
+| [`broker/memory`](broker/memory) | v1.0.0 | `broker.Publisher` / `Subscriber` in memory | standard library, core, kitx |
+| [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
+| [`broker/kafka`](broker/kafka) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on Apache Kafka | `github.com/twmb/franz-go` |
+| [`broker/nats`](broker/nats) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on NATS JetStream | `github.com/nats-io/nats.go` |
+| [`broker/rabbitmq`](broker/rabbitmq) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on RabbitMQ (AMQP 0-9-1) | `github.com/rabbitmq/amqp091-go` |
+| [`cache/redis`](cache/redis) | v1.1.0 | `cache.Cache` on Redis (standalone, sentinel or cluster) | `github.com/redis/go-redis/v9` |
+| [`config/consul`](config/consul) | v1.2.0 | `config.Source` and `config.Watchable` on the Consul KV store | `github.com/hashicorp/consul/api` |
+| [`config/etcd`](config/etcd) | v1.2.0 | `config.Source` and `config.Watchable` on etcd | `go.etcd.io/etcd/client/v3` |
+| [`config/nacos`](config/nacos) | v1.2.0 | `config.Source` and `config.Watchable` on the Nacos configuration service | `github.com/nacos-group/nacos-sdk-go/v2` |
+| [`config/viper`](config/viper) | v1.0.0 | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
+| [`database/mongodb`](database/mongodb) | v1.2.0 | Tracing and metrics for the MongoDB driver, lifecycle Hook and health check | `go.mongodb.org/mongo-driver/v2` |
+| [`di/do`](di/do) | v1.1.0 | `di.Container` on samber/do with lifecycle and readiness integration, plus centralized wiring examples | `github.com/samber/do/v2` |
+| [`discovery/consul`](discovery/consul) | v1.2.0 | `discovery.Registrar` and `discovery.Discoverer` on the Consul agent | `github.com/hashicorp/consul/api` |
+| [`discovery/etcd`](discovery/etcd) | v1.2.0 | `discovery.Registrar` and `discovery.Discoverer` on etcd leases | `go.etcd.io/etcd/client/v3` |
+| [`discovery/kubernetes`](discovery/kubernetes) | v1.2.0 | `discovery.Discoverer` on Kubernetes EndpointSlices | `k8s.io/client-go` |
+| [`discovery/nacos`](discovery/nacos) | v1.2.0 | `discovery.Registrar` and `discovery.Discoverer` on the Nacos naming service | `github.com/nacos-group/nacos-sdk-go/v2` |
+| [`encoding/proto`](encoding/proto) | v1.1.0 | `encoding.Codec` named `proto` | `google.golang.org/protobuf` |
+| [`encoding/yaml`](encoding/yaml) | v1.2.0 | `encoding.Codec` named `yaml` | `go.yaml.in/yaml/v3` |
+| [`jobqueue/asynq`](jobqueue/asynq) | v1.2.0 | `jobqueue.Enqueuer` and `jobqueue.Runner` on asynq (Redis) | `github.com/hibiken/asynq` |
+| [`logger/slog`](logger/slog) | v1.0.0 | `logger.Logger` | `log/slog` |
+| [`logger/zap`](logger/zap) | v1.0.0 | `logger.Logger` | `go.uber.org/zap` |
+| [`metrics/otel`](metrics/otel) | v1.2.0 | `metrics.Meter` on an OpenTelemetry meter | `go.opentelemetry.io/otel/metric` |
+| [`metrics/prometheus`](metrics/prometheus) | v1.2.0 | `metrics.Meter` on the Prometheus client | `github.com/prometheus/client_golang` |
+| [`middleware`](middleware) | v1.4.0 | `endpoint.Middleware`: auth, circuitbreaker, logging, metrics, ratelimit, recovery, retry, timeout, tracing, validate | standard library, servex, kitx and no-op telemetry |
+| [`ratelimit/rate`](ratelimit/rate) | v1.0.0 | Bounded keyed local token buckets for the generic rate-limit middleware | `golang.org/x/time/rate` |
+| [`ratelimit/redis`](ratelimit/redis) | v1.0.0 | Atomic shared Redis token buckets with caller context, retry hints and backend errors | `github.com/redis/go-redis/v9` |
+| [`selector`](selector) | v1.2.0 | `selector.Selector`: weighted random, roundrobin (smooth weighted), p2c (Power of Two Choices) | standard library, servex and kitx |
+| [`tracing/otel`](tracing/otel) | v1.1.0 | `tracing.Tracer` and `tracing.Propagator` on OpenTelemetry | `go.opentelemetry.io/otel/trace` |
+| [`transport/grpcx`](transport/grpcx) | v1.3.0 | `transport.Server` and a gRPC client with servex middleware, discovery and node selection | `google.golang.org/grpc` |
+| [`transport/ssex`](transport/ssex) | v1.0.0 | SSE acceptor/sender and bounded streaming client | standard library |
+| [`transport/websocketx`](transport/websocketx) | v1.0.0 | WebSocket handshakes, message I/O, Ping and close status | `github.com/coder/websocket` |
+| [`transport/connectx`](transport/connectx) | v1.0.0 | Typed unary/streaming RPC over Connect, gRPC and gRPC-Web | `connectrpc.com/connect` |
+| [`validation/playground`](validation/playground) | v1.0.0 | Struct-tag validation as `endpoint.Middleware` | `github.com/go-playground/validator/v10` |
+| [`validation/protovalidate`](validation/protovalidate) | v1.0.0 | Protobuf schema/CEL validation as `endpoint.Middleware` | `buf.build/go/protovalidate` |
 
 Validation SDKs and x/time/rate are owned only by these optional modules. Core
 and generic middleware retain their existing dependency boundaries. Inject a
@@ -115,7 +115,7 @@ Run `go get` from your application's Go module. For a new application:
 mkdir servex-demo
 cd servex-demo
 go mod init example.com/servex-demo
-go get github.com/nostosx/servex-contrib/cache/redis@v1.0.0
+go get github.com/nostosx/servex-contrib/cache/redis@v1.1.0
 ```
 
 Choose the module you need from the table, then save its complete Usage
@@ -154,7 +154,7 @@ The subsequent [optimization comparison](PERFORMANCE-OPTIMIZATION.md) records
 behavior guards, allocation reductions and matched-binary timing results.
 
 Use Go 1.27.3, Task v3.53.1 and Bash. Published releases resolve pinned module
-versions. Current unreleased changes require matching sources as described above.
+versions without source replacements.
 
 The repository root is not a
 module. Run the common targets from this root; they apply to every module and
@@ -240,10 +240,9 @@ Passing unit checks does not substitute for service integration.
 Licensed under the [MIT License](LICENSE). Each module directory includes
 a copy for its independently published archive.
 
-The config/viper and logger/{slog,zap} modules and Logger API migration are
-unreleased and require the matching core sources.
+The config/viper and logger/{slog,zap} modules implement the contracts in servex v1.4.0.
 
-Unreleased extraction: nine backend modules are moved from core; weighted
+The 2026-10-29 extraction: nine backend modules are moved from core; weighted
 random selection joins `selector/random` in the existing selector module.
 The second phase moves cache/loader and transport/client into two additional
 modules. App, health.Group, registration and thin Consumer/Worker lifecycle

@@ -30,9 +30,9 @@ import contrib, and middleware may import only the two no-op telemetry backends
 in addition to its standard-library/core/kitx dependencies.
 
 Published module releases resolve their dependencies without sibling checkouts.
-Current configuration, logging and backend extraction APIs are unreleased and
-require matching sources via external temporary modfiles. See core's
-`BACKEND-MIGRATION.md`; keep local replacements out of repository manifests.
+The 2026-10-29 extraction uses published servex v1.4.0 and independently
+versioned contrib dependencies. See core's BACKEND-MIGRATION.md and validate
+public versions without local replacements.
 
 Install tools outside the modules with Go 1.27.3 and put them on `PATH`:
 
@@ -78,43 +78,20 @@ coverage.out, and `INTEGRATION=true` for explicitly configured service tests.
 `task check` reuses `task test RACE=true`.
 The validators, CI matrix checks and tooling regressions use only the Go standard library.
 
-## Unreleased protocol adapters
+## Protocol adapters
 
-The new ssex, websocketx and connectx modules require matching core protocol
-contracts. Until a coordinated release, verify them against an external,
-temporary workspace instead of changing repository module declarations.
-From the contrib repository root, with Go 1.27.3 selected:
+The ssex, websocketx and connectx v1.0.0 modules use published servex v1.4.0
+protocol contracts. Run their normal standalone gates without source overrides:
 
 ```sh
-contrib_root="$PWD"
-core_root="$(cd "../servex" && pwd)"
-verify_dir="$(mktemp -d)"
-(
-  cd "$verify_dir"
-  go work init "$core_root" \
-    "$contrib_root/transport/ssex" \
-    "$contrib_root/transport/websocketx" \
-    "$contrib_root/transport/connectx"
-)
-for adapter in ssex websocketx connectx; do
-  (
-    cd "$contrib_root/transport/$adapter"
-    GOWORK="$verify_dir/go.work" go test -race -shuffle=on -count=1 ./...
-  )
-done
+task check lint vulncheck MODULES='transport/ssex transport/websocketx transport/connectx'
 ```
 
-Keep the workspace outside the repository. The standard Task entry points
-force GOWORK=off; source acceptance through Task therefore needs an external
-temporary modfile/tool override. Do not add sibling replacements to published
-manifests. Recheck standalone module resolution against the actual next core
-release before publishing these adapters. Unit loopback tests do not prove
-browser compatibility or authorize a release.
+Loopback Go tests cover transport behavior. Real Chrome/WebKit acceptance lives
+under tests/browser; keep its explicit local-source mode separate from public
+module installation evidence. Browser streaming limitations and Origin/CORS
+policy remain documented there.
 
-For actual browser acceptance, follow [tests/browser](tests/browser). It runs
-native EventSource/WebSocket and official Connect-Web clients in Chrome and
-WebKit against disposable loopback fixtures, and records browser versions,
-assertions, cancellation observations and expected CORS rejection diagnostics.
 
 ## Service integrations
 

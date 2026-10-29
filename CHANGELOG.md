@@ -13,6 +13,34 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## discovery/consul/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## discovery/etcd/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## discovery/kubernetes/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## discovery/nacos/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
 ## ratelimit/rate/v1.0.0
 
 Release date: 2026-10-29. Requires servex v1.4.0.
