@@ -13,6 +13,69 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- Add independent cache/loader and transport/client modules for the shared
+  read-through loader and protocol-independent client engine. Preserve owner
+  cancellation, write-back, discovery recovery, middleware order and shutdown
+  semantics; move the existing regression suites and update composition tests.
+- **Breaking**: core cache.NewLoader/LoaderOption move to loader.New/Option;
+  core transport.NewClient/ClientOption move to client.New/Option. Their With*
+  options and Loader error values move with the implementations. HTTP/gRPC
+  use the same shared client module. Matching unpublished peers are required.
+- App, health.Group and thin Consumer/Worker lifecycle adapters intentionally
+  stay in core. The new loader/client modules remain limited to core, kitx
+  and standard-library dependencies, enforced by Task and lint boundaries.
+
+- Extract nine backend modules from core: transport/httpx, database/sql,
+  cache/memory, discovery/memory, broker/memory, jobqueue/memory,
+  encoding/json, metrics/noop and tracing/noop. Original regression suites and
+  backend-dependent composition tests move with the implementations.
+- Add selector/random.New in the existing selector module. Shared client
+  construction now requires an explicitly supplied Selector.
+- **Breaking**: replace encoding.JSON with encoding/json.Codec,
+  metrics.Noop with metrics/noop.New, and tracing.Noop/NoopPropagator with
+  tracing/noop.New/NewPropagator. Old core implementation import paths disappear.
+- HTTP/gRPC and other adapters select their concrete defaults in contrib.
+  Foundational contrib dependencies are explicit and directed; middleware only
+  adds the two no-op telemetry modules to its SDK-free dependency boundary.
+- Logging and tracing consumers handle an absent core Span explicitly.
+  Publish matching core and backend sources before public consumer validation.
+
+
+- Add independent `transport/ssex`, `transport/websocketx` and
+  `transport/connectx` modules implementing the new core protocol contracts.
+  SSE supports flushed events/comments and bounded parsing; WebSocket supports
+  context-aware messages, Origin policy, Ping, size limits and close statuses;
+  Connect supports unary and all three stream shapes over Connect/gRPC/gRPC-Web,
+  typed core boundaries, metadata and errorx/ErrorInfo mapping.
+  They require matching unreleased core sources; no published API availability
+  is implied by their preparation requirements.
+- transport/httpx: add `WithProtocols` to configure copied net/http protocol
+  settings. `connectx.Protocols()` enables HTTP/1, HTTP/2 and h2c on the existing
+  lifecycle-managed HTTP listener. Upgraded WebSocket connections remain owned
+  by the application and require explicit shutdown.
+
+- Add `config/viper`: implements the core configuration contracts using
+  private Viper instances, ordered Sources, accepted snapshots, validators,
+  cancellation-aware watches and reload error callbacks. Its `file`
+  package uses Viper formats (JSON/YAML/TOML/env) and polling.
+  Existing etcd, Consul and Nacos Sources compose with this implementation.
+- Add independent `logger/slog` and `logger/zap` modules implementing
+  `logger.Logger`; callers retain backend configuration and resource ownership.
+- **Breaking** (middleware, jobqueue/asynq, metrics/otel, metrics/prometheus):
+  loggers now use `logger.Logger`; wrap a concrete backend explicitly.
+  Nil disables logging. Logging severity callbacks use `logger.Level`.
+- **Breaking** (configuration): engine construction, Env, file loading,
+  validation and snapshots moved out of core. Use `config/viper.New`,
+  `viper.Env` and `config/viper/file.New`; watch callbacks take
+  `config.Config`, validators take `config.Reader`. Conversion follows
+  Viper/cast/mapstructure, not the former custom reflection decoder.
+  JSON tags remain supported; squashed embedded fields follow mapstructure,
+  nil is unset, numeric weak conversions can truncate or overflow, and error
+  text changes. Validate ranges and invariants before publishing a snapshot.
+- These adapters require the matching unreleased core; their declarations
+  are preparation for coordinated release, not a claim of proxy availability.
+
+
 - Normalize native Windows glob path separators before stripping go.mod in Task
   module discovery, and include the available modules in selection diagnostics.
 

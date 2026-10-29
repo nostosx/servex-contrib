@@ -93,7 +93,7 @@ after successfully constructing `verifier`:
 ```go
 import (
     "github.com/nostosx/servex-contrib/middleware/auth"
-    "github.com/nostosx/servex/transport/httpx"
+    "github.com/nostosx/servex-contrib/transport/httpx"
 )
 
 srv := httpx.NewServer(httpx.WithMiddleware(auth.New(verifier.Verify)))

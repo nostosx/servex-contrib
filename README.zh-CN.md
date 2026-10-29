@@ -2,13 +2,16 @@
 
 [English](README.md) | 简体中文
 
-[servex](https://github.com/nostosx/servex) 的扩展实现，包含依赖第三方 SDK 的
-服务适配器，以及不依赖第三方 SDK 的 `middleware`、`selector` 两个模块。
-核心保留契约及参考实现，本仓库按依赖拆分其他实现。
+[servex](https://github.com/nostosx/servex) 契约的具体实现，包括后端适配器、编解码器、
+节点选择算法、遥测后端与中间件。核心保留契约和共享运行机制；仅依赖标准库或 kitx 的
+具体实现同样放在本仓库。
+
+当前配置、日志和后端迁移尚未发布，需要通过临时 modfile 验证配套的 core/contrib 源码。
+清单中声明的已发布基线版本尚不包含这些新 API，迁移说明见核心的 `BACKEND-MIGRATION.md`。
 
 2026-10-28 发布 middleware v1.3.0、transport/grpcx v1.2.0，以及 auth/oidc、di/do、
 ratelimit/redis 的首个 v1.0.0。有核心依赖的模块使用 servex v1.3.0；auth/oidc 不依赖核心。
-其他模块保留各自版本及声明的核心依赖，具体见 CHANGELOG。依赖均通过 Go 模块代理下载，
+其他已发布模块保留各自版本及声明的核心依赖，具体见 CHANGELOG。上述已发布版本的依赖通过 Go 模块代理下载，
 独立检出即可，无需同级源码或本地替换。
 可运行应用见独立的 [servex-examples](https://github.com/nostosx/servex-examples) 项目。
 
@@ -19,10 +22,22 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 ## 模块
 
 下表每一行都是独立的 Go 模块，路径为 `github.com/nostosx/servex-contrib/<目录>`。
-模块只使用 servex 的公开 API，不互相导入；选择一个适配器不会引入其他适配器的 SDK。
+模块使用 servex 的公开 API，并可显式依赖 JSON、selector、Noop 遥测等基础实现。
+依赖保持单向，避免引入无关后端 SDK；互操作测试可以显式组合多个实现。
 
 | 模块 | 实现 | 主要依赖 |
 |---|---|---|
+| [`cache/loader`](cache/loader) | 显式 Codec、owner 共享执行与写回策略的缓存加载器 | 标准库、core、kitx/singleflight |
+| [`transport/client`](transport/client) | HTTP/gRPC 复用的发现、选择与调用引擎 | 标准库、core、kitx/backoff |
+| [`transport/httpx`](transport/httpx) | HTTP 服务端与客户端 | net/http、JSON 编解码器、selector |
+| [`tracing/noop`](tracing/noop) | `tracing.Tracer` / `Propagator` 空操作后端 | 标准库、core |
+| [`metrics/noop`](metrics/noop) | `metrics.Meter` 空操作后端 | 标准库、core |
+| [`jobqueue/memory`](jobqueue/memory) | 内存任务队列 `jobqueue.Enqueuer` / `Runner` | 标准库、core、kitx |
+| [`encoding/json`](encoding/json) | JSON `encoding.Codec` | encoding/json/v2 |
+| [`discovery/memory`](discovery/memory) | 内存注册与发现 | 标准库、core |
+| [`database/sql`](database/sql) | database/sql 追踪、指标、生命周期与就绪检查 | 标准库、core、Noop 遥测 |
+| [`cache/memory`](cache/memory) | 内存 `cache.Cache` | kitx/ttlcache |
+| [`broker/memory`](broker/memory) | 内存发布与订阅 | 标准库、core、kitx |
 | [`auth/oidc`](auth/oidc) | OIDC 发现、ID Token 签名与 JWKS 验证，供应用鉴权回调使用 | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | Apache Kafka 上的 `broker.Publisher`、`broker.Subscriber` | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | NATS JetStream 上的发布与订阅 | `github.com/nats-io/nats.go` |
@@ -31,6 +46,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`config/consul`](config/consul) | Consul KV 上的 `config.Source`、`config.Watchable` | `github.com/hashicorp/consul/api` |
 | [`config/etcd`](config/etcd) | etcd 上的配置读取与监听 | `go.etcd.io/etcd/client/v3` |
 | [`config/nacos`](config/nacos) | Nacos 配置服务上的读取与监听 | `github.com/nacos-group/nacos-sdk-go/v2` |
+| [`config/viper`](config/viper) | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
 | [`database/mongodb`](database/mongodb) | MongoDB 驱动的追踪、指标、生命周期与健康检查 | `go.mongodb.org/mongo-driver/v2` |
 | [`di/do`](di/do) | 基于 samber/do 实现 `di.Container`，接入生命周期与就绪检查，提供集中装配示例 | `github.com/samber/do/v2` |
 | [`discovery/consul`](discovery/consul) | Consul agent 上的 `discovery.Registrar`、`discovery.Discoverer` | `github.com/hashicorp/consul/api` |
@@ -40,13 +56,18 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`encoding/proto`](encoding/proto) | 名为 `proto` 的 `encoding.Codec` | `google.golang.org/protobuf` |
 | [`encoding/yaml`](encoding/yaml) | 名为 `yaml` 的 `encoding.Codec` | `go.yaml.in/yaml/v3` |
 | [`jobqueue/asynq`](jobqueue/asynq) | asynq 上的 `jobqueue.Enqueuer`、`jobqueue.Runner` | `github.com/hibiken/asynq` |
+| [`logger/slog`](logger/slog) | `logger.Logger` | `log/slog` |
+| [`logger/zap`](logger/zap) | `logger.Logger` | `go.uber.org/zap` |
 | [`metrics/otel`](metrics/otel) | OpenTelemetry 上的 `metrics.Meter` | `go.opentelemetry.io/otel/metric` |
 | [`metrics/prometheus`](metrics/prometheus) | Prometheus 上的 `metrics.Meter` | `github.com/prometheus/client_golang` |
-| [`middleware`](middleware) | 鉴权、熔断、日志、指标、限流、恢复、重试、超时、追踪与校验 | 标准库、servex、kitx |
+| [`middleware`](middleware) | 鉴权、熔断、日志、指标、限流、恢复、重试、超时、追踪与校验 | 标准库、servex、kitx、Noop 遥测 |
 | [`ratelimit/redis`](ratelimit/redis) | 多副本共享的 Redis 原子令牌桶，支持 context、等待提示和后端错误 | `github.com/redis/go-redis/v9` |
-| [`selector`](selector) | 平滑加权轮询与 P2C 节点选择 | 标准库、servex、kitx |
+| [`selector`](selector) | 加权随机、平滑加权轮询与 P2C 节点选择 | 标准库、servex、kitx |
 | [`tracing/otel`](tracing/otel) | OpenTelemetry 上的 `tracing.Tracer`、`tracing.Propagator` | `go.opentelemetry.io/otel/trace` |
 | [`transport/grpcx`](transport/grpcx) | gRPC 服务端及支持中间件、发现和节点选择的客户端 | `google.golang.org/grpc` |
+| [`transport/ssex`](transport/ssex) | SSE 事件/心跳发送及有界流式客户端，尚未发布 | 标准库 |
+| [`transport/websocketx`](transport/websocketx) | WebSocket 握手、消息、Ping、大小限制与关闭状态，尚未发布 | `github.com/coder/websocket` |
+| [`transport/connectx`](transport/connectx) | Connect/gRPC/gRPC-Web 类型化 unary 与流式 RPC，尚未发布 | `connectrpc.com/connect` |
 
 构造函数显式接收依赖。适配器接收调用方创建的 SDK 客户端时，除非 API 另有说明，
 其所有权仍由调用方保留。错误通过 `errorx` 分类：不可达后端通常为可重试的
@@ -60,7 +81,7 @@ transport/grpcx v1.2.0、`ratelimit.NewContext` 自 middleware v1.3.0 起提供�
 流式调用需要显式配置 `WithStreamMiddleware` / `WithClientStreamMiddleware`，不会自动重放消息。
 OIDC 模块验证 ID Token，不替代任意 OAuth Access Token 的验证或 introspection。
 
-24 个模块的首个正式版本均为 v1.0.0。各模块独立发布，标签包含完整目录前缀，
+现有已发布模块的首个正式版本均为 v1.0.0；本轮迁出的后端及新增协议适配器尚未发布。各模块独立发布，标签包含完整目录前缀，
 例如 `broker/kafka/v1.0.0` 或 `middleware/v1.0.0`：
 
 在应用自身的 Go 模块中执行 `go get`。新应用可以从以下步骤开始：
@@ -97,8 +118,8 @@ SDK 客户端上完成这些配置。监听所有网卡的服务器用于本地�
 
 ## 开发
 
-使用 Go 1.27.3、Task v3.53.1 和 Bash。各模块均通过已发布版本解析依赖，
-不需要同级源码或本地替换。
+使用 Go 1.27.3、Task v3.53.1 和 Bash。已发布版本通过 Go 模块代理解析依赖；
+当前尚未发布的迁移需要前述配套源码验证。
 
 根目录不是 Go 模块。在根目录运行下列命令，Task 会逐模块执行并设置 `GOWORK=off`：
 
@@ -109,7 +130,7 @@ task vulncheck
 ```
 
 `check` 检查格式、现代化和 tidy 差异，覆盖默认及 `integration` 构建的 vet、构建，
-检查 middleware、selector 的依赖边界，并运行随机顺序 race 测试。
+检查 middleware、selector、cache/loader、transport/client 的依赖边界，并运行随机顺序 race 测试。
 `lint` 和漏洞扫描也覆盖两种构建。`task fmt`、`task fix`、`task tidy` 会修改文件。
 通过 `MODULES` 选择模块：
 
@@ -162,8 +183,12 @@ Task 不启动服务。集成入口会拒绝缺少配置、缺失测试、跳过
 拒绝缺失、跳过、失败或未完成的结果，并清理服务容器或 kind 集群。
 
 各任务独立运行，支持 pull request、main 推送与手动触发。任务只检出本仓库，
-使用锁定的已发布依赖。单元检查通过不能替代真实服务的集成验证。
+发布前需要刷新配套依赖版本及校验和。单元检查通过不能替代真实服务的集成验证。
 
 ## 许可证
 
 采用 [MIT 许可证](LICENSE)。每个模块目录均保留许可证副本，供独立模块归档使用。
+
+配置、日志及后端迁移尚未发布，需要配套 core 源码。本轮从核心迁出九个后端模块，
+加权随机选择加入现有 selector 模块的 `selector/random` 包。第二批新增 cache/loader 和 transport/client 两个模块，承载 Loader 与共享客户端引擎。
+App、health.Group、注册生命周期与轻量 Consumer/Worker 适配明确保留在核心。API 变更见核心的 `BACKEND-MIGRATION.md`。

@@ -2,17 +2,21 @@
 
 English | [简体中文](README.zh-CN.md)
 
-Implementations of the [servex](https://github.com/nostosx/servex) contracts
-that depend on third-party SDKs, plus two collections without third-party SDKs
-(`middleware` and `selector`). The servex core holds the contracts and one
-standard-library reference implementation each; every further implementation
-lives here.
+Concrete implementations of the [servex](https://github.com/nostosx/servex)
+contracts: backend adapters, codecs, selection algorithms, telemetry and
+middleware. Core owns contracts and shared runtime mechanisms; implementations
+live here even when they use only the standard library or kitx.
+
+The current configuration, logging and backend extraction changes are
+unreleased. They require matching core/contrib sources through temporary
+modfiles until a coordinated release. Declared baseline versions do not yet
+provide the new APIs; see core's `BACKEND-MIGRATION.md`.
 
 The 2026-10-28 releases are middleware v1.3.0, transport/grpcx v1.2.0 and
 the initial v1.0.0 releases of auth/oidc, di/do and ratelimit/redis. These use
 servex v1.3.0 where applicable; auth/oidc has no core dependency. Earlier modules
 retain their independent versions and declared
-core requirements. All resolve published dependencies without sibling checkouts
+core requirements. Those published releases resolve dependencies without sibling checkouts
 or local replacements; see each version section in CHANGELOG.md.
 
 Runnable applications composing core and contrib live in
@@ -27,11 +31,23 @@ Each module's CHANGELOG section lists its breaking changes and migration.
 
 Each directory below is its own Go module, split by dependency set so that
 importing one implementation never pulls in the SDKs of another. Module paths
-are `github.com/nostosx/servex-contrib/<directory>`. Modules import only the
-public servex packages and never each other.
+are `github.com/nostosx/servex-contrib/<directory>`. Production modules depend on public core contracts and explicit foundational
+contrib implementations where needed. Keep dependencies directed and avoid
+unrelated backend SDKs. Interoperability tests may compose implementations.
 
 | Module | Implements | Key dependency |
 |---|---|---|
+| [`cache/loader`](cache/loader) | Read-through cache loading with explicit codec, shared owner and write-back policy | standard library, core, kitx/singleflight |
+| [`transport/client`](transport/client) | Shared discovery, selection and invocation engine for HTTP/gRPC adapters | standard library, core, kitx/backoff |
+| [`transport/httpx`](transport/httpx) | HTTP transport server/client | net/http, JSON codec, selector |
+| [`tracing/noop`](tracing/noop) | `tracing.Tracer` / `Propagator` no-op backend | standard library, core |
+| [`metrics/noop`](metrics/noop) | `metrics.Meter` no-op backend | standard library, core |
+| [`jobqueue/memory`](jobqueue/memory) | `jobqueue.Enqueuer` / `Runner` in memory | standard library, core, kitx |
+| [`encoding/json`](encoding/json) | `encoding.Codec` JSON backend | encoding/json/v2 |
+| [`discovery/memory`](discovery/memory) | `discovery.Registrar` / `Discoverer` in memory | standard library, core |
+| [`database/sql`](database/sql) | database/sql tracing, metrics, lifecycle and readiness | standard library, core, no-op telemetry |
+| [`cache/memory`](cache/memory) | `cache.Cache` in memory | kitx/ttlcache |
+| [`broker/memory`](broker/memory) | `broker.Publisher` / `Subscriber` in memory | standard library, core, kitx |
 | [`auth/oidc`](auth/oidc) | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | `broker.Publisher` and `broker.Subscriber` on Apache Kafka | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | `broker.Publisher` and `broker.Subscriber` on NATS JetStream | `github.com/nats-io/nats.go` |
@@ -40,6 +56,7 @@ public servex packages and never each other.
 | [`config/consul`](config/consul) | `config.Source` and `config.Watchable` on the Consul KV store | `github.com/hashicorp/consul/api` |
 | [`config/etcd`](config/etcd) | `config.Source` and `config.Watchable` on etcd | `go.etcd.io/etcd/client/v3` |
 | [`config/nacos`](config/nacos) | `config.Source` and `config.Watchable` on the Nacos configuration service | `github.com/nacos-group/nacos-sdk-go/v2` |
+| [`config/viper`](config/viper) | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
 | [`database/mongodb`](database/mongodb) | Tracing and metrics for the MongoDB driver, lifecycle Hook and health check | `go.mongodb.org/mongo-driver/v2` |
 | [`di/do`](di/do) | `di.Container` on samber/do with lifecycle and readiness integration, plus centralized wiring examples | `github.com/samber/do/v2` |
 | [`discovery/consul`](discovery/consul) | `discovery.Registrar` and `discovery.Discoverer` on the Consul agent | `github.com/hashicorp/consul/api` |
@@ -49,13 +66,18 @@ public servex packages and never each other.
 | [`encoding/proto`](encoding/proto) | `encoding.Codec` named `proto` | `google.golang.org/protobuf` |
 | [`encoding/yaml`](encoding/yaml) | `encoding.Codec` named `yaml` | `go.yaml.in/yaml/v3` |
 | [`jobqueue/asynq`](jobqueue/asynq) | `jobqueue.Enqueuer` and `jobqueue.Runner` on asynq (Redis) | `github.com/hibiken/asynq` |
+| [`logger/slog`](logger/slog) | `logger.Logger` | `log/slog` |
+| [`logger/zap`](logger/zap) | `logger.Logger` | `go.uber.org/zap` |
 | [`metrics/otel`](metrics/otel) | `metrics.Meter` on an OpenTelemetry meter | `go.opentelemetry.io/otel/metric` |
 | [`metrics/prometheus`](metrics/prometheus) | `metrics.Meter` on the Prometheus client | `github.com/prometheus/client_golang` |
-| [`middleware`](middleware) | `endpoint.Middleware`: auth, circuitbreaker, logging, metrics, ratelimit, recovery, retry, timeout, tracing, validate | standard library, servex and kitx |
+| [`middleware`](middleware) | `endpoint.Middleware`: auth, circuitbreaker, logging, metrics, ratelimit, recovery, retry, timeout, tracing, validate | standard library, servex, kitx and no-op telemetry |
 | [`ratelimit/redis`](ratelimit/redis) | Atomic shared Redis token buckets with caller context, retry hints and backend errors | `github.com/redis/go-redis/v9` |
-| [`selector`](selector) | `selector.Selector`: roundrobin (smooth weighted), p2c (Power of Two Choices) | standard library, servex and kitx |
+| [`selector`](selector) | `selector.Selector`: weighted random, roundrobin (smooth weighted), p2c (Power of Two Choices) | standard library, servex and kitx |
 | [`tracing/otel`](tracing/otel) | `tracing.Tracer` and `tracing.Propagator` on OpenTelemetry | `go.opentelemetry.io/otel/trace` |
 | [`transport/grpcx`](transport/grpcx) | `transport.Server` and a gRPC client with servex middleware, discovery and node selection | `google.golang.org/grpc` |
+| [`transport/ssex`](transport/ssex) | SSE acceptor/sender and bounded streaming client (unreleased) | standard library |
+| [`transport/websocketx`](transport/websocketx) | WebSocket handshakes, message I/O, Ping and close status (unreleased) | `github.com/coder/websocket` |
+| [`transport/connectx`](transport/connectx) | Typed unary/streaming RPC over Connect, gRPC and gRPC-Web (unreleased) | `connectrpc.com/connect` |
 
 Common conventions:
 
@@ -74,7 +96,7 @@ is available in transport/grpcx v1.2.0; ratelimit.NewContext is available in
 middleware v1.3.0. Streams require explicit middleware selection and are never
 replayed. OIDC verifies ID Tokens, not arbitrary OAuth access tokens.
 
-Each of the 24 modules starts at v1.0.0 and is versioned independently with
+Modules start at v1.0.0 and is versioned independently with
 tags prefixed by its directory, for example `broker/kafka/v1.0.0` or
 `middleware/v1.0.0`:
 
@@ -117,8 +139,8 @@ same host.
 
 ## Development
 
-Use Go 1.27.3, Task v3.53.1 and Bash. All dependencies resolve from published
-module versions.
+Use Go 1.27.3, Task v3.53.1 and Bash. Published releases resolve pinned module
+versions. Current unreleased changes require matching sources as described above.
 
 The repository root is not a
 module. Run the common targets from this root; they apply to every module and
@@ -131,7 +153,7 @@ task vulncheck
 ```
 
 `check` rejects formatting, modernizer and tidy changes, vets and builds normal
-and `integration` configurations, verifies the middleware and selector dependency
+and `integration` configurations, verifies the middleware, selector, cache/loader and transport/client dependency
 boundaries, and runs shuffled race tests. `lint` and `vulncheck` also inspect
 both build configurations. `task fmt`, `task fix` and `task tidy` explicitly
 modify files. Use `MODULES` to select one or more modules:
@@ -195,10 +217,20 @@ exports the required variable, runs only `TestIntegration*` tests and rejects
 absent, skipped, failed or unfinished integration results. The service
 container is removed even on failure; kind-action cleans up its cluster.
 The jobs are independent and run on pull requests, pushes to `main` or manual
-dispatch. Jobs resolve pinned published dependencies without sibling sources.
+dispatch. Jobs use no sibling sources; refresh matching dependency versions
+and checksums before release.
 Passing unit checks does not substitute for service integration.
 
 ## License
 
 Licensed under the [MIT License](LICENSE). Each module directory includes
 a copy for its independently published archive.
+
+The config/viper and logger/{slog,zap} modules and Logger API migration are
+unreleased and require the matching core sources.
+
+Unreleased extraction: nine backend modules are moved from core; weighted
+random selection joins `selector/random` in the existing selector module.
+The second phase moves cache/loader and transport/client into two additional
+modules. App, health.Group, registration and thin Consumer/Worker lifecycle
+adapters intentionally remain in core as the minimal framework runtime. See the core BACKEND-MIGRATION.md for API changes.
