@@ -37,16 +37,20 @@ jobs:
           # BEGIN MODULES
           - auth/oidc
           - broker/kafka
+          - broker/memory
           - broker/nats
           - broker/rabbitmq
           - cache/redis
+          - cache/memory
           - cache/loader
           - config/consul
           - config/etcd
           - config/nacos
           - database/mongodb
+          - database/sql
           - di/do
           - discovery/consul
+          - discovery/memory
           - discovery/etcd
           - discovery/kubernetes
           - discovery/nacos
@@ -54,6 +58,7 @@ jobs:
           - encoding/json
           - encoding/yaml
           - jobqueue/asynq
+          - jobqueue/memory
           - metrics/otel
           - metrics/noop
           - metrics/prometheus
