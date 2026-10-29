@@ -101,7 +101,7 @@ func WithRandom(intN func(n int) int) Option {
 // errors, such as InvalidArgument, show that the node served the call and
 // record its latency like a success.
 //
-// Node weights come from Node.Weight, which transport.Client copies from
+// Node weights come from Node.Weight, which the contrib shared client copies from
 // discovery.Instance.Weight. State is kept per Addr and survives changes of
 // the node set; once the state holds more than twice as many nodes as a
 // Select is offered, the nodes outside that set are forgotten, so a shrinking

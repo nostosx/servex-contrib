@@ -1,28 +1,33 @@
 # selector
 
-`github.com/nostosx/servex-contrib/selector` is one module holding stateful
+`github.com/nostosx/servex-contrib/selector` is one module holding node selection
 `selector.Selector` implementations. It depends only on the standard library,
 servex and its kitx dependency.
 
 | Package | Constructor | Strategy |
 |---|---|---|
+| `random` | `New()` | Weighted random selection, with nonpositive weights treated as 1. |
 | `roundrobin` | `New()` | Smooth weighted round-robin (the nginx algorithm): picks follow `Node.Weight` exactly over every cycle and are spread evenly instead of in bursts. |
 | `p2c` | `New(opts...)` | Power of Two Choices: samples two nodes and picks the one with the lower load, estimated from a peak EWMA of latency and the number of in-flight calls. Outcomes reported through `Done` update the estimate; failures add a latency penalty so failing nodes are avoided until they recover. |
 
-Both honor `Node.Weight` (values `<= 0` count as 1), which `transport.Client`
+All honor `Node.Weight` (values `<= 0` count as 1), which `servex-contrib/transport/client.Client`
 copies from `discovery.Instance.Weight` since servex v1.2.0; registries such
 as `discovery/consul`, `discovery/etcd` and `discovery/nacos` carry it. Per-node
 state follows the node sets passed to `Select`: state of nodes that left the
-set is dropped on a later call, so no `transport.WithNodeObserver` wiring is
+set is dropped on a later call, so no `client.WithNodeObserver` wiring is
 needed.
 
-The core default is `selector.Random()` (weighted random). Because node
+The contrib shared client requires an explicit `client.WithSelector`.
+HTTP/gRPC adapters choose `random.New()` as their contrib default. Because
 selection is the innermost step of a client call, every retry selects again
 and every outcome is reported to the selector.
 
 ## Install
 
-Requires Go 1.27.3. Uses published servex v1.2.0 and kitx v1.0.0 dependencies.
+Requires Go 1.27.3. The new random package and contrib client API are unreleased;
+verify matching sources with temporary modfiles until a coordinated release.
+The command below installs the existing published selector baseline, which
+does not yet include random.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
@@ -45,9 +50,9 @@ import (
 	"log"
 	"time"
 
+	"github.com/nostosx/servex-contrib/discovery/memory"
 	"github.com/nostosx/servex-contrib/selector/p2c"
-	"github.com/nostosx/servex/discovery/memory"
-	"github.com/nostosx/servex/transport/httpx"
+	"github.com/nostosx/servex-contrib/transport/httpx"
 )
 
 func main() {
@@ -64,7 +69,7 @@ func main() {
 ```
 
 `roundrobin.New()` is used the same way; both work with any client built on
-`transport.Client`, including `grpcx.WithSelector`.
+`servex-contrib/transport/client.Client`, including `grpcx.WithSelector`.
 
 ## Options (p2c)
 
@@ -85,7 +90,8 @@ GOWORK=off go test -race -count=1 ./...
 GOWORK=off go list -m all   # only this module, github.com/nostosx/servex and github.com/nostosx/kitx
 ```
 
-There are no integration tests.
+Transport/discovery composition regressions live in the discovery/memory
+module, keeping this module's dependency boundary limited to core and kitx.
 
 ## License
 

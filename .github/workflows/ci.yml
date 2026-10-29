@@ -50,14 +50,17 @@ jobs:
           - discovery/kubernetes
           - discovery/nacos
           - encoding/proto
+          - encoding/json
           - encoding/yaml
           - jobqueue/asynq
           - metrics/otel
+          - metrics/noop
           - metrics/prometheus
           - middleware
           - ratelimit/redis
           - selector
           - tracing/otel
+          - tracing/noop
           - transport/grpcx
           # END MODULES
     defaults:

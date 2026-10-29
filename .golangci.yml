@@ -21,16 +21,47 @@ linters:
   settings:
     depguard:
       rules:
-        # middleware and selector use the standard library, servex and kitx.
-        core-dependencies:
+        # Shared execution policies stay SDK-free and consume core contracts.
+        client-dependencies:
           list-mode: strict
           files:
-            - "**/servex-contrib/middleware/**"
+            - "**/servex-contrib/transport/client/**"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex/
+            - github.com/nostosx/servex-contrib/transport/client$
+            - github.com/nostosx/kitx/backoff$
+        loader-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/cache/loader/**"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex/
+            - github.com/nostosx/servex-contrib/cache/loader$
+            - github.com/nostosx/kitx/singleflight$
+        # Selectors use only standard library, core and kitx packages.
+        selector-dependencies:
+          list-mode: strict
+          files:
             - "**/servex-contrib/selector/**"
           allow:
             - $gostd
-            - github.com/nostosx/servex
+            - github.com/nostosx/servex/
+            - github.com/nostosx/servex-contrib/selector/
             - github.com/nostosx/kitx/backoff$
+        # Middleware may also compose the two SDK-free no-op backends.
+        middleware-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/middleware/**"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex/
+            - github.com/nostosx/servex-contrib/middleware/
+            - github.com/nostosx/kitx/backoff$
+            - github.com/nostosx/servex-contrib/metrics/noop$
+            - github.com/nostosx/servex-contrib/tracing/noop$
     nolintlint:
       require-explanation: true
       require-specific: true

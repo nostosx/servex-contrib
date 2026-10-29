@@ -235,10 +235,10 @@ tasks:
           modules={{.MODULES | shellQuote}}
           for module in $modules; do
             printf '\n==> %s: %s\n' "$module" deps-check
-            (cd "$module"; if [ "$module" = middleware ] || [ "$module" = selector ]; then
+            (cd "$module"; if [ "$module" = middleware ] || [ "$module" = selector ] || [ "$module" = cache/loader ] || [ "$module" = transport/client ]; then
               own=$({{.GO | shellQuote}} list -m);
               deps=$({{.GO | shellQuote}} list -m -f '{{"{{.Path}}"}}' all);
-              foreign=$(printf '%s\n' "$deps" | awk -v own="$own" 'NF && $0 != own && $0 != "github.com/nostosx/servex" && $0 != "github.com/nostosx/kitx"');
+              foreign=$(printf '%s\n' "$deps" | awk -v own="$own" -v module="$module" 'NF && $0 != own && $0 != "github.com/nostosx/servex" && $0 != "github.com/nostosx/kitx" && !(module == "middleware" && ($0 == "github.com/nostosx/servex-contrib/metrics/noop" || $0 == "github.com/nostosx/servex-contrib/tracing/noop"))' );
               if [ -n "$foreign" ]; then printf 'unexpected dependencies:\n%s\n' "$foreign"; exit 1; fi;
             fi)
           done

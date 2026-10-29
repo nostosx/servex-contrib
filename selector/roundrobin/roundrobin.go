@@ -18,7 +18,7 @@ type roundRobin struct {
 
 // New returns a smooth weighted round-robin selector. Nodes are identified by
 // Addr and weighted by Node.Weight, where values <= 0 count as 1;
-// transport.Client copies it from discovery.Instance.Weight. The
+// the contrib shared client copies it from discovery.Instance.Weight. The
 // selector is safe for concurrent use and its Done ignores call outcomes.
 //
 // On every Select each node's current weight grows by its weight, the node
