@@ -3,7 +3,10 @@ module github.com/nostosx/servex-contrib/discovery/etcd
 go 1.27.3
 
 require (
-	github.com/nostosx/servex v1.2.0
+	github.com/nostosx/servex v1.3.0
+	github.com/nostosx/servex-contrib/selector v1.1.0
+	github.com/nostosx/servex-contrib/transport/client v1.0.0
+	github.com/nostosx/servex-contrib/transport/httpx v1.0.0
 	go.etcd.io/etcd/api/v3 v3.7.2
 	go.etcd.io/etcd/client/v3 v3.7.2
 	go.etcd.io/etcd/server/v3 v3.7.2
@@ -30,6 +33,7 @@ require (
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nostosx/kitx v1.0.0 // indirect
+	github.com/nostosx/servex-contrib/encoding/json v1.0.0 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.5 // indirect

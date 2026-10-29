@@ -12,8 +12,8 @@ import (
 
 	testpb "google.golang.org/grpc/interop/grpc_testing"
 
+	"github.com/nostosx/servex-contrib/discovery/memory"
 	"github.com/nostosx/servex/discovery"
-	"github.com/nostosx/servex/discovery/memory"
 	"github.com/nostosx/servex/selector"
 
 	"github.com/nostosx/servex-contrib/transport/grpcx"

@@ -62,7 +62,7 @@ import (
 	"github.com/nostosx/servex-contrib/discovery/consul"
 	"github.com/nostosx/servex/app"
 	"github.com/nostosx/servex/discovery"
-	"github.com/nostosx/servex/transport/httpx"
+	"github.com/nostosx/servex-contrib/transport/httpx"
 )
 
 func run() error {

@@ -1,7 +1,7 @@
 // Package grpcx implements the servex transport contracts on top of
 // google.golang.org/grpc: Server runs gRPC services as an app.Hook with the
 // servex endpoint middleware, and Client exposes a grpc.ClientConnInterface
-// whose calls go through a transport.Client for middleware, service
+// whose calls go through a the shared contrib client for middleware, service
 // discovery and node selection.
 // Unary and streaming middleware are configured independently. Stream chains
 // receive *StreamInfo and cover the full RPC, with no automatic stream replay.

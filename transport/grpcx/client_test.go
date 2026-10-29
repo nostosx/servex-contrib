@@ -13,8 +13,8 @@ import (
 	grpcmd "google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 
+	"github.com/nostosx/servex-contrib/discovery/memory"
 	"github.com/nostosx/servex/discovery"
-	"github.com/nostosx/servex/discovery/memory"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/metadata"

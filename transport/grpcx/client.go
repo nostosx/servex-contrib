@@ -9,6 +9,10 @@ import (
 	"slices"
 	"sync"
 
+	sxclient "github.com/nostosx/servex-contrib/transport/client"
+
+	"github.com/nostosx/servex-contrib/selector/random"
+
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	grpcmd "google.golang.org/grpc/metadata"
@@ -49,7 +53,7 @@ func WithDiscoverer(d discovery.Discoverer) ClientOption {
 }
 
 // WithSelector sets the Selector that picks a node for every call. The
-// default is selector.Random(); a nil s keeps the default.
+// default is random.New(); a nil s keeps the default.
 func WithSelector(s selector.Selector) ClientOption {
 	return func(o *clientOptions) { o.selector = s }
 }
@@ -76,15 +80,15 @@ func WithDialOptions(o ...grpc.DialOption) ClientOption {
 	return func(co *clientOptions) { co.dialOpts = append(co.dialOpts, o...) }
 }
 
-// Client calls gRPC services through a transport.Client. It keeps one
+// Client calls gRPC services through a sxclient.Client. It keeps one
 // *grpc.ClientConn per node address, created on first use. When a node
 // leaves the node set, its connection is closed as soon as the unary calls
 // and streams using it have finished, or right away when it is idle. The
-// Client follows node set changes through transport.WithNodeObserver, so
+// Client follows node set changes through sxclient.WithNodeObserver, so
 // they apply without waiting for a call. All methods are safe for concurrent
 // use.
 type Client struct {
-	tc               *transport.Client
+	tc               *sxclient.Client
 	middleware       []endpoint.Middleware
 	streamMiddleware []endpoint.Middleware
 	dialOpts         []grpc.DialOption
@@ -97,7 +101,7 @@ type Client struct {
 	streams  map[*clientStreamCall]context.CancelFunc
 	streamWG sync.WaitGroup
 	// live holds the addresses of the latest node set reported by the
-	// transport.Client, which reports the initial set before NewClient
+	// sxclient.Client, which reports the initial set before NewClient
 	// returns; it is nil only while NewClient runs.
 	live map[string]struct{}
 }
@@ -113,7 +117,7 @@ type nodeConn struct {
 	stale bool
 }
 
-// NewClient creates a Client on top of transport.NewClient with the scheme
+// NewClient creates a Client on top of sxclient.New with the scheme
 // fixed to "grpc". target is either "grpc://host:port" or
 // "discovery:///<name>", which requires WithDiscoverer; for discovery
 // targets NewClient waits, bounded by ctx, for the first set of instances.
@@ -142,17 +146,17 @@ func NewClient(ctx context.Context, target string, opts ...ClientOption) (*Clien
 	c.cc = &conn{c: c}
 	sel := o.selector
 	if sel == nil {
-		sel = selector.Random()
+		sel = random.New()
 	}
-	topts := []transport.ClientOption{
-		transport.WithScheme(scheme),
-		transport.WithSelector(sel),
-		transport.WithNodeObserver(c.observe),
+	topts := []sxclient.Option{
+		sxclient.WithScheme(scheme),
+		sxclient.WithSelector(sel),
+		sxclient.WithNodeObserver(c.observe),
 	}
 	if o.discoverer != nil {
-		topts = append(topts, transport.WithDiscoverer(o.discoverer))
+		topts = append(topts, sxclient.WithDiscoverer(o.discoverer))
 	}
-	tc, err := transport.NewClient(ctx, target, topts...)
+	tc, err := sxclient.New(ctx, target, topts...)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +164,7 @@ func NewClient(ctx context.Context, target string, opts ...ClientOption) (*Clien
 	return c, nil
 }
 
-// observe is the node observer of the transport.Client, called whenever its
+// observe is the node observer of the sxclient.Client, called whenever its
 // node set changes. It records nodes as the live node set and closes the
 // idle connections to nodes outside it. Connections in use are closed when
 // their last call or stream finishes.
@@ -193,7 +197,7 @@ func (c *Client) observe(nodes []selector.Node) {
 // Conn returns a grpc.ClientConnInterface for generated clients, as in
 // pb.NewGreeterClient(c.Conn()).
 //
-// Every unary call runs through transport.Client.Endpoint with the full
+// Every unary call runs through sxclient.Client.Endpoint with the full
 // method name as operation: the client middleware sees the request message
 // and a context carrying metadata.Info, then a node is selected and the call
 // is made on the connection of that node. metadata.Info.Header is sent as
@@ -204,7 +208,7 @@ func (c *Client) observe(nodes []selector.Node) {
 // stream middleware; errors are converted like unary errors, except io.EOF.
 func (c *Client) Conn() grpc.ClientConnInterface { return c.cc }
 
-// Close stops the transport.Client and closes the connections to all
+// Close stops the sxclient.Client and closes the connections to all
 // nodes. Calls made afterwards fail with a non-retryable
 // errorx.FailedPrecondition (reason CLIENT_CLOSED). Close is idempotent.
 func (c *Client) Close() error {

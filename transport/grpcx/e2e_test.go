@@ -9,9 +9,9 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	testpb "google.golang.org/grpc/interop/grpc_testing"
 
+	"github.com/nostosx/servex-contrib/discovery/memory"
 	"github.com/nostosx/servex/app"
 	"github.com/nostosx/servex/discovery"
-	"github.com/nostosx/servex/discovery/memory"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/health"
@@ -48,7 +48,7 @@ func TestEndToEndThroughDiscovery(t *testing.T) {
 	testpb.RegisterTestServiceServer(srv, svc)
 	a = app.New(
 		app.WithHooks(srv, discovery.Registration(reg, discovery.Instance{Name: "user", Version: "v1"}, srv)),
-		app.WithLogger(slog.New(slog.DiscardHandler)),
+		app.WithLogger(testLogger(slog.New(slog.DiscardHandler))),
 	)
 	if err := a.Start(ctx); err != nil {
 		t.Fatalf("app start: %v", err)

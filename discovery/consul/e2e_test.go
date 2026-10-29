@@ -10,27 +10,31 @@ import (
 	"time"
 	"uuid"
 
+	sxclient "github.com/nostosx/servex-contrib/transport/client"
+
+	"github.com/nostosx/servex-contrib/selector/random"
+
+	"github.com/nostosx/servex-contrib/transport/httpx"
 	"github.com/nostosx/servex/app"
 	"github.com/nostosx/servex/discovery"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/selector"
 	"github.com/nostosx/servex/transport"
-	"github.com/nostosx/servex/transport/httpx"
 )
 
 // runEndToEnd serves an HTTP endpoint from an App that registers itself in
-// reg, calls it through transport.NewClient("discovery:///greeter") backed
+// reg, calls it through sxclient.New("discovery:///greeter") backed
 // by dis, and checks that stopping the App removes the node.
 func runEndToEnd(t *testing.T, reg discovery.Registrar, dis discovery.Discoverer) {
 	ctx := t.Context()
 	name := "greeter-" + uuid.NewV7().String()
-	srv := httpx.NewServer(httpx.WithAddress("127.0.0.1:0"), httpx.WithLogger(slog.New(slog.DiscardHandler)))
+	srv := httpx.NewServer(httpx.WithAddress("127.0.0.1:0"), httpx.WithLogger(testLogger(slog.New(slog.DiscardHandler))))
 	srv.HandleHTTP("GET /hello", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = io.WriteString(w, "hello") // a failed write surfaces as a client error
 	}))
 	a := app.New(
 		app.WithHooks(srv, discovery.Registration(reg, discovery.Instance{Name: name, Version: "v1"}, srv)),
-		app.WithLogger(slog.New(slog.DiscardHandler)),
+		app.WithLogger(testLogger(slog.New(slog.DiscardHandler))),
 	)
 	if err := a.Start(ctx); err != nil {
 		t.Fatalf("app start: %v", err)
@@ -44,8 +48,8 @@ func runEndToEnd(t *testing.T, reg discovery.Registrar, dis discovery.Discoverer
 		}
 	})
 
-	client, err := transport.NewClient(ctx, "discovery:///"+name,
-		transport.WithDiscoverer(dis), transport.WithScheme("http"))
+	client, err := sxclient.New(ctx, "discovery:///"+name,
+		sxclient.WithSelector(random.New()), sxclient.WithDiscoverer(dis), sxclient.WithScheme("http"))
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}

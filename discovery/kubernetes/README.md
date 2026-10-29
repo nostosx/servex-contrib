@@ -59,7 +59,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	k8sdiscovery "github.com/nostosx/servex-contrib/discovery/kubernetes"
-	"github.com/nostosx/servex/transport/httpx"
+	"github.com/nostosx/servex-contrib/transport/httpx"
 )
 
 type User struct {

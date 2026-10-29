@@ -17,7 +17,7 @@ the core `transport/httpx`.
   middleware, selects a node (direct `grpc://host:port` or
   `discovery:///<name>` target) and is made on that node's connection.
   Connections are kept per node and closed once the node leaves the set: the
-  client follows node set changes through `transport.WithNodeObserver`, so an
+  client follows node set changes through `client.WithNodeObserver`, so an
   idle connection closes as soon as discovery reports the change, and one in
   use after its last call or stream.
 - Errors map between `errorx` and gRPC statuses with the same numeric code;
@@ -206,7 +206,7 @@ Client:
 | Option | Default | Description |
 |---|---|---|
 | `WithDiscoverer(d)` | none | Required for `discovery:///<name>` targets; uses endpoints with the `grpc` scheme. |
-| `WithSelector(s)` | `selector.Random()` | Node selection per call, for example `selector/p2c`. |
+| `WithSelector(s)` | `servex-contrib/selector/random.New()` | Node selection per call, for example `selector/p2c`. |
 | `WithClientMiddleware(m...)` | none | servex client middleware for unary calls. |
 | `WithDialOptions(o...)` | insecure credentials | Dial options for every node connection. |
 

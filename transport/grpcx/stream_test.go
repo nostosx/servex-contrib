@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc/health/grpc_health_v1"
 	testpb "google.golang.org/grpc/interop/grpc_testing"
 
-	"github.com/nostosx/servex/discovery/memory"
+	"github.com/nostosx/servex-contrib/discovery/memory"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/health"

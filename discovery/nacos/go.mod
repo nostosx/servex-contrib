@@ -4,7 +4,10 @@ go 1.27.3
 
 require (
 	github.com/nacos-group/nacos-sdk-go/v2 v2.3.5
-	github.com/nostosx/servex v1.2.0
+	github.com/nostosx/servex v1.3.0
+	github.com/nostosx/servex-contrib/selector v1.1.0
+	github.com/nostosx/servex-contrib/transport/client v1.0.0
+	github.com/nostosx/servex-contrib/transport/httpx v1.0.0
 )
 
 require (
@@ -42,6 +45,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/nostosx/kitx v1.0.0 // indirect
+	github.com/nostosx/servex-contrib/encoding/json v1.0.0 // indirect
 	github.com/orcaman/concurrent-map v0.0.0-20210501183033-44dafcb38ecc // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_golang v1.12.2 // indirect
