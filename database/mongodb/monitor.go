@@ -5,6 +5,9 @@ import (
 	"errors"
 	"sync"
 
+	noopmetrics "github.com/nostosx/servex-contrib/metrics/noop"
+	nooptracing "github.com/nostosx/servex-contrib/tracing/noop"
+
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/event"
 
@@ -63,10 +66,10 @@ func Monitor(t tracing.Tracer, m metrics.Meter) *event.CommandMonitor {
 // newMonitor returns a monitor recording to t and m; nil disables either.
 func newMonitor(t tracing.Tracer, m metrics.Meter) *monitor {
 	if t == nil {
-		t = tracing.Noop()
+		t = nooptracing.New()
 	}
 	if m == nil {
-		m = metrics.Noop()
+		m = noopmetrics.New()
 	}
 	return &monitor{
 		tracer: t,

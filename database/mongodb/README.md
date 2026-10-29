@@ -49,15 +49,15 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
 	"github.com/nostosx/servex-contrib/database/mongodb"
+	metricsnoop "github.com/nostosx/servex-contrib/metrics/noop"
+	tracingnoop "github.com/nostosx/servex-contrib/tracing/noop"
 	"github.com/nostosx/servex/app"
-	"github.com/nostosx/servex/observability/metrics"
-	"github.com/nostosx/servex/observability/tracing"
 )
 
 func run() error {
 	// Use real backends, for example servex-contrib/tracing/otel and
 	// servex-contrib/metrics/prometheus.
-	tracer, meter := tracing.Noop(), metrics.Noop()
+	tracer, meter := tracingnoop.New(), metricsnoop.New()
 
 	client, err := mongo.Connect(options.Client().
 		ApplyURI("mongodb://127.0.0.1:27017").

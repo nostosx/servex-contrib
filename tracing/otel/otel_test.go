@@ -305,7 +305,7 @@ func TestExtractWithoutTraceContext(t *testing.T) {
 	parent := t.Context()
 	for _, c := range []tracing.Carrier{nil, metadata.MD{}, metadata.Pairs("traceparent", "garbage")} {
 		ctx := prop.Extract(parent, c)
-		if tracing.SpanFromContext(ctx).TraceID() != "" {
+		if tracing.SpanFromContext(ctx) != nil {
 			t.Fatalf("Extract(%v) produced a span", c)
 		}
 		if oteltrace.SpanContextFromContext(ctx).IsValid() {

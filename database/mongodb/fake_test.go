@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	noopmetrics "github.com/nostosx/servex-contrib/metrics/noop"
+
 	"github.com/nostosx/servex/observability/metrics"
 	"github.com/nostosx/servex/observability/tracing"
 )
@@ -91,7 +93,7 @@ func (m *recMeter) Gauge(name, _ string, labelNames ...string) metrics.Gauge {
 	m.mu.Lock()
 	m.labels[name] = labelNames
 	m.mu.Unlock()
-	return metrics.Noop().Gauge(name, "")
+	return noopmetrics.New().Gauge(name, "")
 }
 
 func (m *recMeter) Histogram(name, _ string, buckets []float64, labelNames ...string) metrics.Histogram {
