@@ -78,9 +78,15 @@ func New(l sxlog.Logger, opts ...Option) endpoint.Middleware {
 	}
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, req any) (any, error) {
-			start := time.Now()
+			var start time.Time
+			if l != nil {
+				start = time.Now()
+			}
 			resp, err := next(ctx, req)
-			duration := time.Since(start)
+			var duration time.Duration
+			if l != nil {
+				duration = time.Since(start)
+			}
 
 			e := errorx.From(err)
 			code := errorx.OK
@@ -92,7 +98,14 @@ func New(l sxlog.Logger, opts ...Option) endpoint.Middleware {
 				return resp, err
 			}
 			info, _ := metadata.FromContext(ctx)
-			attrs := make([]any, 0, 7)
+			capacity := 10
+			if e != nil {
+				capacity += 2 // error text
+				if e.Reason != "" {
+					capacity += 2
+				}
+			}
+			attrs := make([]any, 0, capacity)
 			attrs = append(attrs,
 				KeyKind, string(info.Kind),
 				KeyProtocol, info.Protocol,

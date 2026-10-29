@@ -22,6 +22,8 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
   order and body/query/path precedence without invoking factories eagerly.
 - Compose gRPC unary endpoint middleware once at server construction while
   keeping request-specific handlers/metadata, health bypass and status mapping.
+- Size log attribute slices for the complete record and skip timing with a nil
+  logger, preserving level callbacks, field order and handler-only duration.
 
 - Add validation/playground using go-playground/validator and
   validation/protovalidate using Buf Protovalidate. Both return endpoint
