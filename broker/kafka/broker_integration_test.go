@@ -219,7 +219,7 @@ func TestIntegrationWithConsumerInApp(t *testing.T) {
 		got <- info
 		return nil, nil
 	})
-	a := app.New(app.WithLogger(slog.New(slog.DiscardHandler)), app.WithHooks(consumer))
+	a := app.New(app.WithLogger(testLogger(slog.New(slog.DiscardHandler))), app.WithHooks(consumer))
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	runErr := make(chan error, 1)

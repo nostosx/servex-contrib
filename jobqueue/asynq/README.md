@@ -119,7 +119,7 @@ dedicated verification.
 | `WithFailed(fn)` | none | Receives jobs that failed for good and the last error. |
 | `WithShutdownTimeout(d)` | 8s | Grace period for running handlers after `Run`'s context ends. |
 | `WithHealthCheckInterval(d)` | 15s | Redis check; after three failures `Run` returns a retryable `Unavailable`. |
-| `WithLogger(l)` | `slog.Default()` | Logger of the asynq server (warnings and errors). |
+| `WithLogger(l)` | `nil` (disabled) | Logger of the asynq server (warnings and errors). |
 | `WithServerConfig(fn)` | none | Adjusts the generated `asynq.Config`; changing `Queues`, `BaseContext`, `RetryDelayFunc` or `HealthCheckFunc` breaks Queue semantics. |
 
 ## Testing
@@ -134,3 +134,7 @@ SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 GOWORK=off go test -race -count=1 -tags inte
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+Unreleased logger API: pass a core logger.Logger, wrapping an explicitly
+selected slog or Zap backend. Nil disables logging; backend adapters live in
+logger/slog and logger/zap. Historical published versions accept *slog.Logger.

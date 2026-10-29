@@ -12,14 +12,14 @@ import (
 
 func Example() {
 	// Drop the time and duration so the output is stable.
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+	logger := testLogger(slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
 		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.TimeKey || a.Key == logging.KeyDuration {
 				return slog.Attr{}
 			}
 			return a
 		},
-	}))
+	})))
 	ep := logging.New(logger)(func(_ context.Context, req any) (any, error) {
 		if req == nil {
 			return nil, errorx.New(errorx.NotFound, "USER_NOT_FOUND", "user not found")

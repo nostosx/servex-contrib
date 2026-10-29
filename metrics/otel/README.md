@@ -71,7 +71,7 @@ record nothing.
 
 | Option | Default | Description |
 |---|---|---|
-| `WithLogger(l)` | `slog.Default()` | Logger for misuse reports. |
+| `WithLogger(l)` | `nil` (disabled) | Logger for misuse reports. |
 
 ## Testing
 
@@ -85,3 +85,7 @@ GOWORK=off go test -race -count=1 ./...
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+Unreleased logger API: pass a core logger.Logger, wrapping an explicitly
+selected slog or Zap backend. Nil disables logging; backend adapters live in
+logger/slog and logger/zap. Historical published versions accept *slog.Logger.

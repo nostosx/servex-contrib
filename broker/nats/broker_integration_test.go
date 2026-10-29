@@ -184,7 +184,7 @@ func TestIntegrationConnectionLossFailsApp(t *testing.T) {
 		got <- info
 		return nil, nil
 	})
-	a := app.New(app.WithLogger(slog.New(slog.DiscardHandler)), app.WithHooks(consumer))
+	a := app.New(app.WithLogger(testLogger(slog.New(slog.DiscardHandler))), app.WithHooks(consumer))
 	runErr := make(chan error, 1)
 	go func() { runErr <- a.Run(t.Context()) }()
 	<-f.ready

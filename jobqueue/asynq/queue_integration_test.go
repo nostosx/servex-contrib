@@ -45,7 +45,7 @@ func TestIntegrationQueue(t *testing.T) {
 func TestIntegrationNew(t *testing.T) {
 	addr := redisAddr(t)
 	q, err := New(asynq.RedisClientOpt{Addr: addr}, WithQueue("it-new-"+uuid.NewV7().String()),
-		WithLogger(slog.New(slog.DiscardHandler)))
+		WithLogger(testLogger(slog.New(slog.DiscardHandler))))
 	if err != nil {
 		t.Fatal(err)
 	}

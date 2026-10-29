@@ -41,7 +41,7 @@ func newHarness(t *testing.T) *harness {
 		}
 	})
 	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, nil))
+	logger := testLogger(slog.New(slog.NewTextHandler(&buf, nil)))
 	return &harness{
 		meter:  otel.New(provider.Meter("test"), otel.WithLogger(logger)),
 		reader: reader,

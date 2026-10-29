@@ -604,7 +604,7 @@ func TestWithConsumerInApp(t *testing.T) {
 		got <- info
 		return nil, nil
 	})
-	a := app.New(app.WithLogger(slog.New(slog.DiscardHandler)), app.WithHooks(consumer))
+	a := app.New(app.WithLogger(testLogger(slog.New(slog.DiscardHandler))), app.WithHooks(consumer))
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	runErr := make(chan error, 1)
@@ -638,7 +638,7 @@ func TestWithConsumerInApp(t *testing.T) {
 func TestConnectionLossFailsApp(t *testing.T) {
 	f := newFixture(t)
 	consumer := broker.NewConsumer(f.broker, "orders", "app", (&collector{}).handle)
-	a := app.New(app.WithLogger(slog.New(slog.DiscardHandler)), app.WithHooks(consumer))
+	a := app.New(app.WithLogger(testLogger(slog.New(slog.DiscardHandler))), app.WithHooks(consumer))
 	runErr := make(chan error, 1)
 	go func() { runErr <- a.Run(t.Context()) }()
 	<-f.ready

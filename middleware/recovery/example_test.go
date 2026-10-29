@@ -11,7 +11,7 @@ import (
 )
 
 func Example() {
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	logger := testLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))
 	ep := recovery.New(recovery.WithLogger(logger))(func(context.Context, any) (any, error) {
 		panic("unexpected state")
 	})

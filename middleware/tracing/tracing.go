@@ -3,6 +3,8 @@ package tracing
 import (
 	"context"
 
+	nooptracing "github.com/nostosx/servex-contrib/tracing/noop"
+
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/metadata"
@@ -17,8 +19,8 @@ const (
 )
 
 // New returns middleware that traces every call with t, propagating trace
-// context with p. A nil t uses tracing.Noop() and a nil p uses
-// tracing.NoopPropagator().
+// context with p. A nil t uses nooptracing.New() and a nil p uses
+// nooptracing.NewPropagator().
 //
 // The span is named after Info.Operation and its kind follows Info.Kind of
 // the metadata.Info in the context:
@@ -41,10 +43,10 @@ const (
 // code stays visible in AttrCode. The span ends when the next endpoint returns.
 func New(t tracing.Tracer, p tracing.Propagator) endpoint.Middleware {
 	if t == nil {
-		t = tracing.Noop()
+		t = nooptracing.New()
 	}
 	if p == nil {
-		p = tracing.NoopPropagator()
+		p = nooptracing.NewPropagator()
 	}
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, req any) (any, error) {

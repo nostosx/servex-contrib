@@ -1,7 +1,6 @@
 package recovery_test
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -42,7 +41,7 @@ func attrs(r slog.Record) map[string]slog.Value {
 	return m
 }
 
-func discard() *slog.Logger { return slog.New(slog.NewTextHandler(io.Discard, nil)) }
+func discard() *loggerFixture { return testLogger(slog.New(slog.NewTextHandler(io.Discard, nil))) }
 
 func TestPassThrough(t *testing.T) {
 	mw := recovery.New(recovery.WithLogger(discard()))
@@ -55,7 +54,7 @@ func TestPassThrough(t *testing.T) {
 
 func TestPanicBecomesInternal(t *testing.T) {
 	h := &captureHandler{}
-	mw := recovery.New(recovery.WithLogger(slog.New(h)))
+	mw := recovery.New(recovery.WithLogger(testLogger(slog.New(h))))
 	ctx := metadata.NewContext(t.Context(), metadata.Info{
 		Kind: metadata.KindServer, Protocol: "http", Operation: "GET /x",
 	})
@@ -148,15 +147,10 @@ func TestHandlerNilFallsBack(t *testing.T) {
 	}
 }
 
-func TestDefaultLogger(t *testing.T) {
-	var buf bytes.Buffer
-	prev := slog.Default()
-	t.Cleanup(func() { slog.SetDefault(prev) })
-	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
-
+func TestNilLoggerStillRecovers(t *testing.T) {
 	mw := recovery.New(nil, recovery.WithLogger(nil))
-	_, _ = mw(func(context.Context, any) (any, error) { panic("default") })(t.Context(), nil)
-	if !strings.Contains(buf.String(), "panic=default") {
-		t.Fatalf("default logger did not record panic: %q", buf.String())
+	_, err := mw(func(context.Context, any) (any, error) { panic("disabled log") })(t.Context(), nil)
+	if errorx.CodeOf(err) != errorx.Internal {
+		t.Fatalf("panic was not recovered: %v", err)
 	}
 }

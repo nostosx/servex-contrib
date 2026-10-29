@@ -95,7 +95,7 @@ import (
     dox "github.com/nostosx/servex-contrib/di/do"
     "github.com/nostosx/servex/app"
     "github.com/nostosx/servex/di"
-    "github.com/nostosx/servex/transport/httpx"
+    "github.com/nostosx/servex-contrib/transport/httpx"
 )
 
 type Config struct {

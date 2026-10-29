@@ -5,6 +5,8 @@ import (
 	"slices"
 	"time"
 
+	noopmetrics "github.com/nostosx/servex-contrib/metrics/noop"
+
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/metadata"
@@ -44,10 +46,10 @@ func WithBuckets(b []float64) Option {
 //
 // Label values come from the metadata.Info in the context and are empty when
 // it is absent. The metrics are created once, when New is called. A nil m
-// uses metrics.Noop().
+// uses noopmetrics.New().
 func New(m metrics.Meter, opts ...Option) endpoint.Middleware {
 	if m == nil {
-		m = metrics.Noop()
+		m = noopmetrics.New()
 	}
 	o := options{buckets: metrics.DefaultBuckets}
 	for _, opt := range opts {

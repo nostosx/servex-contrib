@@ -236,7 +236,7 @@ func TestHookAppLifecycle(t *testing.T) {
 			if failStart {
 				hooks = append(hooks, app.NewHook("failing", func(context.Context) error { return failure }, nil))
 			}
-			a := app.New(app.WithHooks(hooks...), app.WithLogger(slog.New(slog.NewTextHandler(io.Discard, nil))))
+			a := app.New(app.WithHooks(hooks...), app.WithLogger(testLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))))
 			err := a.Start(t.Context())
 			if failStart {
 				if !errors.Is(err, failure) {

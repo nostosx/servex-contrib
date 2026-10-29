@@ -5,6 +5,8 @@ import (
 	"slices"
 	"time"
 
+	noopmetrics "github.com/nostosx/servex-contrib/metrics/noop"
+
 	"github.com/nostosx/servex/cqrs"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/observability/metrics"
@@ -23,7 +25,7 @@ const (
 // Panics count as Internal failures and propagate unchanged. WithBuckets applies.
 func Command[Request, Result any](meter metrics.Meter, opts ...Option) cqrs.CommandMiddleware[Request, Result] {
 	if meter == nil {
-		meter = metrics.Noop()
+		meter = noopmetrics.New()
 	}
 	o := options{buckets: slices.Clone(metrics.DefaultBuckets)}
 	for _, opt := range opts {

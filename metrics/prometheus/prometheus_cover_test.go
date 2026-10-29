@@ -150,7 +150,7 @@ func TestExistingCollectorOfAnotherType(t *testing.T) {
 			reg := prom.NewRegistry()
 			reg.MustRegister(tt.existing)
 			var buf strings.Builder
-			m := prometheus.New(reg, prometheus.WithLogger(slog.New(slog.NewTextHandler(&buf, nil))))
+			m := prometheus.New(reg, prometheus.WithLogger(testLogger(slog.New(slog.NewTextHandler(&buf, nil)))))
 			tt.use(m)
 			if log := buf.String(); !strings.Contains(log, "cannot register") ||
 				!strings.Contains(log, "existing collector has type "+tt.typ) {

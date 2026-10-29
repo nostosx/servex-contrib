@@ -49,7 +49,7 @@ func (b backend) newQueue(t *testing.T, opts ...Option) *Queue {
 		WithQueue(fmt.Sprintf("test-%s", uuid.NewV7())),
 		WithBackoff(func(int) time.Duration { return 10 * time.Millisecond }),
 		WithShutdownTimeout(300 * time.Millisecond),
-		WithLogger(slog.New(slog.DiscardHandler)),
+		WithLogger(testLogger(slog.New(slog.DiscardHandler))),
 		WithServerConfig(func(cfg *asynq.Config) {
 			cfg.TaskCheckInterval = 10 * time.Millisecond
 			cfg.DelayedTaskCheckInterval = 20 * time.Millisecond
@@ -614,7 +614,7 @@ func (b backend) testWorkerInApp(t *testing.T) {
 			return nil, nil
 		},
 	})
-	a := app.New(app.WithLogger(slog.New(slog.DiscardHandler)), app.WithHooks(worker))
+	a := app.New(app.WithLogger(testLogger(slog.New(slog.DiscardHandler))), app.WithHooks(worker))
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	runErr := make(chan error, 1)

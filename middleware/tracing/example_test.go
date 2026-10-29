@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	nooptracing "github.com/nostosx/servex-contrib/tracing/noop"
+
 	mwtracing "github.com/nostosx/servex-contrib/middleware/tracing"
 	"github.com/nostosx/servex/metadata"
 	"github.com/nostosx/servex/observability/tracing"
@@ -12,7 +14,7 @@ import (
 func Example() {
 	// Use a real Tracer and Propagator, such as the ones from
 	// servex-contrib/tracing/otel, in production.
-	tracer, propagator := tracing.Noop(), tracing.NoopPropagator()
+	tracer, propagator := nooptracing.New(), nooptracing.NewPropagator()
 	ep := mwtracing.New(tracer, propagator)(func(ctx context.Context, _ any) (any, error) {
 		// The handler sees the server span in its context.
 		_ = tracing.SpanFromContext(ctx)

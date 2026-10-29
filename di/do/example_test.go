@@ -66,7 +66,7 @@ func ExampleHook() {
 	}, nil)
 	application := app.New(
 		app.WithHooks(dependencies, worker),
-		app.WithLogger(slog.New(slog.NewTextHandler(io.Discard, nil))),
+		app.WithLogger(testLogger(slog.New(slog.NewTextHandler(io.Discard, nil)))),
 	)
 	if err := application.Start(context.Background()); err != nil {
 		panic(err)

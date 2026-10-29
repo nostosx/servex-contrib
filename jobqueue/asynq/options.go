@@ -1,9 +1,10 @@
 package asynq
 
 import (
-	"log/slog"
 	"strings"
 	"time"
+
+	sxlog "github.com/nostosx/servex/logger"
 
 	"github.com/hibiken/asynq"
 
@@ -37,7 +38,7 @@ type options struct {
 	failed              func(job *jobqueue.Job, err error)
 	shutdownTimeout     time.Duration
 	healthCheckInterval time.Duration
-	logger              *slog.Logger
+	logger              sxlog.Logger
 	configure           func(*asynq.Config)
 }
 
@@ -96,8 +97,8 @@ func WithHealthCheckInterval(d time.Duration) Option {
 }
 
 // WithLogger sets the logger of the asynq server; only warnings and errors
-// are logged. The default is slog.Default().
-func WithLogger(l *slog.Logger) Option {
+// are logged. The default is nil.
+func WithLogger(l sxlog.Logger) Option {
 	return func(o *options) { o.logger = l }
 }
 

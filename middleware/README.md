@@ -4,8 +4,9 @@
 standard servex middleware. Each package provides `endpoint.Middleware` via `New`,
 which reads call information from `metadata.FromContext` (kind, protocol,
 operation, header) and works with any transport, consumer or worker. The
-module depends only on the standard library, servex and kitx; external capabilities
-are injected through functions and interfaces.
+module depends only on the standard library, servex, kitx and the SDK-free
+metrics/noop and tracing/noop backends. External capabilities are injected
+through functions and interfaces.
 
 | Package | Side | Main API | Behaviour |
 |---|---|---|---|
@@ -14,7 +15,7 @@ are injected through functions and interfaces.
 | `validate` | server | `New()` | Calls `Validate() error` on requests that implement it (protoc-gen-validate compatible); failures are `InvalidArgument`. |
 | `ratelimit` | server | `New(Limiter, WithKey)`, `TokenBucket(rate, burst, WithClock, WithIdleTimeout)` | Rejects with `ResourceExhausted` (reason `RATE_LIMITED`). The token bucket is keyed and evicts idle buckets without a goroutine. |
 | `tracing` | both | `New(tracing.Tracer, tracing.Propagator)`, `IsServerFault` | Server spans continue the inbound trace; client spans are injected into the outbound header. Following OpenTelemetry, server and internal spans get an error status only for server faults (Unknown, DeadlineExceeded, Unimplemented, Internal, Unavailable, DataLoss); client spans for every failure. The `servex.code` attribute is always set. |
-| `logging` | both | `New(*slog.Logger, WithLevel)` | One record per call with kind, protocol, operation, duration and errorx code. |
+| `logging` | both | `New(logger.Logger, WithLevel)` | One record per call with kind, protocol, operation, duration and errorx code. |
 | `metrics` | both | `New(metrics.Meter, WithBuckets)` | `servex_requests_total{kind,protocol,operation,code}` and `servex_request_duration_seconds{kind,protocol,operation}`. |
 | `retry` | client | `New(WithMaxAttempts, WithBackoff, WithRetryIf)`, `Exponential(base, limit)` | Retries retryable errors (default 3 attempts, exponential backoff with jitter from 100ms to 2s); stops when the caller's context ends. A remote error is retried only by the hop that received it: servex servers report it to their callers as not retryable. |
 | `circuitbreaker` | client | `New(WithKey, WithK, WithWindow, WithBuckets, WithMinRequests, ...)`, `ErrOpen` | Google SRE adaptive throttling per operation; rejects with a non-retryable `Unavailable` (reason `CIRCUIT_OPEN`), so an outer retry stops. |
@@ -55,7 +56,7 @@ handler := cqrs.ChainCommand("catalog.create_product", command,
 This is an assembly fragment; request/result types, command and sinks belong to
 the application. For a complete command/query program see the executable
 [ExampleCommand](logging/cqrs_test.go). The first wrapper is outermost; logging
-runs inside the internal span for trace correlation. Nil sinks select slog.Default
+runs inside the internal span for trace correlation. Nil loggers disable logging
 and no-op metrics/tracing; WithLevel and WithBuckets apply to the typed factories.
 Use concurrency-safe sinks and handlers. No automatic retry or transaction is added.
 
@@ -114,6 +115,8 @@ import (
 	"log/slog"
 	"time"
 
+	slogadapter "github.com/nostosx/servex-contrib/logger/slog"
+	metricsnoop "github.com/nostosx/servex-contrib/metrics/noop"
 	"github.com/nostosx/servex-contrib/middleware/auth"
 	"github.com/nostosx/servex-contrib/middleware/circuitbreaker"
 	"github.com/nostosx/servex-contrib/middleware/logging"
@@ -124,9 +127,8 @@ import (
 	"github.com/nostosx/servex-contrib/middleware/timeout"
 	mwtracing "github.com/nostosx/servex-contrib/middleware/tracing"
 	"github.com/nostosx/servex-contrib/middleware/validate"
-	"github.com/nostosx/servex/observability/metrics"
-	"github.com/nostosx/servex/observability/tracing"
-	"github.com/nostosx/servex/transport/httpx"
+	tracingnoop "github.com/nostosx/servex-contrib/tracing/noop"
+	"github.com/nostosx/servex-contrib/transport/httpx"
 )
 
 type Claims struct{ Subject string }
@@ -139,10 +141,10 @@ func verify(_ context.Context, token string) (Claims, error) {
 }
 
 func main() {
-	logger := slog.Default()
+	logger := slogadapter.New(slog.Default())
 	// Use real backends, for example servex-contrib/tracing/otel and
 	// servex-contrib/metrics/prometheus.
-	tracer, propagator, meter := tracing.Noop(), tracing.NoopPropagator(), metrics.Noop()
+	tracer, propagator, meter := tracingnoop.New(), tracingnoop.NewPropagator(), metricsnoop.New()
 
 	srv := httpx.NewServer(httpx.WithMiddleware(
 		recovery.New(recovery.WithLogger(logger)),
@@ -186,3 +188,7 @@ There are no integration tests.
 ## License
 
 Licensed under the [MIT License](../LICENSE).
+
+Unreleased logger API: pass a core logger.Logger, wrapping an explicitly
+selected slog or Zap backend. Nil disables logging; backend adapters live in
+logger/slog and logger/zap. Historical published versions accept *slog.Logger.

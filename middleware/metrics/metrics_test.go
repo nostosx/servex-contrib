@@ -10,6 +10,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	noopmetrics "github.com/nostosx/servex-contrib/metrics/noop"
+
 	mwmetrics "github.com/nostosx/servex-contrib/middleware/metrics"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/metadata"
@@ -47,7 +49,7 @@ func (m *recordingMeter) Counter(name, _ string, labelNames ...string) metrics.C
 }
 
 func (m *recordingMeter) Gauge(name, help string, labelNames ...string) metrics.Gauge {
-	return metrics.Noop().Gauge(name, help, labelNames...)
+	return noopmetrics.New().Gauge(name, help, labelNames...)
 }
 
 func (m *recordingMeter) Histogram(name, _ string, buckets []float64, labelNames ...string) metrics.Histogram {

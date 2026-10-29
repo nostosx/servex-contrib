@@ -40,7 +40,7 @@ func TestQueueWithMiniredis(t *testing.T) {
 
 func TestNew(t *testing.T) {
 	m := miniredis.RunT(t)
-	q, err := New(asynq.RedisClientOpt{Addr: m.Addr()}, WithLogger(slog.New(slog.DiscardHandler)))
+	q, err := New(asynq.RedisClientOpt{Addr: m.Addr()}, WithLogger(testLogger(slog.New(slog.DiscardHandler))))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestDefaults(t *testing.T) {
 	defer q.Close()
 	o := q.opts
 	if o.queue != "default" || o.concurrency != 4 || o.shutdownTimeout != 8*time.Second ||
-		o.healthCheckInterval != 15*time.Second || o.backoff == nil || o.logger == nil {
+		o.healthCheckInterval != 15*time.Second || o.backoff == nil || o.logger != nil {
 		t.Fatalf("defaults = %+v", o)
 	}
 	if got := NewFromClient(q.rdb, WithConcurrency(0)).opts.concurrency; got != 1 {
@@ -172,7 +172,7 @@ func TestRunWithUnreachableRedis(t *testing.T) {
 	m.Close()
 	rdb := redis.NewClient(&redis.Options{Addr: addr, MaxRetries: -1})
 	defer rdb.Close()
-	q := NewFromClient(rdb, WithLogger(slog.New(slog.DiscardHandler)))
+	q := NewFromClient(rdb, WithLogger(testLogger(slog.New(slog.DiscardHandler))))
 	defer q.Close()
 	err := q.Run(t.Context(), nil)
 	if errorx.CodeOf(err) != errorx.Unavailable || !errorx.IsRetryable(err) {
@@ -196,7 +196,7 @@ func TestRunReadyFailures(t *testing.T) {
 	defer rdb.Close()
 
 	t.Run("unreachable", func(t *testing.T) {
-		q := NewFromClient(rdb, WithLogger(slog.New(slog.DiscardHandler)))
+		q := NewFromClient(rdb, WithLogger(testLogger(slog.New(slog.DiscardHandler))))
 		defer q.Close()
 		err := q.RunReady(t.Context(), nil, func() { t.Error("ready called") })
 		if errorx.CodeOf(err) != errorx.Unavailable || !errorx.IsRetryable(err) {
@@ -204,14 +204,14 @@ func TestRunReadyFailures(t *testing.T) {
 		}
 	})
 	t.Run("closed", func(t *testing.T) {
-		q := NewFromClient(rdb, WithLogger(slog.New(slog.DiscardHandler)))
+		q := NewFromClient(rdb, WithLogger(testLogger(slog.New(slog.DiscardHandler))))
 		q.Close()
 		if err := q.RunReady(t.Context(), nil, func() { t.Error("ready called") }); err != nil {
 			t.Fatalf("RunReady() on a closed Queue = %v, want nil", err)
 		}
 	})
 	t.Run("worker start", func(t *testing.T) {
-		q := NewFromClient(rdb, WithLogger(slog.New(slog.DiscardHandler)))
+		q := NewFromClient(rdb, WithLogger(testLogger(slog.New(slog.DiscardHandler))))
 		defer q.Close()
 		w := jobqueue.NewWorker(q, map[string]endpoint.Endpoint{})
 		err := w.Start(t.Context())
@@ -245,7 +245,7 @@ func TestConnectionLossFailsApp(t *testing.T) {
 	b, m := miniBackend(t)
 	q := b.newQueue(t, WithHealthCheckInterval(20*time.Millisecond))
 	a := app.New(
-		app.WithLogger(slog.New(slog.DiscardHandler)),
+		app.WithLogger(testLogger(slog.New(slog.DiscardHandler))),
 		app.WithHooks(jobqueue.NewWorker(q, map[string]endpoint.Endpoint{})),
 	)
 	runErr := make(chan error, 1)
@@ -271,7 +271,7 @@ func TestConnectionLossFailsApp(t *testing.T) {
 func TestCloseWaitsForRunWithOwnedClient(t *testing.T) {
 	m := miniredis.RunT(t)
 	for range 5 {
-		q, err := New(asynq.RedisClientOpt{Addr: m.Addr()}, WithLogger(slog.New(slog.DiscardHandler)),
+		q, err := New(asynq.RedisClientOpt{Addr: m.Addr()}, WithLogger(testLogger(slog.New(slog.DiscardHandler))),
 			WithShutdownTimeout(100*time.Millisecond))
 		if err != nil {
 			t.Fatal(err)
@@ -343,7 +343,7 @@ func TestStaleReservation(t *testing.T) {
 func TestHandlerPanicFailsJob(t *testing.T) {
 	var fails failures
 	q := NewFromClient(redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"}), WithFailed(fails.record),
-		WithLogger(slog.New(slog.DiscardHandler)))
+		WithLogger(testLogger(slog.New(slog.DiscardHandler))))
 	defer q.rdb.Close()
 	defer q.Close()
 	h := q.handler(t.Context(), map[string]endpoint.Endpoint{"work": func(context.Context, any) (any, error) {

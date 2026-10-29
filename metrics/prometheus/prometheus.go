@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"math"
 	"slices"
 	"sync"
 	"sync/atomic"
+
+	noopmetrics "github.com/nostosx/servex-contrib/metrics/noop"
+
+	sxlog "github.com/nostosx/servex/logger"
 
 	prom "github.com/prometheus/client_golang/prometheus"
 
@@ -20,7 +23,7 @@ type Option func(*options)
 
 type options struct {
 	namespace string
-	logger    *slog.Logger
+	logger    sxlog.Logger
 }
 
 // WithNamespace prefixes every metric name with namespace and an underscore,
@@ -30,9 +33,9 @@ func WithNamespace(namespace string) Option {
 }
 
 // WithLogger sets the logger used to report misuse such as registration
-// conflicts or a wrong number of label values. The default is slog.Default();
+// conflicts or a wrong number of label values. The default is nil;
 // a nil logger keeps the default.
-func WithLogger(l *slog.Logger) Option {
+func WithLogger(l sxlog.Logger) Option {
 	return func(o *options) {
 		if l != nil {
 			o.logger = l
@@ -66,7 +69,7 @@ func (k kind) String() string {
 type meter struct {
 	reg       prom.Registerer
 	namespace string
-	logger    *slog.Logger
+	logger    sxlog.Logger
 
 	mu       sync.Mutex
 	families map[string]*family // keyed by the unqualified metric name
@@ -92,7 +95,7 @@ var _ metrics.Meter = (*meter)(nil)
 // than labels were declared, are dropped without panicking and reported once
 // per metric through the logger.
 func New(reg prom.Registerer, opts ...Option) metrics.Meter {
-	o := options{logger: slog.Default()}
+	o := options{logger: nil}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&o)
@@ -113,7 +116,7 @@ func New(reg prom.Registerer, opts ...Option) metrics.Meter {
 func (m *meter) Counter(name, help string, labelNames ...string) metrics.Counter {
 	f := m.family(kindCounter, name, help, nil, labelNames)
 	if f == nil {
-		return metrics.Noop().Counter(name, help)
+		return noopmetrics.New().Counter(name, help)
 	}
 	return newCounter(f, nil)
 }
@@ -122,7 +125,7 @@ func (m *meter) Counter(name, help string, labelNames ...string) metrics.Counter
 func (m *meter) Gauge(name, help string, labelNames ...string) metrics.Gauge {
 	f := m.family(kindGauge, name, help, nil, labelNames)
 	if f == nil {
-		return metrics.Noop().Gauge(name, help)
+		return noopmetrics.New().Gauge(name, help)
 	}
 	return newGauge(f, nil)
 }
@@ -133,7 +136,7 @@ func (m *meter) Gauge(name, help string, labelNames ...string) metrics.Gauge {
 func (m *meter) Histogram(name, help string, buckets []float64, labelNames ...string) metrics.Histogram {
 	f := m.family(kindHistogram, name, help, buckets, labelNames)
 	if f == nil {
-		return metrics.Noop().Histogram(name, help, buckets)
+		return noopmetrics.New().Histogram(name, help, buckets)
 	}
 	return newHistogram(f, nil)
 }
@@ -147,7 +150,7 @@ func (m *meter) family(k kind, name, help string, buckets []float64, labelNames 
 
 	if f, ok := m.families[name]; ok {
 		if f.kind != k || !slices.Equal(f.labels, labelNames) {
-			m.logger.Warn("metrics/prometheus: metric name reused with a different definition; using a no-op metric",
+			m.log(context.Background(), sxlog.LevelWarn, "metrics/prometheus: metric name reused with a different definition; using a no-op metric",
 				"name", name,
 				"kind", k.String(), "labels", labelNames,
 				"registered_kind", f.kind.String(), "registered_labels", f.labels)
@@ -158,7 +161,7 @@ func (m *meter) family(k kind, name, help string, buckets []float64, labelNames 
 
 	f, err := m.register(k, name, help, buckets, slices.Clone(labelNames))
 	if err != nil {
-		m.logger.Warn("metrics/prometheus: cannot register metric; using a no-op metric",
+		m.log(context.Background(), sxlog.LevelWarn, "metrics/prometheus: cannot register metric; using a no-op metric",
 			"name", name, "kind", k.String(), "error", err)
 		return nil
 	}
@@ -242,7 +245,7 @@ type family struct {
 	kind   kind
 	name   string
 	labels []string
-	logger *slog.Logger
+	logger sxlog.Logger
 
 	counter   *prom.CounterVec
 	gauge     *prom.GaugeVec
@@ -258,7 +261,7 @@ func (f *family) warn(msg string, args ...any) {
 		return
 	}
 	args = append([]any{"name", f.name, "kind", f.kind.String(), "labels", f.labels}, args...)
-	f.logger.Warn("metrics/prometheus: "+msg+" (further problems with this metric are not logged)", args...)
+	f.log(context.Background(), sxlog.LevelWarn, "metrics/prometheus: "+msg+" (further problems with this metric are not logged)", args...)
 }
 
 // bind extends the label values prev with values. It reports false, after
@@ -298,7 +301,7 @@ func newCounter(f *family, values []string) metrics.Counter {
 		child, err := resolve(f.counter.GetMetricWithLabelValues, values)
 		if err != nil {
 			f.warn("invalid label values; using a no-op metric", "label_values", values, "error", err)
-			return metrics.Noop().Counter(f.name, "")
+			return noopmetrics.New().Counter(f.name, "")
 		}
 		c.c = child
 	}
@@ -312,7 +315,7 @@ func (c *counter) With(labelValues ...string) metrics.Counter {
 	}
 	values, ok := c.f.bind(c.values, labelValues)
 	if !ok {
-		return metrics.Noop().Counter(c.f.name, "")
+		return noopmetrics.New().Counter(c.f.name, "")
 	}
 	return newCounter(c.f, values)
 }
@@ -344,7 +347,7 @@ func newGauge(f *family, values []string) metrics.Gauge {
 		child, err := resolve(f.gauge.GetMetricWithLabelValues, values)
 		if err != nil {
 			f.warn("invalid label values; using a no-op metric", "label_values", values, "error", err)
-			return metrics.Noop().Gauge(f.name, "")
+			return noopmetrics.New().Gauge(f.name, "")
 		}
 		g.g = child
 	}
@@ -358,7 +361,7 @@ func (g *gauge) With(labelValues ...string) metrics.Gauge {
 	}
 	values, ok := g.f.bind(g.values, labelValues)
 	if !ok {
-		return metrics.Noop().Gauge(g.f.name, "")
+		return noopmetrics.New().Gauge(g.f.name, "")
 	}
 	return newGauge(g.f, values)
 }
@@ -397,7 +400,7 @@ func newHistogram(f *family, values []string) metrics.Histogram {
 		child, err := resolve(f.histogram.GetMetricWithLabelValues, values)
 		if err != nil {
 			f.warn("invalid label values; using a no-op metric", "label_values", values, "error", err)
-			return metrics.Noop().Histogram(f.name, "", nil)
+			return noopmetrics.New().Histogram(f.name, "", nil)
 		}
 		h.o = child
 	}
@@ -411,7 +414,7 @@ func (h *histogram) With(labelValues ...string) metrics.Histogram {
 	}
 	values, ok := h.f.bind(h.values, labelValues)
 	if !ok {
-		return metrics.Noop().Histogram(h.f.name, "", nil)
+		return noopmetrics.New().Histogram(h.f.name, "", nil)
 	}
 	return newHistogram(h.f, values)
 }
@@ -423,4 +426,15 @@ func (h *histogram) Observe(_ context.Context, v float64) {
 		return
 	}
 	h.o.Observe(v)
+}
+
+func (m *meter) log(ctx context.Context, level sxlog.Level, message string, fields ...any) {
+	if m.logger != nil {
+		m.logger.Log(ctx, level, message, fields...)
+	}
+}
+func (f *family) log(ctx context.Context, level sxlog.Level, message string, fields ...any) {
+	if f.logger != nil {
+		f.logger.Log(ctx, level, message, fields...)
+	}
 }

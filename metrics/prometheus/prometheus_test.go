@@ -22,7 +22,7 @@ func newMeter(t *testing.T, opts ...prometheus.Option) (metrics.Meter, *prom.Reg
 	t.Helper()
 	reg := prom.NewPedanticRegistry()
 	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, nil))
+	logger := testLogger(slog.New(slog.NewTextHandler(&buf, nil)))
 	return prometheus.New(reg, append([]prometheus.Option{prometheus.WithLogger(logger)}, opts...)...), reg, &buf
 }
 
@@ -119,7 +119,7 @@ func TestSameNameReturnsEquivalentMetric(t *testing.T) {
 
 func TestReusesCollectorAcrossMeters(t *testing.T) {
 	reg := prom.NewRegistry()
-	discard := prometheus.WithLogger(slog.New(slog.DiscardHandler))
+	discard := prometheus.WithLogger(testLogger(slog.New(slog.DiscardHandler)))
 	a := prometheus.New(reg, discard)
 	b := prometheus.New(reg, discard)
 	a.Counter("shared_total", "Shared.", "l").With("x").Add(t.Context(), 1)
@@ -152,7 +152,7 @@ func TestReuseExistingCollectorRegisteredByCaller(t *testing.T) {
 	reg := prom.NewRegistry()
 	existing := prom.NewCounterVec(prom.CounterOpts{Name: "pre_total", Help: "Pre."}, []string{"l"})
 	reg.MustRegister(existing)
-	m := prometheus.New(reg, prometheus.WithLogger(slog.New(slog.DiscardHandler)))
+	m := prometheus.New(reg, prometheus.WithLogger(testLogger(slog.New(slog.DiscardHandler))))
 	m.Counter("pre_total", "Pre.", "l").With("v").Add(t.Context(), 4)
 	if got := testutil.ToFloat64(existing.WithLabelValues("v")); got != 4 {
 		t.Fatalf("existing collector = %v, want 4", got)

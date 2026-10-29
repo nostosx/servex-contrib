@@ -60,6 +60,8 @@ jobs:
           - encoding/yaml
           - jobqueue/asynq
           - jobqueue/memory
+          - logger/slog
+          - logger/zap
           - metrics/otel
           - metrics/noop
           - metrics/prometheus

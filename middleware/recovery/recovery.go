@@ -3,8 +3,9 @@ package recovery
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"runtime/debug"
+
+	sxlog "github.com/nostosx/servex/logger"
 
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
@@ -18,13 +19,13 @@ const ReasonPanic = "PANIC"
 type Option func(*options)
 
 type options struct {
-	logger  *slog.Logger
+	logger  sxlog.Logger
 	handler func(ctx context.Context, p any) error
 }
 
 // WithLogger sets the logger used to record recovered panics. The default is
-// slog.Default(). A nil logger keeps the default.
-func WithLogger(l *slog.Logger) Option {
+// disabled. A nil logger leaves it disabled.
+func WithLogger(l sxlog.Logger) Option {
 	return func(o *options) {
 		if l != nil {
 			o.logger = l
@@ -48,7 +49,7 @@ func WithHandler(fn func(ctx context.Context, p any) error) Option {
 // explicitly marked as not retryable and keeps the panic value as its cause;
 // its Message is generic so that panic details are not exposed to callers.
 func New(opts ...Option) endpoint.Middleware {
-	o := options{logger: slog.Default()}
+	o := options{logger: nil}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&o)
@@ -70,18 +71,20 @@ func New(opts ...Option) endpoint.Middleware {
 
 // recovered logs p and returns the error reported for it.
 func (o *options) recovered(ctx context.Context, p any, stack []byte) error {
-	attrs := []slog.Attr{
-		slog.Any("panic", p),
-		slog.String("stack", string(stack)),
+	attrs := []any{
+		"panic", p,
+		"stack", string(stack),
 	}
 	if info, ok := metadata.FromContext(ctx); ok {
 		attrs = append(attrs,
-			slog.String("kind", string(info.Kind)),
-			slog.String("protocol", info.Protocol),
-			slog.String("operation", info.Operation),
+			"kind", string(info.Kind),
+			"protocol", info.Protocol,
+			"operation", info.Operation,
 		)
 	}
-	o.logger.LogAttrs(ctx, slog.LevelError, "recovery: panic recovered", attrs...)
+	if o.logger != nil {
+		o.logger.Log(ctx, sxlog.LevelError, "recovery: panic recovered", attrs...)
+	}
 
 	if o.handler != nil {
 		if err := o.handler(ctx, p); err != nil {

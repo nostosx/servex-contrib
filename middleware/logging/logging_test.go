@@ -11,6 +11,7 @@ import (
 
 	"github.com/nostosx/servex-contrib/middleware/logging"
 	"github.com/nostosx/servex/errorx"
+	sxlog "github.com/nostosx/servex/logger"
 	"github.com/nostosx/servex/metadata"
 )
 
@@ -58,7 +59,7 @@ func serverCtx(ctx context.Context) context.Context {
 func TestSuccess(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		h := &captureHandler{min: slog.LevelDebug}
-		ep := logging.New(slog.New(h))(func(context.Context, any) (any, error) {
+		ep := logging.New(testLogger(slog.New(h)))(func(context.Context, any) (any, error) {
 			time.Sleep(150 * time.Millisecond)
 			return "resp", nil
 		})
@@ -111,7 +112,7 @@ func TestFailureLevels(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.code, func(t *testing.T) {
 			h := &captureHandler{min: slog.LevelDebug}
-			ep := logging.New(slog.New(h))(func(context.Context, any) (any, error) { return nil, tc.err })
+			ep := logging.New(testLogger(slog.New(h)))(func(context.Context, any) (any, error) { return nil, tc.err })
 			if _, err := ep(serverCtx(t.Context()), nil); err != tc.err {
 				t.Fatalf("err = %v, want unchanged %v", err, tc.err)
 			}
@@ -133,18 +134,18 @@ func TestFailureLevels(t *testing.T) {
 }
 
 func TestDefaultLevelUnknownCode(t *testing.T) {
-	if l := logging.DefaultLevel(errorx.Code(99)); l != slog.LevelError {
+	if l := logging.DefaultLevel(errorx.Code(99)); l != sxlog.LevelError {
 		t.Fatalf("level = %v", l)
 	}
 }
 
 func TestCustomLevelAndDisabled(t *testing.T) {
 	h := &captureHandler{min: slog.LevelInfo}
-	mw := logging.New(slog.New(h), nil, logging.WithLevel(nil), logging.WithLevel(func(code errorx.Code) slog.Level {
+	mw := logging.New(testLogger(slog.New(h)), nil, logging.WithLevel(nil), logging.WithLevel(func(code errorx.Code) sxlog.Level {
 		if code == errorx.OK {
-			return slog.LevelDebug // below the handler's minimum
+			return sxlog.LevelDebug // below the handler's minimum
 		}
-		return slog.LevelError
+		return sxlog.LevelError
 	}))
 	if _, err := mw(func(context.Context, any) (any, error) { return nil, nil })(t.Context(), nil); err != nil {
 		t.Fatal(err)
@@ -162,12 +163,10 @@ func TestCustomLevelAndDisabled(t *testing.T) {
 	}
 }
 
-func TestNilLoggerUsesDefault(t *testing.T) {
-	h := &captureHandler{min: slog.LevelDebug}
-	prev := slog.Default()
-	t.Cleanup(func() { slog.SetDefault(prev) })
-	slog.SetDefault(slog.New(h))
-
-	_, _ = logging.New(nil)(func(context.Context, any) (any, error) { return nil, nil })(t.Context(), nil)
-	h.only(t)
+func TestNilLoggerDisablesLogging(t *testing.T) {
+	called := false
+	_, err := logging.New(nil)(func(context.Context, any) (any, error) { called = true; return "ok", nil })(t.Context(), nil)
+	if !called || err != nil {
+		t.Fatalf("nil logger changed execution: %v", err)
+	}
 }

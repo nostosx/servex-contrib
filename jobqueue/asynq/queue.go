@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"maps"
 	"runtime/debug"
 	"slices"
@@ -12,6 +11,8 @@ import (
 	"sync"
 	"time"
 	"uuid"
+
+	sxlog "github.com/nostosx/servex/logger"
 
 	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
@@ -107,9 +108,6 @@ func NewFromClient(rdb redis.UniversalClient, opts ...Option) *Queue {
 	}
 	if o.backoff == nil {
 		o.backoff = defaultBackoff
-	}
-	if o.logger == nil {
-		o.logger = slog.Default()
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Queue{
@@ -270,8 +268,8 @@ func (q *Queue) confirm(ctx context.Context, key, id string) {
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 	if err := confirmScript.Run(ctx, q.rdb, []string{key}, id).Err(); err != nil {
-		q.opts.logger.LogAttrs(ctx, slog.LevelWarn, "asynq: could not confirm unique key reservation",
-			slog.String("key", key), slog.String("job_id", id), slog.Any("error", err))
+		q.log(ctx, sxlog.LevelWarn, "asynq: could not confirm unique key reservation",
+			"key", key, "job_id", id, "error", err)
 	}
 }
 
@@ -437,9 +435,9 @@ func (q *Queue) call(ctx context.Context, h endpoint.Endpoint, job *jobqueue.Job
 		if p == nil {
 			return
 		}
-		q.opts.logger.LogAttrs(ctx, slog.LevelError, "asynq: job handler panicked",
-			slog.String("job_id", job.ID), slog.String("job_type", job.Type),
-			slog.Any("panic", p), slog.String("stack", string(debug.Stack())))
+		q.log(ctx, sxlog.LevelError, "asynq: job handler panicked",
+			"job_id", job.ID, "job_type", job.Type,
+			"panic", p, "stack", string(debug.Stack()))
 		err = errorx.New(errorx.Internal, "ASYNQ_PANIC", "asynq: job handler panicked").
 			WithCause(fmt.Errorf("panic: %v", p)).WithRetryable(false)
 	}()
@@ -483,4 +481,10 @@ func (q *Queue) uniqueKey(k string) string {
 func interrupted(runCtx context.Context, err error) bool {
 	return runCtx.Err() != nil && (errors.Is(err, context.Canceled) ||
 		errors.Is(err, context.DeadlineExceeded) || errorx.CodeOf(err) == errorx.Canceled)
+}
+
+func (q *Queue) log(ctx context.Context, level sxlog.Level, message string, fields ...any) {
+	if q.opts.logger != nil {
+		q.opts.logger.Log(ctx, level, message, fields...)
+	}
 }

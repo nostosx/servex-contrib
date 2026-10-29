@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	nooptracing "github.com/nostosx/servex-contrib/tracing/noop"
+
 	"github.com/nostosx/servex/cqrs"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/observability/tracing"
@@ -14,7 +16,7 @@ const AttrKind = "servex.kind"
 
 // Command starts an internal span named after the assembly operation. It uses
 // the caller context as parent and passes the child context to the handler.
-// Transport metadata and headers are untouched. A nil tracer uses tracing.Noop.
+// Transport metadata and headers are untouched. A nil tracer uses the no-op backend.
 // Only kind, operation and code are recorded; error text, payloads and panic
 // values are excluded. Server faults (see IsServerFault) record a code-only
 // error, which marks the span status as an error; other failures, such as
@@ -22,7 +24,7 @@ const AttrKind = "servex.kind"
 // Internal, end it exactly once and propagate unchanged.
 func Command[Request, Result any](tracer tracing.Tracer) cqrs.CommandMiddleware[Request, Result] {
 	if tracer == nil {
-		tracer = tracing.Noop()
+		tracer = nooptracing.New()
 	}
 	return func(meta cqrs.Metadata, next cqrs.Handler[Request, Result]) cqrs.Handler[Request, Result] {
 		return cqrs.CommandFunc[Request, Result](func(ctx context.Context, req Request) (Result, error) {

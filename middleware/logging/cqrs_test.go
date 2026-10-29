@@ -15,6 +15,7 @@ import (
 	mwtracing "github.com/nostosx/servex-contrib/middleware/tracing"
 	"github.com/nostosx/servex/cqrs"
 	"github.com/nostosx/servex/errorx"
+	sxlog "github.com/nostosx/servex/logger"
 )
 
 func TestTypedLogging(t *testing.T) {
@@ -33,9 +34,9 @@ func TestTypedLogging(t *testing.T) {
 			})
 			var handler cqrs.Handler[string, string]
 			if kind == cqrs.KindCommand {
-				handler = cqrs.ChainCommand("catalog.create", base, logging.Command[string, string](slog.New(sink)))
+				handler = cqrs.ChainCommand("catalog.create", base, logging.Command[string, string](testLogger(slog.New(sink))))
 			} else {
-				handler = cqrs.ChainQuery("catalog.get", base, logging.Query[string, string](slog.New(sink)))
+				handler = cqrs.ChainQuery("catalog.get", base, logging.Query[string, string](testLogger(slog.New(sink))))
 			}
 			got, err := handler.Handle(ctx, "private-payload")
 			if got != "private-result" || err != failure {
@@ -61,7 +62,7 @@ func TestTypedLoggingPanic(t *testing.T) {
 	t.Parallel()
 	sink := &captureHandler{}
 	marker := &struct{ secret string }{"do-not-log"}
-	handler := cqrs.ChainCommand("catalog.create", cqrs.CommandFunc[int, int](func(context.Context, int) (int, error) { panic(marker) }), logging.Command[int, int](slog.New(sink)))
+	handler := cqrs.ChainCommand("catalog.create", cqrs.CommandFunc[int, int](func(context.Context, int) (int, error) { panic(marker) }), logging.Command[int, int](testLogger(slog.New(sink))))
 	func() {
 		defer func() {
 			if got := recover(); got != marker {
@@ -81,7 +82,7 @@ func TestTypedLoggingDisabledAndConcurrent(t *testing.T) {
 	t.Parallel()
 	sink := &captureHandler{min: slog.LevelError}
 	base := cqrs.QueryFunc[int, int](func(_ context.Context, req int) (int, error) { return req, nil })
-	handler := cqrs.ChainQuery("catalog.get", base, logging.Query[int, int](slog.New(sink), nil, logging.WithLevel(func(errorx.Code) slog.Level { return slog.LevelDebug })))
+	handler := cqrs.ChainQuery("catalog.get", base, logging.Query[int, int](testLogger(slog.New(sink)), nil, logging.WithLevel(func(errorx.Code) sxlog.Level { return sxlog.LevelDebug })))
 	var wg sync.WaitGroup
 	for i := range 32 {
 		wg.Go(func() {
@@ -101,7 +102,7 @@ func TestTypedLoggingDisabledAndConcurrent(t *testing.T) {
 }
 
 func ExampleCommand() {
-	logger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+	logger := testLogger(slog.New(slog.NewJSONHandler(io.Discard, nil)))
 	create := cqrs.ChainCommand("catalog.create_product",
 		cqrs.CommandFunc[string, string](func(_ context.Context, name string) (string, error) { return name, nil }),
 		mwtracing.Command[string, string](nil), mwmetrics.Command[string, string](nil), logging.Command[string, string](logger),

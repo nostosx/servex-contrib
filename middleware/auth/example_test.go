@@ -48,7 +48,7 @@ func ExampleClient() {
 		return info.Header.Get("authorization"), nil
 	})
 
-	// transport.Client puts a fresh outbound header into metadata.Info.
+	// the contrib shared client puts a fresh outbound header into metadata.Info.
 	ctx := metadata.NewContext(context.Background(), metadata.Info{Kind: metadata.KindClient, Header: metadata.MD{}})
 	resp, _ := ep(ctx, nil)
 	fmt.Println(resp)

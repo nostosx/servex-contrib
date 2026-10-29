@@ -42,7 +42,7 @@ import (
 
 	"github.com/nostosx/servex-contrib/metrics/prometheus"
 	"github.com/nostosx/servex/app"
-	"github.com/nostosx/servex/transport/httpx"
+	"github.com/nostosx/servex-contrib/transport/httpx"
 )
 
 func run() error {
@@ -80,7 +80,7 @@ not read it; this adapter records no exemplars.
 | Option | Default | Description |
 |---|---|---|
 | `WithNamespace(ns)` | none | Prefixes every metric name with `ns_`. |
-| `WithLogger(l)` | `slog.Default()` | Logger for misuse reports. |
+| `WithLogger(l)` | `nil` (disabled) | Logger for misuse reports. |
 
 ## Testing
 
@@ -94,3 +94,7 @@ GOWORK=off go test -race -count=1 ./...
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+Unreleased logger API: pass a core logger.Logger, wrapping an explicitly
+selected slog or Zap backend. Nil disables logging; backend adapters live in
+logger/slog and logger/zap. Historical published versions accept *slog.Logger.
