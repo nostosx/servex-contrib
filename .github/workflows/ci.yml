@@ -71,7 +71,10 @@ jobs:
           - tracing/otel
           - tracing/noop
           - transport/client
+          - transport/connectx
           - transport/grpcx
+          - transport/ssex
+          - transport/websocketx
           - transport/httpx
           # END MODULES
     defaults:

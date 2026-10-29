@@ -67,6 +67,20 @@ type serverOptions struct {
 	idleTimeout       time.Duration
 	maxHeaderBytes    int
 	maxBodyBytes      int64
+	protocols         *http.Protocols
+}
+
+// WithProtocols configures net/http protocol negotiation, including h2c for
+// native gRPC and bidirectional HTTP RPC streams. Nil keeps net/http defaults.
+// The value is copied when the option is applied; callers retain ownership.
+func WithProtocols(protocols *http.Protocols) ServerOption {
+	return func(o *serverOptions) {
+		o.protocols = nil
+		if protocols != nil {
+			copy := *protocols
+			o.protocols = &copy
+		}
+	}
 }
 
 // WithName sets the hook name of the server, which identifies it in app
@@ -196,6 +210,7 @@ type Server struct {
 	idleTimeout       time.Duration
 	maxHeaderBytes    int
 	maxBodyBytes      int64
+	protocols         *http.Protocols
 	// listen opens the listener; tests replace it.
 	listen func(ctx context.Context, network, address string) (net.Listener, error)
 
@@ -228,6 +243,7 @@ func NewServer(opts ...ServerOption) *Server {
 		idleTimeout:       o.idleTimeout,
 		maxHeaderBytes:    o.maxHeaderBytes,
 		maxBodyBytes:      o.maxBodyBytes,
+		protocols:         o.protocols,
 		listen:            new(net.ListenConfig).Listen,
 	}
 	s.handler = s.mux
@@ -265,6 +281,7 @@ func (s *Server) Start(ctx context.Context) error {
 		WriteTimeout:      s.writeTimeout,
 		IdleTimeout:       s.idleTimeout,
 		MaxHeaderBytes:    s.maxHeaderBytes,
+		Protocols:         s.protocols,
 	}
 	s.srv = srv
 	s.url = &url.URL{Scheme: "http", Host: ln.Addr().String()}
