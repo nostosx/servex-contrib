@@ -406,6 +406,7 @@ type route struct {
 	newReq    func() any
 	pathNames []string
 	encoder   func(http.ResponseWriter, *http.Request, any) error
+	bindings  bindingCache
 }
 
 // ServeHTTP binds the request, calls the endpoint and writes the reply.
@@ -478,7 +479,7 @@ func (rt *route) bind(r *http.Request, req any) error {
 	if err := rt.bindBody(r, req); err != nil {
 		return err
 	}
-	if err := bindValues(req, r.URL.Query()); err != nil {
+	if err := rt.bindings.bindValues(req, r.URL.Query()); err != nil {
 		return invalidParameter(fmt.Errorf("httpx: bind query: %w", err))
 	}
 	path := make(map[string][]string, len(rt.pathNames))
@@ -487,7 +488,7 @@ func (rt *route) bind(r *http.Request, req any) error {
 			path[name] = []string{v}
 		}
 	}
-	if err := bindValues(req, path); err != nil {
+	if err := rt.bindings.bindValues(req, path); err != nil {
 		return invalidParameter(fmt.Errorf("httpx: bind path: %w", err))
 	}
 	return nil
@@ -509,7 +510,7 @@ func (rt *route) bindBody(r *http.Request, req any) error {
 		if err := r.ParseForm(); err != nil {
 			return invalidBody(fmt.Errorf("httpx: parse form: %w", err))
 		}
-		if err := bindValues(req, r.PostForm); err != nil {
+		if err := rt.bindings.bindValues(req, r.PostForm); err != nil {
 			return invalidParameter(fmt.Errorf("httpx: bind form: %w", err))
 		}
 		return nil
@@ -517,10 +518,10 @@ func (rt *route) bindBody(r *http.Request, req any) error {
 		if err := r.ParseMultipartForm(maxMultipartMemory); err != nil {
 			return invalidBody(fmt.Errorf("httpx: parse multipart form: %w", err))
 		}
-		if err := bindValues(req, r.MultipartForm.Value); err != nil {
+		if err := rt.bindings.bindValues(req, r.MultipartForm.Value); err != nil {
 			return invalidParameter(fmt.Errorf("httpx: bind form: %w", err))
 		}
-		return bindFiles(req, r.MultipartForm.File)
+		return rt.bindings.bindFiles(req, r.MultipartForm.File)
 	}
 
 	body, err := io.ReadAll(r.Body)

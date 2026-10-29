@@ -9,7 +9,61 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 )
+
+// Each route owns a bounded cache. Dynamic request factories may return many
+// types; exceeding the bound falls back to building a plan without retaining it.
+const maxBindingPlans = 128
+
+type bindingCache struct {
+	mu    sync.RWMutex
+	plans map[reflect.Type]*bindingPlan
+}
+
+type bindingField struct {
+	name  string
+	index []int
+}
+
+type bindingPlan struct {
+	values []bindingField
+	files  map[string][]int
+}
+
+func newBindingPlan(t reflect.Type) *bindingPlan {
+	fields := fieldIndexes(t, isValueType)
+	plan := &bindingPlan{files: fieldIndexes(t, isFileType)}
+	for _, name := range slices.Sorted(maps.Keys(fields)) {
+		plan.values = append(plan.values, bindingField{name: name, index: fields[name]})
+	}
+	return plan
+}
+
+func (c *bindingCache) plan(t reflect.Type) *bindingPlan {
+	if c == nil {
+		return newBindingPlan(t)
+	}
+	c.mu.RLock()
+	plan := c.plans[t]
+	c.mu.RUnlock()
+	if plan != nil {
+		return plan
+	}
+	plan = newBindingPlan(t)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if existing := c.plans[t]; existing != nil {
+		return existing
+	}
+	if len(c.plans) < maxBindingPlans {
+		if c.plans == nil {
+			c.plans = make(map[reflect.Type]*bindingPlan)
+		}
+		c.plans[t] = plan
+	}
+	return plan
+}
 
 // Reflected types used by the binder.
 var (
@@ -23,6 +77,10 @@ var (
 // slices take all of them. Fields of unsupported types are left alone, and
 // so is dst when it is not a pointer to a struct.
 func bindValues(dst any, values map[string][]string) error {
+	return (*bindingCache)(nil).bindValues(dst, values)
+}
+
+func (c *bindingCache) bindValues(dst any, values map[string][]string) error {
 	if len(values) == 0 {
 		return nil
 	}
@@ -30,18 +88,17 @@ func bindValues(dst any, values map[string][]string) error {
 	if !ok {
 		return nil
 	}
-	fields := fieldIndexes(root.Type(), isValueType)
-	for _, name := range slices.Sorted(maps.Keys(fields)) {
-		vals, index := values[name], fields[name]
+	for _, field := range c.plan(root.Type()).values {
+		vals := values[field.name]
 		if len(vals) == 0 {
 			continue
 		}
-		f, err := fieldByIndex(root, index)
+		f, err := fieldByIndex(root, field.index)
 		if err != nil {
 			return err
 		}
 		if err := setValues(f, vals); err != nil {
-			return fmt.Errorf("field %q: %w", name, err)
+			return fmt.Errorf("field %q: %w", field.name, err)
 		}
 	}
 	return nil
@@ -50,6 +107,10 @@ func bindValues(dst any, values map[string][]string) error {
 // bindFiles assigns uploaded files to *multipart.FileHeader and
 // []*multipart.FileHeader fields matched by JSON field name.
 func bindFiles(dst any, files map[string][]*multipart.FileHeader) error {
+	return (*bindingCache)(nil).bindFiles(dst, files)
+}
+
+func (c *bindingCache) bindFiles(dst any, files map[string][]*multipart.FileHeader) error {
 	if len(files) == 0 {
 		return nil
 	}
@@ -57,7 +118,7 @@ func bindFiles(dst any, files map[string][]*multipart.FileHeader) error {
 	if !ok {
 		return nil
 	}
-	for name, index := range fieldIndexes(root.Type(), isFileType) {
+	for name, index := range c.plan(root.Type()).files {
 		fhs := files[name]
 		if len(fhs) == 0 {
 			continue

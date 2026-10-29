@@ -16,6 +16,10 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 - Optimize HTTP fixed-path body requests by skipping unused JSON field-map
   decoding while preserving the initial JSON validation, custom codec calls,
   stateful marshaler order and encoding error precedence.
+- Cache immutable HTTP value/file binding plans per route and request type,
+  retaining at most 128 types per route and binding uncached types normally.
+  Preserve field promotion, recursive embedding, tags, text decoding, error
+  order and body/query/path precedence without invoking factories eagerly.
 
 - Add validation/playground using go-playground/validator and
   validation/protovalidate using Buf Protovalidate. Both return endpoint
