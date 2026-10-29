@@ -3,7 +3,7 @@
 `github.com/nostosx/servex-contrib/cache/redis` implements the servex
 `cache.Cache` contract on a [go-redis](https://github.com/redis/go-redis)
 `redis.UniversalClient`, so a standalone, sentinel or cluster deployment can
-back `cache.Loader` and any other `cache.Cache` consumer.
+back contrib `loader.Loader` and any other `cache.Cache` consumer.
 
 - Values are stored as plain Redis strings under the (optionally prefixed) key.
 - A missing or expired key is `cache.ErrNotFound`.
@@ -45,8 +45,9 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
+	cacheloader "github.com/nostosx/servex-contrib/cache/loader"
 	"github.com/nostosx/servex-contrib/cache/redis"
-	"github.com/nostosx/servex/storage/cache"
+	jsoncodec "github.com/nostosx/servex-contrib/encoding/json"
 )
 
 type User struct {
@@ -64,7 +65,13 @@ func main() {
 	// suppression on top of any cache.Cache.
 	owner, stop := context.WithCancel(context.Background())
 	defer stop()
-	users, err := cache.NewLoader[User](owner, c, 5*time.Second, cache.WithTTL(10*time.Minute))
+	users, err := cacheloader.New[User](
+		owner,
+		c,
+		5*time.Second,
+		cacheloader.WithTTL(10*time.Minute),
+		cacheloader.WithCodec(jsoncodec.Codec),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

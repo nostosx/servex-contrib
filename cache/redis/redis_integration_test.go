@@ -9,6 +9,9 @@ import (
 	"testing"
 	"time"
 
+	cacheloader "github.com/nostosx/servex-contrib/cache/loader"
+	jsoncodec "github.com/nostosx/servex-contrib/encoding/json"
+
 	goredis "github.com/redis/go-redis/v9"
 
 	"github.com/nostosx/servex/storage/cache"
@@ -76,7 +79,7 @@ func TestIntegrationCache(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 
-	l, err := cache.NewLoader[int](t.Context(), c, time.Minute)
+	l, err := cacheloader.New[int](t.Context(), c, time.Minute, cacheloader.WithCodec(jsoncodec.Codec))
 	if err != nil {
 		t.Fatal(err)
 	}

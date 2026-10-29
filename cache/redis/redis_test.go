@@ -8,6 +8,9 @@ import (
 	"testing"
 	"time"
 
+	cacheloader "github.com/nostosx/servex-contrib/cache/loader"
+	jsoncodec "github.com/nostosx/servex-contrib/encoding/json"
+
 	"github.com/alicebob/miniredis/v2"
 	goredis "github.com/redis/go-redis/v9"
 
@@ -288,7 +291,7 @@ type user struct {
 
 func TestLoader(t *testing.T) {
 	c, mr := newTestCache(t, WithPrefix("users:"))
-	l, err := cache.NewLoader[user](t.Context(), c, time.Minute, cache.WithTTL(time.Minute))
+	l, err := cacheloader.New[user](t.Context(), c, time.Minute, cacheloader.WithTTL(time.Minute), cacheloader.WithCodec(jsoncodec.Codec))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -364,7 +367,7 @@ func TestLoader(t *testing.T) {
 
 func TestLoaderDegradesWhenRedisFails(t *testing.T) {
 	c, mr := newTestCache(t)
-	l, err := cache.NewLoader[string](t.Context(), c, time.Minute)
+	l, err := cacheloader.New[string](t.Context(), c, time.Minute, cacheloader.WithCodec(jsoncodec.Codec))
 	if err != nil {
 		t.Fatal(err)
 	}
