@@ -148,6 +148,9 @@ same host.
 
 ## Development
 
+See [performance measurements](PERFORMANCE.md) for HTTP/gRPC, codecs and common
+middleware baselines, profiling findings, workload limits and reproduction commands.
+
 Use Go 1.27.3, Task v3.53.1 and Bash. Published releases resolve pinned module
 versions. Current unreleased changes require matching sources as described above.
 
