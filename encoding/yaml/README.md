@@ -25,8 +25,8 @@ see [module versioning](../../README.md#versioning).
 
 ## Usage
 
-The core `config/file` source only maps `.json` by default; register the YAML
-codec for the extensions you use:
+The contrib `config/viper/file` source reads YAML natively. Register this codec
+only when its YAML-specific decoding policy is required:
 
 Save this configuration as `config.yaml` in the directory where you run the
 program:
@@ -50,7 +50,8 @@ import (
 
 	"github.com/nostosx/servex-contrib/encoding/yaml"
 	"github.com/nostosx/servex/config"
-	"github.com/nostosx/servex/config/file"
+ cfgviper "github.com/nostosx/servex-contrib/config/viper"
+	"github.com/nostosx/servex-contrib/config/viper/file"
 )
 
 func main() {
@@ -58,7 +59,7 @@ func main() {
 		file.WithCodec(".yaml", yaml.Codec),
 		file.WithCodec(".yml", yaml.Codec),
 	)
-	cfg, err := config.New(context.Background(), []config.Source{src, config.Env("APP_")})
+	cfg, err := cfgviper.New(context.Background(), []config.Source{src, cfgviper.Env("APP_")})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,3 +83,6 @@ There are no integration tests.
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+Current configuration-engine examples use the unreleased config/viper module
+and matching core API; published versions keep their historical API.

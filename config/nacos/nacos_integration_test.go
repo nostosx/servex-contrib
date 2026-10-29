@@ -16,6 +16,7 @@ import (
 	"github.com/nacos-group/nacos-sdk-go/v2/vo"
 
 	"github.com/nostosx/servex-contrib/config/nacos"
+	"github.com/nostosx/servex-contrib/config/viper"
 	"github.com/nostosx/servex/config"
 )
 
@@ -87,10 +88,10 @@ func TestIntegrationLoadAndWatch(t *testing.T) {
 	publish(`{"http":{"timeout":"1s"},"v":0}`)
 	src := nacos.New(c, dataID, group)
 	deadline := time.Now().Add(30 * time.Second)
-	var cfg *config.Config
+	var cfg config.Config
 	for {
 		var err error
-		cfg, err = config.New(t.Context(), []config.Source{src})
+		cfg, err = viper.New(t.Context(), []config.Source{src})
 		if err == nil && cfg.Duration("http.timeout") == time.Second {
 			break
 		}
@@ -105,7 +106,7 @@ func TestIntegrationLoadAndWatch(t *testing.T) {
 	reloaded := make(chan int, 100)
 	done := make(chan error, 1)
 	go func() {
-		done <- cfg.Watch(ctx, func(c *config.Config) { reloaded <- c.Int("v") })
+		done <- cfg.Watch(ctx, func(c config.Config) { reloaded <- c.Int("v") })
 	}()
 	// The listener needs a moment to register; publish until a reload
 	// observes the new value.

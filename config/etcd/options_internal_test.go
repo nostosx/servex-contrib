@@ -3,15 +3,15 @@ package etcd
 import (
 	"testing"
 
-	"github.com/nostosx/servex/encoding"
+	jsoncodec "github.com/nostosx/servex-contrib/encoding/json"
 )
 
 func TestOptions(t *testing.T) {
 	s := New(nil, "k", nil)
-	if s.prefix || s.codec != encoding.JSON {
+	if s.prefix || s.codec != jsoncodec.Codec {
 		t.Fatalf("defaults = prefix %v, codec %v", s.prefix, s.codec)
 	}
-	if s := New(nil, "k", WithPrefix(), WithCodec(nil)); !s.prefix || s.codec != encoding.JSON {
+	if s := New(nil, "k", WithPrefix(), WithCodec(nil)); !s.prefix || s.codec != jsoncodec.Codec {
 		t.Fatalf("options = prefix %v, codec %v", s.prefix, s.codec)
 	}
 }

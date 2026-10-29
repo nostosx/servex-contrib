@@ -12,6 +12,7 @@ import (
 	clientv3 "go.etcd.io/etcd/client/v3"
 
 	"github.com/nostosx/servex-contrib/config/etcd"
+	"github.com/nostosx/servex-contrib/config/viper"
 	"github.com/nostosx/servex/config"
 )
 
@@ -37,7 +38,7 @@ func TestIntegrationLoadAndWatch(t *testing.T) {
 	put(t, c, prefix+"http/timeout", `"1s"`)
 	put(t, c, prefix+"v", `0`)
 
-	cfg, err := config.New(t.Context(), []config.Source{etcd.New(c, prefix, etcd.WithPrefix())})
+	cfg, err := viper.New(t.Context(), []config.Source{etcd.New(c, prefix, etcd.WithPrefix())})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestIntegrationLoadAndWatch(t *testing.T) {
 	reloaded := make(chan int, 100)
 	done := make(chan error, 1)
 	go func() {
-		done <- cfg.Watch(ctx, func(c *config.Config) { reloaded <- c.Int("v") })
+		done <- cfg.Watch(ctx, func(c config.Config) { reloaded <- c.Int("v") })
 	}()
 	put(t, c, prefix+"http/timeout", `"2s"`)
 	put(t, c, prefix+"v", `1`)

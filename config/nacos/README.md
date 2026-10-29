@@ -60,6 +60,7 @@ import (
 	"github.com/nostosx/servex-contrib/config/nacos"
 	"github.com/nostosx/servex/app"
 	"github.com/nostosx/servex/config"
+ cfgviper "github.com/nostosx/servex-contrib/config/viper"
 )
 
 func main() {
@@ -75,16 +76,16 @@ func main() {
 	ctx, stop := app.SignalContext(context.Background())
 	defer stop()
 	src := nacos.New(client, "user-service.json", nacos.DefaultGroup)
-	cfg, err := config.New(ctx, []config.Source{src})
+	cfg, err := cfgviper.New(ctx, []config.Source{src})
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Println("listen on", cfg.String("http.addr"))
 
 	// Watch options such as WithReloadErrorHandler follow the callback.
-	err = cfg.Watch(ctx, func(c *config.Config) {
+	err = cfg.Watch(ctx, func(c config.Config) {
 		log.Println("config changed, log level:", c.String("log.level"))
-	}, config.WithReloadErrorHandler(func(err error) {
+	}, cfgviper.WithReloadErrorHandler(func(err error) {
 		log.Println("config reload failed, keeping previous values:", err)
 	}))
 	if err != nil && ctx.Err() == nil {
@@ -100,7 +101,7 @@ For YAML content pass `nacos.WithCodec(yaml.Codec)` with the codec from
 
 | Option | Default | Description |
 |---|---|---|
-| `WithCodec(c)` | `encoding.JSON` | Codec for the content, which must decode to an object. |
+| `WithCodec(c)` | `servex-contrib/encoding/json.Codec` | Codec for the content, which must decode to an object. |
 
 Client failures are retryable `errorx.Unavailable`; undecodable content is
 `errorx.InvalidArgument`.
@@ -120,3 +121,6 @@ HTTP port + 1000 and can be set with `SERVEX_IT_NACOS_GRPC_PORT`.
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+Current configuration-engine examples use the unreleased config/viper module
+and matching core API; published versions keep their historical API.

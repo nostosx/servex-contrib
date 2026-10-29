@@ -14,6 +14,7 @@ import (
 	"go.etcd.io/etcd/server/v3/embed"
 
 	"github.com/nostosx/servex-contrib/config/etcd"
+	"github.com/nostosx/servex-contrib/config/viper"
 	"github.com/nostosx/servex/config"
 	"github.com/nostosx/servex/errorx"
 )
@@ -411,7 +412,7 @@ func TestConfigWatchReloads(t *testing.T) {
 	put(t, c, "/svc/http/timeout", `"1s"`)
 	put(t, c, "/svc/v", `0`)
 
-	cfg, err := config.New(t.Context(), []config.Source{etcd.New(c, "/svc/", etcd.WithPrefix())})
+	cfg, err := viper.New(t.Context(), []config.Source{etcd.New(c, "/svc/", etcd.WithPrefix())})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -423,7 +424,7 @@ func TestConfigWatchReloads(t *testing.T) {
 	reloaded := make(chan int, 100)
 	done := make(chan error, 1)
 	go func() {
-		done <- cfg.Watch(ctx, func(c *config.Config) { reloaded <- c.Int("v") })
+		done <- cfg.Watch(ctx, func(c config.Config) { reloaded <- c.Int("v") })
 	}()
 	// The source resumes after the revision of the initial Load, so a
 	// single write is enough.

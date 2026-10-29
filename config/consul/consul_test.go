@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/consul/api"
 
 	"github.com/nostosx/servex-contrib/config/consul"
+	"github.com/nostosx/servex-contrib/config/viper"
 	"github.com/nostosx/servex/config"
 	"github.com/nostosx/servex/errorx"
 )
@@ -450,7 +451,7 @@ func TestConfigWatchReloads(t *testing.T) {
 	f.put("svc/http/timeout", `"1s"`)
 	f.put("svc/v", `0`)
 
-	cfg, err := config.New(t.Context(), []config.Source{consul.New(c, "svc/", consul.WithPrefix())})
+	cfg, err := viper.New(t.Context(), []config.Source{consul.New(c, "svc/", consul.WithPrefix())})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -462,7 +463,7 @@ func TestConfigWatchReloads(t *testing.T) {
 	reloaded := make(chan int, 100)
 	done := make(chan error, 1)
 	go func() {
-		done <- cfg.Watch(ctx, func(c *config.Config) { reloaded <- c.Int("v") })
+		done <- cfg.Watch(ctx, func(c config.Config) { reloaded <- c.Int("v") })
 	}()
 	f.put("svc/http/timeout", `"2s"`)
 	f.put("svc/v", `1`)

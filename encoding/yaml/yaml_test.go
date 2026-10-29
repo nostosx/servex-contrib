@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/nostosx/servex-contrib/config/viper"
+	"github.com/nostosx/servex-contrib/config/viper/file"
 	"github.com/nostosx/servex-contrib/encoding/yaml"
 	"github.com/nostosx/servex/config"
-	"github.com/nostosx/servex/config/file"
 )
 
 type server struct {
@@ -175,7 +176,7 @@ func TestTimestamps(t *testing.T) {
 
 	path := filepath.Join(t.TempDir(), "app.yaml")
 	writeFile(t, path, doc)
-	c, err := config.New(t.Context(), []config.Source{file.New(path, file.WithCodec(".yaml", yaml.Codec))})
+	c, err := viper.New(t.Context(), []config.Source{file.New(path, file.WithCodec(".yaml", yaml.Codec))})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -262,7 +263,7 @@ http:
   headers:
     2: two
 `)
-	c, err := config.New(t.Context(), []config.Source{
+	c, err := viper.New(t.Context(), []config.Source{
 		file.New(base, file.WithCodec(".yaml", yaml.Codec)),
 		file.New(over, file.WithCodec(".yml", yaml.Codec)),
 	})

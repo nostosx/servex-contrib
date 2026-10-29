@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/nostosx/servex-contrib/config/nacos"
+	"github.com/nostosx/servex-contrib/config/viper"
 	"github.com/nostosx/servex/config"
 	"github.com/nostosx/servex/errorx"
 )
@@ -325,7 +326,7 @@ func TestWatchErrors(t *testing.T) {
 func TestConfigWatchReloads(t *testing.T) {
 	f := newFakeClient()
 	f.publish("app.json", "G", `{"http":{"addr":":8000","timeout":"1s"},"v":0}`)
-	cfg, err := config.New(t.Context(), []config.Source{nacos.New(f, "app.json", "G")})
+	cfg, err := viper.New(t.Context(), []config.Source{nacos.New(f, "app.json", "G")})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +338,7 @@ func TestConfigWatchReloads(t *testing.T) {
 	reloaded := make(chan int, 100)
 	done := make(chan error, 1)
 	go func() {
-		done <- cfg.Watch(ctx, func(c *config.Config) { reloaded <- c.Int("v") })
+		done <- cfg.Watch(ctx, func(c config.Config) { reloaded <- c.Int("v") })
 	}()
 	waitListening(t, f, "app.json", "G", true)
 	f.publish("app.json", "G", `{"http":{"addr":":8000","timeout":"2s"},"v":1}`)

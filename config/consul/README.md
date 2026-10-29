@@ -56,6 +56,7 @@ import (
 	"github.com/nostosx/servex-contrib/config/consul"
 	"github.com/nostosx/servex/app"
 	"github.com/nostosx/servex/config"
+ cfgviper "github.com/nostosx/servex-contrib/config/viper"
 )
 
 type HTTPConfig struct {
@@ -70,7 +71,7 @@ func main() {
 
 	ctx, stop := app.SignalContext(context.Background())
 	defer stop()
-	cfg, err := config.New(ctx, []config.Source{consul.New(client, "services/user/", consul.WithPrefix())})
+	cfg, err := cfgviper.New(ctx, []config.Source{consul.New(client, "services/user/", consul.WithPrefix())})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,9 +82,9 @@ func main() {
 	log.Println("listen on", httpCfg.Addr)
 
 	// Watch options such as WithReloadErrorHandler follow the callback.
-	err = cfg.Watch(ctx, func(c *config.Config) {
+	err = cfg.Watch(ctx, func(c config.Config) {
 		log.Println("config changed, log level:", c.String("log.level"))
-	}, config.WithReloadErrorHandler(func(err error) {
+	}, cfgviper.WithReloadErrorHandler(func(err error) {
 		log.Println("config reload failed, keeping previous values:", err)
 	}))
 	if err != nil && ctx.Err() == nil {
@@ -97,7 +98,7 @@ func main() {
 | Option | Default | Description |
 |---|---|---|
 | `WithPrefix()` | single key | Treat the key as a prefix and merge every key under it. End it with `/` to avoid matching siblings. |
-| `WithCodec(c)` | `encoding.JSON` | Codec for values, for example `servex-contrib/encoding/yaml`. |
+| `WithCodec(c)` | `servex-contrib/encoding/json.Codec` | Codec for values, for example `servex-contrib/encoding/yaml`. |
 | `WithWaitTime(d)` | server default (5m) | Maximum duration of one blocking query (Consul caps it at 10m). |
 | `WithRetryDelay(min, max)` | 100ms, 10s | Bounds of the exponential delay between `Watch` retries. |
 
@@ -117,3 +118,6 @@ SERVEX_IT_CONSUL_ADDR=127.0.0.1:8500 GOWORK=off go test -race -count=1 -tags int
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+Current configuration-engine examples use the unreleased config/viper module
+and matching core API; published versions keep their historical API.

@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	jsoncodec "github.com/nostosx/servex-contrib/encoding/json"
+
 	"github.com/hashicorp/consul/api"
 
 	"github.com/nostosx/servex/config"
@@ -85,7 +87,7 @@ type options struct {
 // New returns a Source reading key through client. Nothing is read until
 // Load is called.
 func New(client *api.Client, key string, opts ...Option) *Source {
-	o := options{codec: encoding.JSON, minDelay: minRetryDelay, maxDelay: maxRetryDelay}
+	o := options{codec: jsoncodec.Codec, minDelay: minRetryDelay, maxDelay: maxRetryDelay}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&o)
@@ -120,7 +122,7 @@ func WithPrefix() Option {
 // WithCodec sets the codec used to decode values. In single key mode the
 // value must decode to an object. With WithPrefix, values below the prefix may
 // decode to any type, but the prefix key itself must still hold an object.
-// A nil codec keeps the default, encoding.JSON.
+// A nil codec keeps the default, jsoncodec.Codec.
 func WithCodec(c encoding.Codec) Option {
 	return func(o *options) {
 		if c != nil {

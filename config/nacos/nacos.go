@@ -6,6 +6,8 @@ import (
 	"strings"
 	"sync"
 
+	jsoncodec "github.com/nostosx/servex-contrib/encoding/json"
+
 	"github.com/nacos-group/nacos-sdk-go/v2/clients/config_client"
 	"github.com/nacos-group/nacos-sdk-go/v2/vo"
 
@@ -62,7 +64,7 @@ type options struct {
 // New returns a Source for the item dataID in group, read through client.
 // An empty group means DefaultGroup. Nothing is read until Load is called.
 func New(client config_client.IConfigClient, dataID, group string, opts ...Option) *Source {
-	o := options{codec: encoding.JSON}
+	o := options{codec: jsoncodec.Codec}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&o)
@@ -75,7 +77,7 @@ func New(client config_client.IConfigClient, dataID, group string, opts ...Optio
 }
 
 // WithCodec sets the codec used to decode the content, which must decode
-// to an object. A nil codec keeps the default, encoding.JSON.
+// to an object. A nil codec keeps the default, jsoncodec.Codec.
 func WithCodec(c encoding.Codec) Option {
 	return func(o *options) {
 		if c != nil {

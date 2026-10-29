@@ -46,6 +46,7 @@ jobs:
           - config/consul
           - config/etcd
           - config/nacos
+          - config/viper
           - database/mongodb
           - database/sql
           - di/do

@@ -12,6 +12,7 @@ import (
 	"github.com/hashicorp/consul/api"
 
 	"github.com/nostosx/servex-contrib/config/consul"
+	"github.com/nostosx/servex-contrib/config/viper"
 	"github.com/nostosx/servex/config"
 )
 
@@ -61,7 +62,7 @@ func TestIntegrationLoadAndWatch(t *testing.T) {
 		t.Fatalf("single Load = %#v, want %#v", got, want)
 	}
 
-	cfg, err := config.New(t.Context(), []config.Source{consul.New(c, prefix, consul.WithPrefix(), consul.WithWaitTime(5*time.Second))})
+	cfg, err := viper.New(t.Context(), []config.Source{consul.New(c, prefix, consul.WithPrefix(), consul.WithWaitTime(5*time.Second))})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +78,7 @@ func TestIntegrationLoadAndWatch(t *testing.T) {
 	reloaded := make(chan int, 100)
 	done := make(chan error, 1)
 	go func() {
-		done <- cfg.Watch(ctx, func(c *config.Config) { reloaded <- c.Int("v") })
+		done <- cfg.Watch(ctx, func(c config.Config) { reloaded <- c.Int("v") })
 	}()
 	write("http/timeout", `"2s"`)
 	write("v", `1`)

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hashicorp/consul/api"
+	jsoncodec "github.com/nostosx/servex-contrib/encoding/json"
 
-	"github.com/nostosx/servex/encoding"
+	"github.com/hashicorp/consul/api"
 )
 
 func TestOptions(t *testing.T) {
@@ -31,7 +31,7 @@ func TestOptions(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := New(client, "k", tt.opts...)
-			if s.prefix != tt.prefix || s.wait != tt.wait || s.minDelay != tt.minD || s.maxDelay != tt.maxD || s.codec != encoding.JSON {
+			if s.prefix != tt.prefix || s.wait != tt.wait || s.minDelay != tt.minD || s.maxDelay != tt.maxD || s.codec != jsoncodec.Codec {
 				t.Fatalf("got prefix=%v wait=%v delays=%v/%v codec=%v", s.prefix, s.wait, s.minDelay, s.maxDelay, s.codec)
 			}
 		})

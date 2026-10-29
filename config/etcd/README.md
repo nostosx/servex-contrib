@@ -56,6 +56,7 @@ import (
 	"github.com/nostosx/servex-contrib/config/etcd"
 	"github.com/nostosx/servex/app"
 	"github.com/nostosx/servex/config"
+ cfgviper "github.com/nostosx/servex-contrib/config/viper"
 )
 
 func main() {
@@ -71,8 +72,8 @@ func main() {
 	ctx, stop := app.SignalContext(context.Background())
 	defer stop()
 	// Later sources override earlier ones.
-	cfg, err := config.New(ctx, []config.Source{
-		config.Env("USER_"),
+	cfg, err := cfgviper.New(ctx, []config.Source{
+		cfgviper.Env("USER_"),
 		etcd.New(client, "/config/user/", etcd.WithPrefix()),
 	})
 	if err != nil {
@@ -82,9 +83,9 @@ func main() {
 
 	// Reload and react to changes until ctx ends.
 	// Watch options such as WithReloadErrorHandler follow the callback.
-	err = cfg.Watch(ctx, func(c *config.Config) {
+	err = cfg.Watch(ctx, func(c config.Config) {
 		log.Println("config changed, log level:", c.String("log.level"))
-	}, config.WithReloadErrorHandler(func(err error) {
+	}, cfgviper.WithReloadErrorHandler(func(err error) {
 		log.Println("config reload failed, keeping previous values:", err)
 	}))
 	if err != nil && ctx.Err() == nil {
@@ -98,7 +99,7 @@ func main() {
 | Option | Default | Description |
 |---|---|---|
 | `WithPrefix()` | single key | Treat the key as a prefix and merge every key under it. End it with `/` to avoid matching siblings. |
-| `WithCodec(c)` | `encoding.JSON` | Codec for values, for example `servex-contrib/encoding/yaml`. |
+| `WithCodec(c)` | `servex-contrib/encoding/json.Codec` | Codec for values, for example `servex-contrib/encoding/yaml`. |
 
 In single key mode a missing key is `errorx.NotFound`; failures to reach etcd
 are retryable `errorx.Unavailable`; undecodable values are
@@ -117,3 +118,6 @@ SERVEX_IT_ETCD_ENDPOINTS=127.0.0.1:2379 GOWORK=off go test -race -count=1 -tags 
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+Current configuration-engine examples use the unreleased config/viper module
+and matching core API; published versions keep their historical API.
