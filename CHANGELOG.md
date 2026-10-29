@@ -13,6 +13,14 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## broker/rabbitmq/v1.2.1
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Order the buffered-delivery shutdown fixture before fake channel cleanup.
+  The old fixture could send to a cleared channel after Close and deadlock
+  under synctest. Production broker behavior and APIs are unchanged.
+
 ## config/viper/v1.0.1
 
 Release date: 2026-10-29. Requires servex v1.4.0.

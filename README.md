@@ -51,7 +51,7 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on Apache Kafka | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on NATS JetStream | `github.com/nats-io/nats.go` |
-| [`broker/rabbitmq`](broker/rabbitmq) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on RabbitMQ (AMQP 0-9-1) | `github.com/rabbitmq/amqp091-go` |
+| [`broker/rabbitmq`](broker/rabbitmq) | v1.2.1 | `broker.Publisher` and `broker.Subscriber` on RabbitMQ (AMQP 0-9-1) | `github.com/rabbitmq/amqp091-go` |
 | [`cache/redis`](cache/redis) | v1.1.0 | `cache.Cache` on Redis (standalone, sentinel or cluster) | `github.com/redis/go-redis/v9` |
 | [`config/consul`](config/consul) | v1.2.0 | `config.Source` and `config.Watchable` on the Consul KV store | `github.com/hashicorp/consul/api` |
 | [`config/etcd`](config/etcd) | v1.2.0 | `config.Source` and `config.Watchable` on etcd | `go.etcd.io/etcd/client/v3` |

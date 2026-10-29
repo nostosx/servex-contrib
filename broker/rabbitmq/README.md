@@ -27,10 +27,10 @@ Requires Go 1.27.3. Uses published servex v1.4.0.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/broker/rabbitmq@v1.2.0
+go get github.com/nostosx/servex-contrib/broker/rabbitmq@v1.2.1
 ```
 
-The example version corresponds to the tag `broker/rabbitmq/v1.2.0`;
+The example version corresponds to the tag `broker/rabbitmq/v1.2.1`;
 see [module versioning](../../README.md#versioning).
 
 ## Usage
@@ -128,8 +128,8 @@ Licensed under the [MIT License](../../LICENSE).
 
 ## Release
 
-Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+Version v1.2.1, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
 
 ```sh
-go get github.com/nostosx/servex-contrib/broker/rabbitmq@v1.2.0
+go get github.com/nostosx/servex-contrib/broker/rabbitmq@v1.2.1
 ```

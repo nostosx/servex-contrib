@@ -599,8 +599,12 @@ func TestSubscribeCloseBeforeCancellationCallback(t *testing.T) {
 					ch.shutdown(&amqp.Error{Code: amqp.FrameError, Reason: "EOF"})
 					want = nil
 				case "buffered delivery":
+					// Keep channel cleanup behind the already in-flight delivery;
+					// otherwise the fake may clear its channel before enqueueing.
+					srv.mu.Lock()
 					_ = b.Close()
-					ch.deliver(delivery("orders", "k", 0))
+					ch.deliverLocked(delivery("orders", "k", 0))
+					srv.mu.Unlock()
 					want = nil
 				default:
 					ch.deliver(delivery("orders", "k", b.opts.maxRedeliveries))

@@ -275,6 +275,11 @@ func (ch *fakeChannel) publishConfirmed(ctx context.Context, exchange, key strin
 func (ch *fakeChannel) deliver(d amqp.Delivery) uint64 {
 	ch.srv.mu.Lock()
 	defer ch.srv.mu.Unlock()
+	return ch.deliverLocked(d)
+}
+
+// deliverLocked enqueues a delivery while the caller owns the server lock.
+func (ch *fakeChannel) deliverLocked(d amqp.Delivery) uint64 {
 	ch.tag++
 	d.DeliveryTag, d.Acknowledger = ch.tag, ch
 	ch.deliveries <- d

@@ -41,7 +41,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC 发现、ID Token 签名与 JWKS 验证，供应用鉴权回调使用 | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | v1.2.0 | Apache Kafka 上的 `broker.Publisher`、`broker.Subscriber` | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | v1.2.0 | NATS JetStream 上的发布与订阅 | `github.com/nats-io/nats.go` |
-| [`broker/rabbitmq`](broker/rabbitmq) | v1.2.0 | RabbitMQ（AMQP 0-9-1）上的发布与订阅 | `github.com/rabbitmq/amqp091-go` |
+| [`broker/rabbitmq`](broker/rabbitmq) | v1.2.1 | RabbitMQ（AMQP 0-9-1）上的发布与订阅 | `github.com/rabbitmq/amqp091-go` |
 | [`cache/redis`](cache/redis) | v1.1.0 | 单机、哨兵或集群 Redis 上的 `cache.Cache` | `github.com/redis/go-redis/v9` |
 | [`config/consul`](config/consul) | v1.2.0 | Consul KV 上的 `config.Source`、`config.Watchable` | `github.com/hashicorp/consul/api` |
 | [`config/etcd`](config/etcd) | v1.2.0 | etcd 上的配置读取与监听 | `go.etcd.io/etcd/client/v3` |
