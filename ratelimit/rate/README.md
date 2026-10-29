@@ -2,9 +2,7 @@
 
 Keyed local token buckets backed by `golang.org/x/time/rate`. The independent
 module implements the existing structural `Allow(key string) bool` Limiter
-contract. Core and generic middleware do not depend on x/time. This module is
-unreleased; use matching source overrides outside repository manifests for
-development validation.
+contract. Core and generic middleware do not depend on x/time. Requires servex v1.4.0. No local source replacements are needed.
 
 ## Usage
 
@@ -70,3 +68,11 @@ middleware composition and bound concurrent admissions to the configured burst.
 ## License
 
 [MIT](LICENSE); golang.org/x/time uses BSD-3-Clause.
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/ratelimit/rate@v1.0.0
+```

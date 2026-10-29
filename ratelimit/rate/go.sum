@@ -1,2 +1,6 @@
+github.com/nostosx/servex v1.4.0 h1:0B8SjcbBuIxAkygTsbZKFtBZ7QJ7k4od8s3G5xWqpWc=
+github.com/nostosx/servex v1.4.0/go.mod h1:tOSGFq4M6GVGGsm7SHTNd8SGCr0Kd3YsJ+9abwAA/Cw=
+github.com/nostosx/servex-contrib/middleware v1.4.0 h1:ZsfWnkVSxcUTwbMn4aNJ8eMq7xYhsKEsuUgn5bWXKUg=
+github.com/nostosx/servex-contrib/middleware v1.4.0/go.mod h1:FbMDCYC08FKeeTfCt/rGQYz9LxPrs2AL3Xw5dJO0ZuY=
 golang.org/x/time v0.16.0 h1:vMb6ptszcQMkcwiRTAuNNU50gom6++Q/6gY2hDM6VDE=
 golang.org/x/time v0.16.0/go.mod h1:rVKOqvZeKvrDKTQiAHJ7wmwP0RzleSphoEA9RcdLA0s=

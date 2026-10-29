@@ -13,6 +13,27 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## ratelimit/rate/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Add bounded keyed local token buckets using x/time/rate, reclaiming idle buckets without background goroutines.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## transport/grpcx/v1.3.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Use the shared contrib client and assemble unary endpoint middleware once while preserving per-request metadata and status behavior.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## transport/httpx/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Move the HTTP backend from core; use the shared contrib client, bounded binding plans and fixed-path decoding optimizations.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
 ## cache/memory/v1.0.0
 
 Release date: 2026-10-29. Requires servex v1.4.0.
