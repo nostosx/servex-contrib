@@ -40,6 +40,7 @@ jobs:
           - broker/nats
           - broker/rabbitmq
           - cache/redis
+          - cache/loader
           - config/consul
           - config/etcd
           - config/nacos
@@ -61,6 +62,7 @@ jobs:
           - selector
           - tracing/otel
           - tracing/noop
+          - transport/client
           - transport/grpcx
           # END MODULES
     defaults:
