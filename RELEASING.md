@@ -24,6 +24,17 @@ Update servex-examples only after the modules it imports are available.
 
 ## Module gates
 
+For a coordinated extraction, validate and publish modules in dependency layers.
+The manually dispatched `Release validation` workflow accepts a JSON `modules`
+array and an `integrations` array of backend/modules objects. It runs the same
+check, lint, vulnerability and real-service gates against the exact dispatched
+revision using published dependencies only. Select every service backend used by
+the batch, including `kind` for discovery/kubernetes. Require the complete batch
+workflow to succeed before tagging its modules. After every layer is published,
+the ordinary full-repository CI must also pass before downstream releases.
+This avoids requiring unpublished downstream modules to validate an independent
+foundational release; it never substitutes source replacements for public versions.
+
 1. Choose the module version independently of the Go 1.27.3 toolchain.
    Review the selected module's notes and release date in
    [CHANGELOG.md](CHANGELOG.md). Move its entries from `Unreleased` into the

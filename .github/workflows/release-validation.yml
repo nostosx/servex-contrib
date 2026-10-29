@@ -1,0 +1,112 @@
+name: Release validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      modules:
+        description: 'JSON array of module paths in this publication batch'
+        required: true
+        type: string
+      integrations:
+        description: 'JSON array of backend/modules objects for service checks'
+        required: true
+        default: '[]'
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  GOWORK: 'off'
+  GOTOOLCHAIN: local
+
+defaults:
+  run:
+    shell: bash
+    working-directory: servex-contrib
+
+jobs:
+  module:
+    name: Release check (${{ matrix.module }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(inputs.modules) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: servex-contrib
+      - uses: go-task/setup-task@v2
+        with:
+          version: '3.53.1'
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: servex-contrib/${{ matrix.module }}/go.sum
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          install-mode: goinstall
+          version: v2.15.0
+          install-only: true
+      - name: Install vulnerability scanner
+        run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+      - name: Validate published dependencies and module
+        env:
+          RELEASE_MODULE: ${{ matrix.module }}
+        run: task check lint vulncheck MODULES="$RELEASE_MODULE"
+
+  integration:
+    if: inputs.integrations != '[]'
+    name: Release integration (${{ matrix.backend }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.integrations) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: servex-contrib
+      - uses: go-task/setup-task@v2
+        with:
+          version: '3.53.1'
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: servex-contrib/**/go.sum
+      - uses: helm/kind-action@v1
+        if: matrix.backend == 'kind'
+        with:
+          cluster_name: servex-release
+          wait: 120s
+      - name: Start disposable backend
+        if: matrix.backend != 'kind'
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: bash .github/scripts/start-service.sh "$BACKEND"
+      - name: Run service integration checks
+        env:
+          RELEASE_MODULES: ${{ matrix.modules }}
+          BACKEND: ${{ matrix.backend }}
+        run: |
+          if [ "$BACKEND" = kind ]; then
+            export SERVEX_IT_KUBECONFIG="$HOME/.kube/config"
+            kubectl --context kind-servex-release wait --for=condition=Ready nodes --all --timeout=120s
+          fi
+          task test INTEGRATION=true MODULES="$RELEASE_MODULES"
+      - name: Backend diagnostics
+        if: failure() && matrix.backend != 'kind'
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: docker logs "servex-it-$BACKEND"
+      - name: Remove disposable backend
+        if: always() && matrix.backend != 'kind'
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: |
+          if docker container inspect "servex-it-$BACKEND" >/dev/null 2>&1; then
+            docker rm -f -v "servex-it-$BACKEND"
+          fi
