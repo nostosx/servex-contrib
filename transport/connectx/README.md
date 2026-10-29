@@ -1,8 +1,6 @@
 # transport/connectx
 
-Unreleased. Requires matching servex sources containing `transport/rpc`.
-The core requirement is a release preparation baseline, not a claim that these
-new APIs are already available from the published core. Uses Connect-Go v1.21.1.
+Requires servex v1.4.0 with its published protocol contracts.
 
 Implements core `rpc.UnaryHandler` and adapts core typed request/response and
 stream interfaces to Connect-Go. One handler negotiates Connect, gRPC and
@@ -102,3 +100,11 @@ headers/trailers, partial-response errors and cancellation. Client and
 bidirectional request streams remain unsupported by the browser transports.
 Cross-origin applications must expose custom response headers and Connect unary
 `Trailer-*` headers in their own CORS policy; see the fixture's explicit allowlist.
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/transport/connectx@v1.0.0
+```

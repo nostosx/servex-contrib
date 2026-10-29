@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/go-playground/validator/v10 v10.30.5
-	github.com/nostosx/servex v1.3.0
+	github.com/nostosx/servex v1.4.0
 )
 
 require (

@@ -13,6 +13,169 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## broker/kafka/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## broker/memory/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Move the in-memory broker implementation and readiness regressions from core.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## broker/nats/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## broker/rabbitmq/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## cache/loader/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Move typed read-through loading, owner cancellation, singleflight and explicit codec wiring from core into this module.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## config/viper/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Implement core configuration contracts with Viper loading, decoding, validation, reload and immutable snapshots.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## di/do/v1.1.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adapt centralized do assembly to core Logger and add startup/request-path performance benchmarks.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## encoding/json/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Provide the encoding/json/v2 Codec formerly constructed in core.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## encoding/proto/v1.1.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## jobqueue/asynq/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## jobqueue/memory/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Move the in-memory job queue and readiness regressions from core.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## logger/slog/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Implement the core Logger contract with an explicitly supplied slog backend.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## logger/zap/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Implement the core Logger contract with an explicitly supplied Zap backend.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## metrics/noop/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Provide an explicit no-op meter outside core.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## selector/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Add weighted random selection and keep algorithms outside core.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## tracing/noop/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Provide explicit no-op tracing and propagation outside core; handle absent spans as nil.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## tracing/otel/v1.1.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## transport/client/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Move discovery, selection, retries and protocol-independent invocation from core; require an explicit selector.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## transport/connectx/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Implement typed Connect, gRPC and gRPC-Web unary/streaming RPC with metadata and structured error mapping.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## transport/ssex/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Implement flushed SSE events/comments and bounded streaming parsing with resume cursors.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## transport/websocketx/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Implement WebSocket handshakes, context-aware messages, Origin policy, Ping and close statuses.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## validation/playground/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Add explicitly configured go-playground/validator endpoint validation without bringing the SDK into core or generic middleware.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## validation/protovalidate/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Add explicitly configured Buf Protovalidate endpoint validation preserving schema/evaluation errors and violation causes.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## Coordinated migration - 2026-10-29
+
 - Add repeatable real-browser acceptance for SSE, WebSocket, Connect and
   gRPC-Web. Native EventSource/WebSocket and official Connect-Web clients run
   48 checks per Chrome/WebKit engine against race-enabled disposable HTTP
@@ -43,7 +206,7 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
   only idle, fully replenished buckets without background goroutines.
 - Keep the three SDKs out of core and generic middleware, including their
   module requirements. SDK imports are restricted to their owning modules;
-  CI covers all three additions. These modules are not yet published.
+  CI covers all three additions. These modules are published in the version sections above.
 
 - Add independent cache/loader and transport/client modules for the shared
   read-through loader and protocol-independent client engine. Preserve owner
@@ -52,7 +215,7 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 - **Breaking**: core cache.NewLoader/LoaderOption move to loader.New/Option;
   core transport.NewClient/ClientOption move to client.New/Option. Their With*
   options and Loader error values move with the implementations. HTTP/gRPC
-  use the same shared client module. Matching unpublished peers are required.
+  use the same shared client module. Use the matching released peer versions listed above.
 - App, health.Group and thin Consumer/Worker lifecycle adapters intentionally
   stay in core. The new loader/client modules remain limited to core, kitx
   and standard-library dependencies, enforced by Task and lint boundaries.
@@ -79,8 +242,7 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
   context-aware messages, Origin policy, Ping, size limits and close statuses;
   Connect supports unary and all three stream shapes over Connect/gRPC/gRPC-Web,
   typed core boundaries, metadata and errorx/ErrorInfo mapping.
-  They require matching unreleased core sources; no published API availability
-  is implied by their preparation requirements.
+  They require the published protocol contracts in servex v1.4.0.
 - transport/httpx: add `WithProtocols` to configure copied net/http protocol
   settings. `connectx.Protocols()` enables HTTP/1, HTTP/2 and h2c on the existing
   lifecycle-managed HTTP listener. Upgraded WebSocket connections remain owned

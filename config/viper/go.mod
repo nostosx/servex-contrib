@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/go-viper/mapstructure/v2 v2.4.0
-	github.com/nostosx/servex v1.3.0
+	github.com/nostosx/servex v1.4.0
 	github.com/spf13/cast v1.10.0
 	github.com/spf13/viper v1.21.0
 )

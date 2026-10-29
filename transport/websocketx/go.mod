@@ -4,5 +4,5 @@ go 1.27.3
 
 require (
 	github.com/coder/websocket v1.8.15
-	github.com/nostosx/servex v1.3.0
+	github.com/nostosx/servex v1.4.0
 )

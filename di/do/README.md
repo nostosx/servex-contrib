@@ -6,12 +6,12 @@ container cleanup and health checks to servex. Constructors
 remain ordinary Go functions. Keep registration in one application entry point
 or `app.go`; neither do nor Fx requires a `module.go` in each package.
 
-Version v1.0.0 requires servex v1.3.0, Go 1.27.3 and samber/do/v2 v2.1.0.
+Version v1.0.0 requires servex v1.4.0, Go 1.27.3 and samber/do/v2 v2.1.0.
 Install it in the application module; no sibling checkout or local replacement
 is required:
 
 ```sh
-go get github.com/nostosx/servex@v1.3.0 github.com/nostosx/servex-contrib/di/do@v1.0.0
+go get github.com/nostosx/servex@v1.4.0 github.com/nostosx/servex-contrib/di/do@v1.1.0
 ```
 
 ## API and ownership
@@ -235,4 +235,12 @@ From the repository root:
 ```sh
 MODULES='di/do' task check lint vulncheck
 task test
+```
+
+## Release
+
+Version v1.1.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/di/do@v1.1.0
 ```

@@ -2,8 +2,7 @@
 
 Protobuf validation middleware backed by `buf.build/go/protovalidate`.
 It uses an explicitly supplied Buf Validator and owns its SDK dependencies;
-core and generic middleware remain SDK-free. This module is unreleased and
-requires matching source validation through temporary external modfiles.
+core and generic middleware remain SDK-free. Requires servex v1.4.0. No local source replacements are needed.
 
 ## Schema and usage
 
@@ -69,3 +68,11 @@ Buf binaries, generated test artifacts or external services.
 ## License
 
 [MIT](LICENSE); the upstream Buf SDK is Apache-2.0 licensed.
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/validation/protovalidate@v1.0.0
+```

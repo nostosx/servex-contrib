@@ -38,7 +38,7 @@ fallback to ambiguous old names.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/broker/nats@v1.1.0
+go get github.com/nostosx/servex-contrib/broker/nats@v1.2.0
 ```
 
 The example version corresponds to the tag `broker/nats/v1.1.0`;
@@ -142,3 +142,11 @@ SERVEX_IT_NATS_URL=nats://127.0.0.1:4222 GOWORK=off go test -race -count=1 -tags
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+## Release
+
+Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/broker/nats@v1.2.0
+```

@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/nats-io/nats-server/v2 v2.15.1
 	github.com/nats-io/nats.go v1.54.0
-	github.com/nostosx/servex v1.2.0
+	github.com/nostosx/servex v1.4.0
 )
 
 require (

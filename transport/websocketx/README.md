@@ -1,8 +1,6 @@
 # transport/websocketx
 
-Unreleased. Requires matching servex sources containing `transport/websocket`.
-The declared core version is a release preparation baseline; the new contracts
-are not available from that published version yet.
+Requires servex v1.4.0 with its published protocol contracts.
 
 Implements the core `websocket.Acceptor`, `websocket.Dialer` and `websocket.Conn`
 with `github.com/coder/websocket`. Applications use core interfaces for message
@@ -77,3 +75,11 @@ Do not retain r.Context for background use after the HTTP handler returns.
 WebKit to verify text/binary messages, subprotocol negotiation, a clean close
 handshake and Origin rejection. Cross-origin allowlist patterns include the
 origin host and port. WebSocket Origin checking is independent of HTTP CORS.
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/transport/websocketx@v1.0.0
+```

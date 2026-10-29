@@ -5,10 +5,8 @@ loading and duplicate-load suppression to the core `cache.Cache` contract.
 The backing cache and codec are supplied explicitly. No codec is selected by
 default.
 
-This module is unreleased. Its initial version baseline is v1.0.0, with Go
-1.27.3, servex v1.3.0 and kitx v1.0.0 dependencies. Validate the matching
-unreleased core and contrib sources with temporary module overrides before a
-coordinated release; keep local replacements out of application manifests.
+Version v1.0.0 requires Go 1.27.3, servex v1.4.0 and kitx v1.0.0.
+Dependencies resolve from the public Go proxy without local replacements.
 
 ## Usage
 
@@ -65,3 +63,11 @@ GOWORK=off go test -race -shuffle=on -count=1 ./...
 ## License
 
 Licensed under the [MIT License](LICENSE).
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/cache/loader@v1.0.0
+```

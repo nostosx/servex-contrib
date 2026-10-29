@@ -2,4 +2,4 @@ module github.com/nostosx/servex-contrib/selector
 
 go 1.27.3
 
-require github.com/nostosx/servex v1.3.0
+require github.com/nostosx/servex v1.4.0

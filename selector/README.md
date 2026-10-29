@@ -24,14 +24,11 @@ and every outcome is reported to the selector.
 
 ## Install
 
-Requires Go 1.27.3. The new random package and contrib client API are unreleased;
-verify matching sources with temporary modfiles until a coordinated release.
-The command below installs the existing published selector baseline, which
-does not yet include random.
+Requires Go 1.27.3 and servex v1.4.0. Version v1.2.0 includes the random package.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/selector@v1.1.0
+go get github.com/nostosx/servex-contrib/selector@v1.2.0
 ```
 
 The example version corresponds to the tag `selector/v1.1.0`;
@@ -96,3 +93,11 @@ module, keeping this module's dependency boundary limited to core and kitx.
 ## License
 
 Licensed under the [MIT License](../LICENSE).
+
+## Release
+
+Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/selector@v1.2.0
+```

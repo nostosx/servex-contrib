@@ -2,8 +2,7 @@
 
 Shared client execution over the core transport, discovery and selector contracts.
 This module is SDK-free and is used by both transport/httpx and transport/grpcx.
-It is unreleased and requires the matching core/contrib sources through external
-temporary modfiles until a coordinated release.
+Requires servex v1.4.0; resolve its dependencies from the public Go proxy.
 
 ## Migration
 
@@ -69,3 +68,11 @@ only on core, kitx/backoff and the standard library, including its tests.
 Discovery/memory owns the existing backend composition and concurrency
 regressions; HTTP/gRPC tests cover real protocol roundtrips over the engine.
 Do not commit local replacements or claim public-proxy acceptance before release.
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/transport/client@v1.0.0
+```

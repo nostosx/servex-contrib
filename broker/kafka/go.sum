@@ -1,7 +1,7 @@
 github.com/klauspost/compress v1.20.3 h1:zWNoFqq/lSuYQRim3dUXlXeA0IqwuZGicdG5ZTfY5j4=
 github.com/klauspost/compress v1.20.3/go.mod h1:LUdAzn7YLVvxLpc7y3V1m40wESHTgc1422pwwBSKYuI=
-github.com/nostosx/servex v1.2.0 h1:gKJ6cilurDYEPIdTBzXaF+PIqkN3PhVv5YPg3eC6JH4=
-github.com/nostosx/servex v1.2.0/go.mod h1:9Qp0pyoc7lcNd11ke3OlEEWWcNnqEBxqlWtP4Yk37kw=
+github.com/nostosx/servex v1.4.0 h1:0B8SjcbBuIxAkygTsbZKFtBZ7QJ7k4od8s3G5xWqpWc=
+github.com/nostosx/servex v1.4.0/go.mod h1:tOSGFq4M6GVGGsm7SHTNd8SGCr0Kd3YsJ+9abwAA/Cw=
 github.com/pierrec/lz4/v4 v4.1.33 h1:GjG1TJ1V4IzKP8L96muuuDNpTwd7D+l2ccXrjAbe014=
 github.com/pierrec/lz4/v4 v4.1.33/go.mod h1:7SE9MC2STkNtL4PIwGhjmyVwvILaGI9/COYQNBhKM/c=
 github.com/twmb/franz-go v1.22.2 h1:EdwIHGzD/4mgCpl/sNS0C74JYn6cL/r2KYS+8UC96Ww=

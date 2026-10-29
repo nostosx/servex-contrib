@@ -14,6 +14,14 @@ less than one count as one. An empty set returns selector.ErrNoAvailable.
 Returned Done callbacks are non-nil on success and have no state to update.
 The default source is math/rand/v2 and supports concurrent calls.
 
-This package is unreleased and requires matching core sources. The original
+This package is available in selector v1.2.0 with servex v1.4.0. The original
 deterministic weight-mapping, distribution and concurrency regression tests
 move with the implementation; the core no longer constructs an algorithm.
+
+## Release
+
+Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/selector@v1.2.0
+```

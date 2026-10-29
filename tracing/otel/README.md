@@ -20,7 +20,7 @@ Requires Go 1.27.3. Uses published servex v1.0.0 and kitx v1.0.0 dependencies.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/tracing/otel@v1.0.0
+go get github.com/nostosx/servex-contrib/tracing/otel@v1.1.0
 ```
 
 The example version corresponds to the tag `tracing/otel/v1.0.0`;
@@ -86,3 +86,11 @@ GOWORK=off go test -race -count=1 ./...
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+## Release
+
+Version v1.1.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/tracing/otel@v1.1.0
+```

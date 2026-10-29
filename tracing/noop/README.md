@@ -1,8 +1,7 @@
 # tracing/noop
 
 Provides explicit no-op implementations of the core tracing contracts.
-This adapter is unreleased and requires the matching core source revision
-until a coordinated release.
+Requires the published core contracts from servex v1.4.0.
 
 ```go
 import tracingnoop "github.com/nostosx/servex-contrib/tracing/noop"
@@ -21,3 +20,11 @@ Repeated starts from an existing no-op parent keep the context unchanged.
 The propagator does not modify carriers and returns extraction contexts unchanged.
 Implementations are safe for concurrent use. The regression suite retains context
 isolation, nil context, no-allocation and concurrency checks.
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/tracing/noop@v1.0.0
+```

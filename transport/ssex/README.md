@@ -1,8 +1,6 @@
 # transport/ssex
 
-Unreleased. This module requires the matching servex sources containing
-`transport/sse`; the declared core version is a release preparation baseline,
-not a claim that the new contracts are already published.
+Requires servex v1.4.0 with the published `transport/sse` contracts.
 
 Implements `sse.Acceptor`, `sse.Sender`, `sse.Client` and `sse.Receiver` using
 `net/http`, without an additional SDK. Each send flushes immediately. Events
@@ -75,3 +73,11 @@ ID reset, automatic Last-Event-ID reconnection and request cancellation.
 Cross-origin access is explicitly configured by application HTTP middleware;
 withCredentials additionally requires an exact allowed origin and credentials
 permission in that policy.
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/transport/ssex@v1.0.0
+```

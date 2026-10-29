@@ -1,8 +1,7 @@
 # config/viper
 
 Implements the contract-only `github.com/nostosx/servex/config` package with
-`github.com/spf13/viper`. This module and the matching core API are unreleased;
-validate matching source revisions before a coordinated core-first release.
+`github.com/spf13/viper`. This module implements the configuration contracts in servex v1.4.0.
 
 ## Usage
 
@@ -98,3 +97,11 @@ Tests cover ordered layers, mutation isolation, accepted/rejected revisions,
 concurrent reload/read, synchronous callbacks, cancellation, watcher failures,
 Viper decoding and file formats. Real backend services are verified in their
 own source modules.
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/config/viper@v1.0.0
+```

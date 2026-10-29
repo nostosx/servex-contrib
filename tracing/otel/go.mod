@@ -3,7 +3,7 @@ module github.com/nostosx/servex-contrib/tracing/otel
 go 1.27.3
 
 require (
-	github.com/nostosx/servex v1.0.0
+	github.com/nostosx/servex v1.4.0
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/sdk v1.47.0
 	go.opentelemetry.io/otel/trace v1.47.0

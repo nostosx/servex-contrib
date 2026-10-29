@@ -2,8 +2,7 @@
 
 Struct validation middleware backed by `github.com/go-playground/validator/v10`.
 This is an independent module; core and generic middleware do not depend on it.
-The module is unreleased. Verify matching sources with temporary external
-modfiles until the coordinated release; do not commit local replacements.
+Requires servex v1.4.0. No local source replacements are needed.
 
 ## Usage
 
@@ -67,3 +66,11 @@ cause identity, cancellation, middleware short-circuiting and concurrent use.
 ## License
 
 [MIT](LICENSE).
+
+## Release
+
+Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/validation/playground@v1.0.0
+```
