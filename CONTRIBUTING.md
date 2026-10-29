@@ -165,3 +165,8 @@ publication gates are documented in [RELEASING.md](RELEASING.md).
 Verify middleware with GOWORK=off and the matching core and no-op telemetry
 sources until the coordinated release. Published tags stay unchanged; release
 changes under new module versions and repeat public-proxy consumer checks.
+
+MongoDB 8 integration jobs use ubuntu-22.04 (kernel 6.8). The current newer
+hosted kernels trigger MongoDB startup rejection before tests can run; see
+[SERVER-121912](https://jira.mongodb.org/browse/SERVER-121912). Keep the real
+service readiness and no-skipped-integration gates enabled.

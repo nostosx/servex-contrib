@@ -160,7 +160,8 @@ jobs:
 
   integration:
     name: Integration (${{ matrix.backend }})
-    runs-on: ubuntu-latest
+    # MongoDB 8 refuses Linux 6.19+ (SERVER-121912); Ubuntu 22.04 uses kernel 6.8.
+    runs-on: ${{ matrix.backend == 'mongodb' && 'ubuntu-22.04' || 'ubuntu-latest' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
