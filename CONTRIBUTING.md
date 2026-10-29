@@ -138,6 +138,12 @@ Shared target resolution, discovery-watch recovery and invocation orchestration
 belong in transport/client; read-through, singleflight and write-back policies
 belong in cache/loader. HTTP and gRPC depend on the same shared client engine.
 Both new modules, including tests, may use only core, kitx and the standard library.
+Optional SDK adapters live in separate modules: validation/playground owns
+go-playground/validator, validation/protovalidate owns Buf Protovalidate and
+ratelimit/rate owns golang.org/x/time/rate. They must not add SDK requirements
+or imports to core or generic middleware. Rate composition tests import the
+existing middleware contract from the adapter side. Callers configure validation
+engines before concurrent use; an adapter never selects a global SDK instance.
 `selector` stays within standard library, servex and kitx. Middleware adds only
 metrics/noop and tracing/noop to that set, including tests; keep all SDKs out. Keep third-party SDKs in the owning module.
 

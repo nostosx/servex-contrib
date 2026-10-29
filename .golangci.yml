@@ -21,6 +21,36 @@ linters:
   settings:
     depguard:
       rules:
+        # Optional validation SDKs belong only to their owning adapter modules.
+        playground-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/validation/playground/**"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex/
+            - github.com/nostosx/servex-contrib/validation/playground$
+            - github.com/go-playground/validator/v10$
+        protovalidate-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/validation/protovalidate/**"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex/
+            - github.com/nostosx/servex-contrib/validation/protovalidate$
+            - buf.build/go/protovalidate$
+            - buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go/
+            - google.golang.org/protobuf/
+        rate-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/ratelimit/rate/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex/
+            - golang.org/x/time/rate$
         # Shared execution policies stay SDK-free and consume core contracts.
         client-dependencies:
           list-mode: strict

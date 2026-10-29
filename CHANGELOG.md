@@ -13,6 +13,18 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- Add validation/playground using go-playground/validator and
+  validation/protovalidate using Buf Protovalidate. Both return endpoint
+  middleware, preserve validation causes, distinguish constraint violations
+  from input/schema/evaluation errors and check caller cancellation.
+  Validators are explicitly constructed and configured by the caller.
+- Add ratelimit/rate using golang.org/x/time/rate. Keyed local limits compose
+  with the existing Limiter middleware contract, cap retained keys and reclaim
+  only idle, fully replenished buckets without background goroutines.
+- Keep the three SDKs out of core and generic middleware, including their
+  module requirements. SDK imports are restricted to their owning modules;
+  CI covers all three additions. These modules are not yet published.
+
 - Add independent cache/loader and transport/client modules for the shared
   read-through loader and protocol-independent client engine. Preserve owner
   cancellation, write-back, discovery recovery, middleware order and shutdown

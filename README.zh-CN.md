@@ -61,6 +61,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`metrics/otel`](metrics/otel) | OpenTelemetry 上的 `metrics.Meter` | `go.opentelemetry.io/otel/metric` |
 | [`metrics/prometheus`](metrics/prometheus) | Prometheus 上的 `metrics.Meter` | `github.com/prometheus/client_golang` |
 | [`middleware`](middleware) | 鉴权、熔断、日志、指标、限流、恢复、重试、超时、追踪与校验 | 标准库、servex、kitx、Noop 遥测 |
+| [`ratelimit/rate`](ratelimit/rate) | 有 key 数量上限的本地令牌桶，供通用限流中间件使用，尚未发布 | `golang.org/x/time/rate` |
 | [`ratelimit/redis`](ratelimit/redis) | 多副本共享的 Redis 原子令牌桶，支持 context、等待提示和后端错误 | `github.com/redis/go-redis/v9` |
 | [`selector`](selector) | 加权随机、平滑加权轮询与 P2C 节点选择 | 标准库、servex、kitx |
 | [`tracing/otel`](tracing/otel) | OpenTelemetry 上的 `tracing.Tracer`、`tracing.Propagator` | `go.opentelemetry.io/otel/trace` |
@@ -68,6 +69,13 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`transport/ssex`](transport/ssex) | SSE 事件/心跳发送及有界流式客户端，尚未发布 | 标准库 |
 | [`transport/websocketx`](transport/websocketx) | WebSocket 握手、消息、Ping、大小限制与关闭状态，尚未发布 | `github.com/coder/websocket` |
 | [`transport/connectx`](transport/connectx) | Connect/gRPC/gRPC-Web 类型化 unary 与流式 RPC，尚未发布 | `connectrpc.com/connect` |
+| [`validation/playground`](validation/playground) | 基于结构体标签的校验 `endpoint.Middleware`，尚未发布 | `github.com/go-playground/validator/v10` |
+| [`validation/protovalidate`](validation/protovalidate) | 基于 Protobuf schema/CEL 的校验 `endpoint.Middleware`，尚未发布 | `buf.build/go/protovalidate` |
+
+校验 SDK 和 x/time/rate 仅由对应的可选模块持有，core 与通用 middleware
+保持现有依赖边界。校验适配器显式接收已配置的 SDK validator；本地限流器传入
+`middleware/ratelimit.New` 组合使用。通用 middleware 中不依赖 SDK 的请求自身校验
+和令牌桶实现继续保留。
 
 构造函数显式接收依赖。适配器接收调用方创建的 SDK 客户端时，除非 API 另有说明，
 其所有权仍由调用方保留。错误通过 `errorx` 分类：不可达后端通常为可重试的

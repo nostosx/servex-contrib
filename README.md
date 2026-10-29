@@ -71,6 +71,7 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`metrics/otel`](metrics/otel) | `metrics.Meter` on an OpenTelemetry meter | `go.opentelemetry.io/otel/metric` |
 | [`metrics/prometheus`](metrics/prometheus) | `metrics.Meter` on the Prometheus client | `github.com/prometheus/client_golang` |
 | [`middleware`](middleware) | `endpoint.Middleware`: auth, circuitbreaker, logging, metrics, ratelimit, recovery, retry, timeout, tracing, validate | standard library, servex, kitx and no-op telemetry |
+| [`ratelimit/rate`](ratelimit/rate) | Bounded keyed local token buckets for the generic rate-limit middleware (unreleased) | `golang.org/x/time/rate` |
 | [`ratelimit/redis`](ratelimit/redis) | Atomic shared Redis token buckets with caller context, retry hints and backend errors | `github.com/redis/go-redis/v9` |
 | [`selector`](selector) | `selector.Selector`: weighted random, roundrobin (smooth weighted), p2c (Power of Two Choices) | standard library, servex and kitx |
 | [`tracing/otel`](tracing/otel) | `tracing.Tracer` and `tracing.Propagator` on OpenTelemetry | `go.opentelemetry.io/otel/trace` |
@@ -78,6 +79,14 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`transport/ssex`](transport/ssex) | SSE acceptor/sender and bounded streaming client (unreleased) | standard library |
 | [`transport/websocketx`](transport/websocketx) | WebSocket handshakes, message I/O, Ping and close status (unreleased) | `github.com/coder/websocket` |
 | [`transport/connectx`](transport/connectx) | Typed unary/streaming RPC over Connect, gRPC and gRPC-Web (unreleased) | `connectrpc.com/connect` |
+| [`validation/playground`](validation/playground) | Struct-tag validation as `endpoint.Middleware` (unreleased) | `github.com/go-playground/validator/v10` |
+| [`validation/protovalidate`](validation/protovalidate) | Protobuf schema/CEL validation as `endpoint.Middleware` (unreleased) | `buf.build/go/protovalidate` |
+
+Validation SDKs and x/time/rate are owned only by these optional modules. Core
+and generic middleware retain their existing dependency boundaries. Inject a
+configured SDK validator into either validation adapter; pass the local rate
+limiter to `middleware/ratelimit.New`. The SDK-free request-owned validation
+and token-bucket implementations remain available in generic middleware.
 
 Common conventions:
 

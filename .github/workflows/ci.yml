@@ -66,6 +66,7 @@ jobs:
           - metrics/noop
           - metrics/prometheus
           - middleware
+          - ratelimit/rate
           - ratelimit/redis
           - selector
           - tracing/otel
@@ -76,6 +77,8 @@ jobs:
           - transport/ssex
           - transport/websocketx
           - transport/httpx
+          - validation/playground
+          - validation/protovalidate
           # END MODULES
     defaults:
       run:
