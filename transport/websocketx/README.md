@@ -72,3 +72,8 @@ Messages and streams are never replayed automatically.
 HTTP Shutdown does not wait for or close upgraded connections. Applications
 must track active connections, close them on shutdown and join their handlers.
 Do not retain r.Context for background use after the HTTP handler returns.
+
+[Browser acceptance](../../tests/browser) uses native WebSocket in Chrome and
+WebKit to verify text/binary messages, subprotocol negotiation, a clean close
+handshake and Origin rejection. Cross-origin allowlist patterns include the
+origin host and port. WebSocket Origin checking is independent of HTTP CORS.

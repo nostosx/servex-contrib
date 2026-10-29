@@ -111,6 +111,11 @@ manifests. Recheck standalone module resolution against the actual next core
 release before publishing these adapters. Unit loopback tests do not prove
 browser compatibility or authorize a release.
 
+For actual browser acceptance, follow [tests/browser](tests/browser). It runs
+native EventSource/WebSocket and official Connect-Web clients in Chrome and
+WebKit against disposable loopback fixtures, and records browser versions,
+assertions, cancellation observations and expected CORS rejection diagnostics.
+
 ## Service integrations
 
 Prepare dedicated disposable services yourself; Task does not start them.

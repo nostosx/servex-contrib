@@ -13,6 +13,14 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- Add repeatable real-browser acceptance for SSE, WebSocket, Connect and
+  gRPC-Web. Native EventSource/WebSocket and official Connect-Web clients run
+  48 checks per Chrome/WebKit engine against race-enabled disposable HTTP
+  fixtures. Cover same/allowed/denied origins, incremental delivery, SSE resume
+  cursors, text/binary messages, metadata, structured/partial-response errors
+  and actual server cancellation. Document application-owned CORS/Origin policy
+  and the browser transports' unsupported request-streaming boundary.
+
 - Optimize HTTP fixed-path body requests by skipping unused JSON field-map
   decoding while preserving the initial JSON validation, custom codec calls,
   stateful marshaler order and encoding error precedence.

@@ -68,3 +68,10 @@ There is no automatic reconnect or event store. Read `Last-Event-ID` from the
 request when implementing replay. Clients supply it in the next Open call's
 headers and choose whether an operation is safe to reconnect. Retry is a hint,
 not a command to replay requests automatically.
+
+[Browser acceptance](../../tests/browser) uses native EventSource in Chrome
+and WebKit to verify immediate delivery, multiline UTF-8 data, named events,
+ID reset, automatic Last-Event-ID reconnection and request cancellation.
+Cross-origin access is explicitly configured by application HTTP middleware;
+withCredentials additionally requires an exact allowed origin and credentials
+permission in that policy.

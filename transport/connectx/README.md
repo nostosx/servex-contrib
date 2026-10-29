@@ -95,3 +95,10 @@ handlers must return a non-nil response and message.
 The tests use real loopback HTTP/1.1 and HTTP/2 connections. They cover protocol
 negotiation, all RPC shapes, headers/trailers, middleware lifetimes, errors and
 cancellation; no external backend or credentials are required.
+
+Real browser acceptance in [tests/browser](../../tests/browser) exercises official Connect-Web
+clients in Chrome and WebKit, with unary/server streaming, Protobuf/JSON,
+headers/trailers, partial-response errors and cancellation. Client and
+bidirectional request streams remain unsupported by the browser transports.
+Cross-origin applications must expose custom response headers and Connect unary
+`Trailer-*` headers in their own CORS policy; see the fixture's explicit allowlist.

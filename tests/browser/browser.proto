@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package servex.browser.v1;
+
+import "google/protobuf/wrappers.proto";
+
+service BrowserService {
+  rpc Unary(google.protobuf.StringValue) returns (google.protobuf.StringValue);
+  rpc Watch(google.protobuf.StringValue) returns (stream google.protobuf.StringValue);
+  rpc Upload(stream google.protobuf.StringValue) returns (google.protobuf.StringValue);
+  rpc Chat(stream google.protobuf.StringValue) returns (stream google.protobuf.StringValue);
+}
