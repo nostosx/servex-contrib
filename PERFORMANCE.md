@@ -4,6 +4,9 @@ Measured on 2026-10-29 with Go 1.27.3, darwin/arm64, Apple M5. This is a
 baseline investigation of the current matching core/contrib source, including
 the unreleased backend extraction. No production optimization was applied.
 
+This document records the pre-optimization baseline. Subsequent changes and
+matched-binary comparisons are in [optimization results](PERFORMANCE-OPTIMIZATION.md).
+
 ## Findings
 
 The measured warm unary paths do not show a universal framework slowdown.
