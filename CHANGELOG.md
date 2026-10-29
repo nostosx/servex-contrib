@@ -20,6 +20,8 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
   retaining at most 128 types per route and binding uncached types normally.
   Preserve field promotion, recursive embedding, tags, text decoding, error
   order and body/query/path precedence without invoking factories eagerly.
+- Compose gRPC unary endpoint middleware once at server construction while
+  keeping request-specific handlers/metadata, health bypass and status mapping.
 
 - Add validation/playground using go-playground/validator and
   validation/protovalidate using Buf Protovalidate. Both return endpoint

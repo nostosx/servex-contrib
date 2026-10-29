@@ -65,7 +65,8 @@ func WithAddress(addr string) ServerOption {
 
 // WithMiddleware appends server middleware. It wraps every unary call, in the
 // order given; m[0] is the outermost layer. Streaming calls do not pass
-// through it.
+// through it. The unary endpoint chain is composed once during NewServer;
+// each request supplies its own handler and metadata through the context.
 func WithMiddleware(m ...endpoint.Middleware) ServerOption {
 	return func(o *serverOptions) { o.middleware = append(o.middleware, m...) }
 }
@@ -109,7 +110,7 @@ func WithHealth(c health.Checker) ServerOption {
 type Server struct {
 	name             string
 	addr             string
-	middleware       endpoint.Middleware
+	unaryEndpoint    endpoint.Endpoint
 	streamMiddleware endpoint.Middleware
 	srv              *grpc.Server
 	errc             chan error
@@ -135,12 +136,14 @@ func NewServer(opts ...ServerOption) *Server {
 	s := &Server{
 		name:             o.name,
 		addr:             o.addr,
-		middleware:       endpoint.Chain(o.middleware...),
 		streamMiddleware: endpoint.Chain(o.streamMiddleware...),
 		errc:             make(chan error, 1),
 		stopping:         make(chan struct{}),
 		listener:         o.listener,
 		listen:           new(net.ListenConfig).Listen,
+	}
+	if len(o.middleware) != 0 {
+		s.unaryEndpoint = endpoint.Chain(o.middleware...)(callHandler)
 	}
 	gopts := slices.Concat([]grpc.ServerOption{
 		grpc.ChainUnaryInterceptor(s.unaryInterceptor),
@@ -267,7 +270,13 @@ func (s *Server) unaryInterceptor(ctx context.Context, req any, info *grpc.Unary
 		return resp, statusError(err)
 	}
 	ctx = context.WithValue(ctx, handlerKey{}, handler)
-	resp, err := s.middleware(callHandler)(ctx, req)
+	var resp any
+	var err error
+	if s.unaryEndpoint == nil {
+		resp, err = callHandler(ctx, req)
+	} else {
+		resp, err = s.unaryEndpoint(ctx, req)
+	}
 	if err != nil {
 		return nil, statusError(err)
 	}
