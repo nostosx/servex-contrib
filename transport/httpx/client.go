@@ -190,7 +190,7 @@ func (c *Client) Close() error { return c.tc.Close() }
 
 // do performs a single HTTP exchange with the node at addr.
 func (c *Client) do(ctx context.Context, method string, tmpl template, addr string, req any, newReply func() any) (any, error) {
-	fields, err := jsonFields(req)
+	fields, err := jsonFields(req, usesQuery(method) || tmpl.hasParameters())
 	if err != nil {
 		return nil, err
 	}
@@ -367,8 +367,11 @@ func usesQuery(method string) bool {
 }
 
 // jsonFields returns the top-level members of the JSON encoding of req.
-// Requests that do not encode as a JSON object have no fields.
-func jsonFields(req any) (map[string]jsontext.Value, error) {
+// Requests that do not encode as a JSON object have no fields. When extract is
+// false, retain the JSON encoding check and its error precedence without
+// decoding an unused field map. Body encoding still goes through the codec:
+// custom marshalers may be stateful and custom codecs need not emit JSON.
+func jsonFields(req any, extract bool) (map[string]jsontext.Value, error) {
 	if req == nil {
 		return nil, nil
 	}
@@ -376,7 +379,7 @@ func jsonFields(req any) (map[string]jsontext.Value, error) {
 	if err != nil {
 		return nil, fmt.Errorf("httpx: encode request fields: %w", err)
 	}
-	if jsontext.Value(data).Kind() != '{' {
+	if !extract || jsontext.Value(data).Kind() != '{' {
 		return nil, nil
 	}
 	var fields map[string]jsontext.Value
@@ -423,6 +426,15 @@ func parameterText(v jsontext.Value) (string, bool) {
 
 // template is a parsed request path such as "/v1/users/{id}".
 type template []segment
+
+func (t template) hasParameters() bool {
+	for _, seg := range t {
+		if seg.name != "" {
+			return true
+		}
+	}
+	return false
+}
 
 // segment is a literal path segment or a wildcard.
 type segment struct {

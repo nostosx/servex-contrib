@@ -13,6 +13,10 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- Optimize HTTP fixed-path body requests by skipping unused JSON field-map
+  decoding while preserving the initial JSON validation, custom codec calls,
+  stateful marshaler order and encoding error precedence.
+
 - Add validation/playground using go-playground/validator and
   validation/protovalidate using Buf Protovalidate. Both return endpoint
   middleware, preserve validation causes, distinguish constraint violations
