@@ -34,6 +34,12 @@ func Shutdown(ctx context.Context, injector do.Injector) error
   path; do not retain it, capture the container for lookups, or register services
   inside a provider. Root resolution is serialized to prevent concurrent cyclic
   graphs from deadlocking on do's singleton locks.
+- Resolve handlers/services once during assembly, then inject those values into
+  request handlers. The resulting endpoint has no container lookup in its
+  request path. Even a cached Resolve takes locks and enters samber/do's
+  invocation machinery; do not use the container as a per-request service
+  locator. See [performance measurements](PERFORMANCE.md) for the benchmark
+  scope, results and reproduction command.
 - `Container` is itself a hook named `di`; use `app.WithHooks(container, server)`.
   It shares the lifecycle behavior described below for the native bridge.
 - `Hook.Start` does not resolve providers or start services. Resolve the root
