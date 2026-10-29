@@ -13,6 +13,90 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## cache/memory/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Move the in-memory cache from core and compose it with the shared contrib Loader and explicit Codec.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## cache/redis/v1.1.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## config/consul/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## config/etcd/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## config/nacos/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## database/mongodb/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## database/sql/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Move native database/sql instrumentation, pool lifecycle and readiness from core with explicit telemetry backends.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## discovery/memory/v1.0.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Move the in-memory registry from core and verify discovery with the shared contrib client.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## encoding/yaml/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## metrics/otel/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## metrics/prometheus/v1.2.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Adopt servex v1.4.0 contracts and matching explicit contrib dependencies; preserve backend behavior and refresh regression coverage.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
+## middleware/v1.4.0
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Use explicit no-op telemetry backends and core Logger; reduce attribute allocation and skip timing with no logger.
+- Resolve released dependencies from the public Go proxy without local replacements.
+
 ## broker/kafka/v1.2.0
 
 Release date: 2026-10-29. Requires servex v1.4.0.

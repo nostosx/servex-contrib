@@ -3,7 +3,7 @@ module github.com/nostosx/servex-contrib/config/etcd
 go 1.27.3
 
 require (
-	github.com/nostosx/servex v1.3.0
+	github.com/nostosx/servex v1.4.0
 	github.com/nostosx/servex-contrib/config/viper v1.0.0
 	github.com/nostosx/servex-contrib/encoding/json v1.0.0
 	go.etcd.io/etcd/client/v3 v3.7.2

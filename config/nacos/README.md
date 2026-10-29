@@ -21,7 +21,7 @@ Requires Go 1.27.3. Uses published servex v1.2.0 and kitx v1.0.0 dependencies.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/config/nacos@v1.1.0
+go get github.com/nostosx/servex-contrib/config/nacos@v1.2.0
 ```
 
 The example version corresponds to the tag `config/nacos/v1.1.0`;
@@ -122,5 +122,13 @@ HTTP port + 1000 and can be set with `SERVEX_IT_NACOS_GRPC_PORT`.
 
 Licensed under the [MIT License](../../LICENSE).
 
-Current configuration-engine examples use the unreleased config/viper module
-and matching core API; published versions keep their historical API.
+Configuration-engine examples use config/viper v1.0.0 and servex v1.4.0.
+Earlier releases keep their historical API.
+
+## Release
+
+Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/config/nacos@v1.2.0
+```

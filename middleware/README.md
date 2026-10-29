@@ -81,7 +81,7 @@ and kitx v1.0.0, without local replacements.
 Run this in your application module (create one with `go mod init` if needed):
 
 ```sh
-go get github.com/nostosx/servex-contrib/middleware@v1.3.0
+go get github.com/nostosx/servex-contrib/middleware@v1.4.0
 ```
 
 The example version corresponds to the tag `middleware/v1.3.0`;
@@ -189,6 +189,14 @@ There are no integration tests.
 
 Licensed under the [MIT License](../LICENSE).
 
-Unreleased logger API: pass a core logger.Logger, wrapping an explicitly
+Logger API in the 2026-10-29 release: pass a core logger.Logger, wrapping an explicitly
 selected slog or Zap backend. Nil disables logging; backend adapters live in
 logger/slog and logger/zap. Historical published versions accept *slog.Logger.
+
+## Release
+
+Version v1.4.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+
+```sh
+go get github.com/nostosx/servex-contrib/middleware@v1.4.0
+```

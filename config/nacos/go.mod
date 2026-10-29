@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/nacos-group/nacos-sdk-go/v2 v2.3.5
-	github.com/nostosx/servex v1.3.0
+	github.com/nostosx/servex v1.4.0
 	github.com/nostosx/servex-contrib/config/viper v1.0.0
 	github.com/nostosx/servex-contrib/encoding/json v1.0.0
 )

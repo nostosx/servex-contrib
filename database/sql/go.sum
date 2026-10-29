@@ -1,0 +1,6 @@
+github.com/nostosx/servex v1.4.0 h1:0B8SjcbBuIxAkygTsbZKFtBZ7QJ7k4od8s3G5xWqpWc=
+github.com/nostosx/servex v1.4.0/go.mod h1:tOSGFq4M6GVGGsm7SHTNd8SGCr0Kd3YsJ+9abwAA/Cw=
+github.com/nostosx/servex-contrib/metrics/noop v1.0.0 h1:Ltz/W4xdT3B1GdBP+VTbZSRMJuDMLlqFKV3qEo1oaGg=
+github.com/nostosx/servex-contrib/metrics/noop v1.0.0/go.mod h1:V8CQ1GlVkRNNizau29YkiLn3qogBRh5oyoHMqsD+CzI=
+github.com/nostosx/servex-contrib/tracing/noop v1.0.0 h1:M4hSmeFFNexD1gFo5ivHEu+HfqSIzeE4TPVe7HWebBA=
+github.com/nostosx/servex-contrib/tracing/noop v1.0.0/go.mod h1:qFrfv/tDl0/LNcO3X2HjdMM4vbzujRPoXTcUkmKkpZI=

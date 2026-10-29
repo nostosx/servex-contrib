@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/alicebob/miniredis/v2 v2.40.0
-	github.com/nostosx/servex v1.3.0
+	github.com/nostosx/servex v1.4.0
 	github.com/nostosx/servex-contrib/cache/loader v1.0.0
 	github.com/nostosx/servex-contrib/encoding/json v1.0.0
 	github.com/redis/go-redis/v9 v9.23.0
