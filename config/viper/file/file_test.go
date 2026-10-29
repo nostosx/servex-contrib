@@ -284,9 +284,15 @@ func TestConfigWatchReloadsFile(t *testing.T) {
 	deadline := time.After(waitTimeout)
 	base := time.Now().Add(time.Hour)
 	for i := 1; ; i++ {
-		writeFile(t, path, fmt.Sprintf(`{"http":{"addr":":8000","timeout":"2s"},"v":%d}`, i))
+		// Publish a complete revision; an in-place truncate/write may expose a
+		// valid empty configuration before the new contents are written.
+		replacement := filepath.Join(filepath.Dir(path), "app.next")
+		writeFile(t, replacement, fmt.Sprintf(`{"http":{"addr":":8000","timeout":"2s"},"v":%d}`, i))
 		mtime := base.Add(time.Duration(i) * time.Second)
-		if err := os.Chtimes(path, mtime, mtime); err != nil {
+		if err := os.Chtimes(replacement, mtime, mtime); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(replacement, path); err != nil {
 			t.Fatal(err)
 		}
 		select {

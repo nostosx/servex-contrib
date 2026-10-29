@@ -100,8 +100,8 @@ own source modules.
 
 ## Release
 
-Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
+Version v1.0.1, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
 
 ```sh
-go get github.com/nostosx/servex-contrib/config/viper@v1.0.0
+go get github.com/nostosx/servex-contrib/config/viper@v1.0.1
 ```

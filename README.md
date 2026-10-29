@@ -56,7 +56,7 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`config/consul`](config/consul) | v1.2.0 | `config.Source` and `config.Watchable` on the Consul KV store | `github.com/hashicorp/consul/api` |
 | [`config/etcd`](config/etcd) | v1.2.0 | `config.Source` and `config.Watchable` on etcd | `go.etcd.io/etcd/client/v3` |
 | [`config/nacos`](config/nacos) | v1.2.0 | `config.Source` and `config.Watchable` on the Nacos configuration service | `github.com/nacos-group/nacos-sdk-go/v2` |
-| [`config/viper`](config/viper) | v1.0.0 | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
+| [`config/viper`](config/viper) | v1.0.1 | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
 | [`database/mongodb`](database/mongodb) | v1.2.0 | Tracing and metrics for the MongoDB driver, lifecycle Hook and health check | `go.mongodb.org/mongo-driver/v2` |
 | [`di/do`](di/do) | v1.1.0 | `di.Container` on samber/do with lifecycle and readiness integration, plus centralized wiring examples | `github.com/samber/do/v2` |
 | [`discovery/consul`](discovery/consul) | v1.2.0 | `discovery.Registrar` and `discovery.Discoverer` on the Consul agent | `github.com/hashicorp/consul/api` |

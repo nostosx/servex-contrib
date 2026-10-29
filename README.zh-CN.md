@@ -46,7 +46,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`config/consul`](config/consul) | v1.2.0 | Consul KV 上的 `config.Source`、`config.Watchable` | `github.com/hashicorp/consul/api` |
 | [`config/etcd`](config/etcd) | v1.2.0 | etcd 上的配置读取与监听 | `go.etcd.io/etcd/client/v3` |
 | [`config/nacos`](config/nacos) | v1.2.0 | Nacos 配置服务上的读取与监听 | `github.com/nacos-group/nacos-sdk-go/v2` |
-| [`config/viper`](config/viper) | v1.0.0 | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
+| [`config/viper`](config/viper) | v1.0.1 | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
 | [`database/mongodb`](database/mongodb) | v1.2.0 | MongoDB 驱动的追踪、指标、生命周期与健康检查 | `go.mongodb.org/mongo-driver/v2` |
 | [`di/do`](di/do) | v1.1.0 | 基于 samber/do 实现 `di.Container`，接入生命周期与就绪检查，提供集中装配示例 | `github.com/samber/do/v2` |
 | [`discovery/consul`](discovery/consul) | v1.2.0 | Consul agent 上的 `discovery.Registrar`、`discovery.Discoverer` | `github.com/hashicorp/consul/api` |

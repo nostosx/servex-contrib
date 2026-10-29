@@ -13,6 +13,14 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## config/viper/v1.0.1
+
+Release date: 2026-10-29. Requires servex v1.4.0.
+
+- Publish complete revisions atomically in the configuration file-watch test.
+  In-place truncation can expose a valid empty configuration and falsely fail
+  the reload assertion. Production configuration behavior and APIs are unchanged.
+
 ## discovery/consul/v1.2.0
 
 Release date: 2026-10-29. Requires servex v1.4.0.
