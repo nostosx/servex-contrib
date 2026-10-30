@@ -9,6 +9,16 @@ explicitly by this contrib adapter; the shared core client selects neither.
 
 ## Source migration
 
+Browser-facing applications can compose the optional transport/cors adapter and
+Go's standard-library http.CrossOriginProtection through WithHTTPMiddleware.
+CORS belongs outside authentication/routing so preflight requests terminate
+before credentials are required. CrossOriginProtection rejects unsafe cross-site
+browser requests and needs explicit trusted origins when a separate application
+origin is permitted. It is independent of CORS response access policy. Keep
+GET/HEAD/OPTIONS free of state changes. A complete HTTPS example lives in
+[transport/cors](../cors/README.md); csrf_test.go exercises the standard-library
+composition without adding a CSRF SDK to this module.
+
 Requires servex v1.4.0. Change
 imports from the previous core location to
 `github.com/nostosx/servex-contrib/transport/httpx`. Constructors/options
