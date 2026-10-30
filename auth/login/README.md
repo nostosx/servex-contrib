@@ -47,12 +47,12 @@ in production. Mount CORS and standard-library `http.CrossOriginProtection`
 outside Session/login middleware with explicit trusted origins. The application
 still owns authorization and account mapping.
 
-This module and some peers are unreleased. From the contrib root, validate:
+Validate this module and its published peers from the contrib root:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES='auth/login auth/oauth2redis'
+MODULES='auth/login auth/oauth2redis' task check lint vulncheck
 ```
 
-The helper uses a temporary external modfile. Intended `v1.0.0` requirements are
-not public installation evidence. Tests use a locally signed OIDC/JWKS fixture
-and memory/miniredis backends; they do not establish external provider acceptance.
+Requirements and checksums resolve through the public Go proxy without source
+replacements. Tests use a locally signed OIDC/JWKS fixture and memory/miniredis
+backends; they do not establish external provider acceptance.

@@ -51,7 +51,7 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`auth/jwt`](auth/jwt) | v1.0.0 | JWT signing and typed verification for application auth callbacks | `github.com/golang-jwt/jwt/v5` |
 | [`auth/oauth2`](auth/oauth2) | v1.0.0 | PKCE code flow, bound one-time state, token refresh and client credentials | official `golang.org/x/oauth2` |
 | [`auth/oauth2redis`](auth/oauth2redis) | v1.0.0 | Atomic shared OAuth2 state using the Session Redis pool | official `github.com/redis/go-redis/v9` |
-| [`auth/login`](auth/login) | Unreleased | OAuth2/OIDC or password login, Session rotation and typed application principals | OAuth2, OIDC, Session and auth middleware |
+| [`auth/login`](auth/login) | v1.0.0 | OAuth2/OIDC or password login, Session rotation and typed application principals | OAuth2, OIDC, Session and auth middleware |
 | [`lifecycle`](lifecycle) | v1.0.0 | Explicit owned/borrowed resources and reverse-order assembly cleanup | standard library, core |
 | [`auth/password`](auth/password) | v1.0.0 | Argon2id PHC password hashes, bounded verification and rehash policy | official `golang.org/x/crypto/argon2` |
 | [`storage/s3`](storage/s3) | v1.0.0 | Bucket-scoped object CRUD, listing and presigned transfers | official AWS SDK for Go v2 |
@@ -178,11 +178,9 @@ constructors at assembly time. S3 listing returns store-relative keys, so each
 listed key can be passed directly to Get/Delete. See the full application in
 [servex-examples](https://github.com/nostosx/servex-examples).
 
-These composition changes are unreleased. For their matching source checks use
-`bash .github/scripts/check-source.sh check lint vulncheck MODULES='auth/login auth/oauth2redis'`.
-The helper uses an external temporary modfile; canonical manifests contain no
-source replacements or invented peer checksums. Public installation must be
-verified after coordinated module publication.
+The composition modules use published dependencies. Validate them with
+`MODULES='auth/login auth/oauth2redis' task check lint vulncheck`; no sibling
+checkout or source replacement is required.
 
 ## Development
 
@@ -271,7 +269,7 @@ exports the required variable, runs only `TestIntegration*` tests and rejects
 absent, skipped, failed or unfinished integration results. The service
 container is removed even on failure; kind-action cleans up its cluster.
 The jobs are independent and run on pull requests, pushes to `main` or manual
-dispatch. Unreleased Session/login peer checks explicitly use temporary source
+dispatch. Explicit development helpers can use temporary source
 modfiles; released module checks resolve public dependencies. Refresh matching
 dependency versions and checksums before release.
 Passing unit checks does not substitute for service integration.

@@ -41,7 +41,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`auth/jwt`](auth/jwt) | v1.0.0 | JWT 签发与类型化验证，供应用鉴权回调使用 | `github.com/golang-jwt/jwt/v5` |
 | [`auth/oauth2`](auth/oauth2) | v1.0.0 | PKCE 授权码流程、浏览器绑定的一次性 state、刷新及客户端凭证 | Go 官方 `golang.org/x/oauth2` |
 | [`auth/oauth2redis`](auth/oauth2redis) | v1.0.0 | 与 Session 共用 Redis 连接池的原子 OAuth2 state 存储 | Redis 官方 `github.com/redis/go-redis/v9` |
-| [`auth/login`](auth/login) | 未发布 | OAuth2/OIDC 或密码登录、Session 轮换及统一业务身份 | OAuth2、OIDC、Session 及 auth 中间件 |
+| [`auth/login`](auth/login) | v1.0.0 | OAuth2/OIDC 或密码登录、Session 轮换及统一业务身份 | OAuth2、OIDC、Session 及 auth 中间件 |
 | [`lifecycle`](lifecycle) | v1.0.0 | 显式资源所有权、装配失败清理及逆序关闭 | 标准库、core |
 | [`auth/password`](auth/password) | v1.0.0 | Argon2id 密码哈希、受限参数验证及升级判断 | Go 官方 `golang.org/x/crypto/argon2` |
 | [`storage/s3`](storage/s3) | v1.0.0 | 对象上传下载、删除、元数据、分页及预签名 | AWS 官方 Go SDK v2 |
@@ -153,10 +153,9 @@ HTTP、gRPC unary、完整 stream 及 worker，各作用范围显式添加鉴权
 可以直接用于 Get/Delete。完整应用见
 [servex-examples](https://github.com/nostosx/servex-examples)。
 
-本轮组合改动尚未发布。源码配套检查使用
-`bash .github/scripts/check-source.sh check lint vulncheck MODULES='auth/login auth/oauth2redis'`。
-检查只在仓库外临时 modfile 中替换源码，不向正式清单写入 replace 或虚构
-checksum。公开安装能力需在配套模块发布后单独验收。
+组合模块使用已发布依赖。运行
+`MODULES='auth/login auth/oauth2redis' task check lint vulncheck` 即可验证，
+无需相邻仓库或源码替换。
 
 ## 开发
 

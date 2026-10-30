@@ -23,8 +23,7 @@ defaults:
   run:
     shell: bash
 
-# Released modules resolve public dependencies. Unreleased Session/login peers
-# use explicit source helpers with external temporary modfiles.
+# Every module and integration resolves published dependencies without overrides.
 # Preserve the checkout name because depguard uses the servex-contrib directory.
 jobs:
   unit:
@@ -118,11 +117,7 @@ jobs:
         working-directory: servex-contrib
         env:
           CHECK_MODULE: ${{ matrix.module }}
-        run: |
-          case "$CHECK_MODULE" in
-            auth/login) bash .github/scripts/check-source.sh check MODULES="$CHECK_MODULE" ;;
-            *) task check MODULES="$CHECK_MODULE" ;;
-          esac
+        run: task check MODULES="$CHECK_MODULE"
 
   lint:
     name: Lint (Go 1.27.3)
@@ -151,10 +146,7 @@ jobs:
           install-only: true
       - name: Lint all modules
         working-directory: servex-contrib
-        run: |
-          modules=$(for file in */go.mod */*/go.mod; do module="${file%/go.mod}"; case "$module" in auth/login) ;; *) printf '%s\n' "$module" ;; esac; done)
-          task lint MODULES="$modules"
-          bash .github/scripts/check-source.sh lint MODULES='auth/login'
+        run: task lint
 
   vulncheck:
     name: Reachable vulnerabilities
@@ -180,10 +172,7 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
       - name: Scan all modules (normal and integration builds)
         working-directory: servex-contrib
-        run: |
-          modules=$(for file in */go.mod */*/go.mod; do module="${file%/go.mod}"; case "$module" in auth/login) ;; *) printf '%s\n' "$module" ;; esac; done)
-          task vulncheck MODULES="$modules"
-          bash .github/scripts/check-source.sh vulncheck MODULES='auth/login'
+        run: task vulncheck
 
   integration:
     name: Integration (${{ matrix.backend }})

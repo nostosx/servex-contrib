@@ -8,7 +8,7 @@ require (
 	github.com/nostosx/servex-contrib/auth/oauth2 v1.0.0
 	github.com/nostosx/servex-contrib/auth/oauth2redis v1.0.0
 	github.com/nostosx/servex-contrib/auth/oidc v1.0.0
-	github.com/nostosx/servex-contrib/middleware v1.4.0
+	github.com/nostosx/servex-contrib/middleware v1.5.0
 	github.com/nostosx/servex-contrib/session v1.0.0
 	github.com/nostosx/servex-contrib/session/redis v1.0.0
 	github.com/redis/go-redis/v9 v9.23.0
