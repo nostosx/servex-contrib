@@ -1,6 +1,6 @@
 # lifecycle
 
-**Unreleased.** Explicit resource ownership and application assembly cleanup for
+**v1.0.0 (2026-10-31).** Explicit resource ownership and application assembly cleanup for
 servex. Go 1.27.3; MIT. This module depends only on the standard library and
 published servex contracts. No SDK is selected and no Close method is discovered
 implicitly.

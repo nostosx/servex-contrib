@@ -1,6 +1,6 @@
 # goose
 
-**Unreleased.** Instance-scoped database migrations using community
+**v1.0.0 (2026-10-31).** Instance-scoped database migrations using community
 github.com/pressly/goose/v3 v3.29.0 (MIT), Go 1.27.3. PostgreSQL acceptance uses
 pgx v5.11.0. Production uses only Goose and standard library; pgx/sqlmock are tests.
 

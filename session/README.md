@@ -1,7 +1,7 @@
 # session
 
 Server-side browser sessions implemented directly with the Go standard library.
-No SCS or other session SDK is used. This independent module is **unreleased**,
+No SCS or other session SDK is used. This independent module is released as v1.0.0,
 requires Go 1.27.3 and is MIT licensed.
 
 ## API and defaults
@@ -107,7 +107,7 @@ Unsupported writer capabilities return http.ErrNotSupported.
 MemoryStore loses sessions on restart and cannot share them across replicas.
 For production shared storage, use the independent [Redis adapter](redis/README.md),
 which owns the official Redis SDK and atomic persistence scripts. It currently
-supports standalone/Sentinel clients; its source is unreleased with this module.
+supports standalone/Sentinel clients; it is released independently with this module.
 Its capacity bounds stored records, not simultaneous request snapshots. Expired
 entries are removed on access/capacity pressure. A shared Redis/SQL implementation
 must honor the documented atomic Store contract. Redis lives in a separate module.

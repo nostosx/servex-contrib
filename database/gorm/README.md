@@ -1,7 +1,7 @@
 # database/gorm
 
 Native GORM integration for servex observability, lifecycle and readiness.
-This independent module is **unreleased**, requires Go 1.27.3 and is MIT licensed.
+This independent module is released as v1.0.0, requires Go 1.27.3 and is MIT licensed.
 It uses GORM v1.31.2, published servex v1.4.0 and database/sql v1.0.0.
 The PostgreSQL resource uses the official GORM PostgreSQL driver v1.6.3 and pgx
 v5.10.0. SQL pool ownership, ORM instrumentation and readiness share one object.

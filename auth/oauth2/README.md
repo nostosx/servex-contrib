@@ -1,6 +1,6 @@
 # oauth2
 
-**Unreleased.** Authorization-code/PKCE orchestration with the Go project's
+**v1.0.0 (2026-10-31).** Authorization-code/PKCE orchestration with the Go project's
 official golang.org/x/oauth2 v0.37.0. Go 1.27.3; MIT. Production imports only the
 standard library and the official OAuth2 module. Existing auth/oidc remains the
 ID-token verifier; neither tokens nor user permissions are silently trusted.

@@ -1,6 +1,6 @@
 # etcd coordination
 
-**Unreleased.** Lease-backed locks and leader election using the official
+**v1.0.0 (2026-10-31).** Lease-backed locks and leader election using the official
 go.etcd.io/etcd/client/v3/concurrency v3.7.3. Go 1.27.3; MIT. The official
 embedded server is a test-only dependency. No Redis lock algorithm is added.
 

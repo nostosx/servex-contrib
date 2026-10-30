@@ -40,7 +40,7 @@ see [module versioning](../../README.md#versioning).
 
 ## Usage
 
-### Periodic enqueueing (unreleased source API)
+### Periodic enqueueing (v1.3.0)
 
 NewScheduler adds native asynq periodic enqueueing as an app.Hook. The existing
 v1.2.0 tag does not contain this API. The following complete program enqueues a

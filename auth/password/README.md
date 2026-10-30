@@ -1,6 +1,6 @@
 # password
 
-**Unreleased.** Argon2id password hashing using the Go project's official
+**v1.0.0 (2026-10-31).** Argon2id password hashing using the Go project's official
 `golang.org/x/crypto/argon2` v0.58.0. Go 1.27.3; MIT. No user database or login
 handler is imposed. Algorithms come from x/crypto; PHC encoding is local glue.
 
@@ -61,4 +61,4 @@ owns password buffers; the adapter clears its derived-key buffers only.
 
 From the repository root: `task check lint vulncheck MODULES=auth/password`.
 Tests cover matching, mismatch, fresh salts, policy upgrades, malformed/excessive
-parameters and cancellation. This module is not yet publicly installable.
+parameters and cancellation. Install this module at v1.0.0.

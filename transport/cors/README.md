@@ -1,6 +1,6 @@
 # cors
 
-**Unreleased.** Explicit HTTP browser-origin policy using community rs/cors
+**v1.0.0 (2026-10-31).** Explicit HTTP browser-origin policy using community rs/cors
 v1.11.1 (MIT). Go 1.27.3. Independent SDK module; generic middleware remains
 SDK-free. Callbacks/options retain their upstream meanings.
 

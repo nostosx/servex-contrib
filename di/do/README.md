@@ -79,7 +79,7 @@ func Shutdown(ctx context.Context, injector do.Injector) error
   Do not register or resolve new services after shutdown begins.
 - Both functions panic on a nil injector instead of using do's global default.
 
-## Plain constructor registration (unreleased)
+## Plain constructor registration (v1.2.0)
 
 ProvideConstructors removes provider-closure boilerplate while keeping business
 constructors independent of the container. It is a new source API, not part of

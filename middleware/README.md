@@ -38,7 +38,7 @@ For gRPC streams, explicitly assemble `grpcx.WithStreamMiddleware` or
 `grpcx.WithClientStreamMiddleware`; the unary chain does not apply to streams.
 See the grpcx README for lifecycle and retry constraints.
 
-## Shared protocol profiles (unreleased)
+## Shared protocol profiles (v1.5.0)
 
 The new `middleware/profile` package defines observability once in `app.go`, then
 returns independent middleware slices for each explicit transport scope. It is

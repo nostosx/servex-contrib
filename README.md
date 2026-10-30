@@ -49,19 +49,19 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`cache/memory`](cache/memory) | v1.0.0 | `cache.Cache` in memory | kitx/ttlcache |
 | [`broker/memory`](broker/memory) | v1.0.0 | `broker.Publisher` / `Subscriber` in memory | standard library, core, kitx |
 | [`auth/jwt`](auth/jwt) | Unreleased | JWT signing and typed verification for application auth callbacks | `github.com/golang-jwt/jwt/v5` |
-| [`auth/oauth2`](auth/oauth2) | Unreleased | PKCE code flow, bound one-time state, token refresh and client credentials | official `golang.org/x/oauth2` |
+| [`auth/oauth2`](auth/oauth2) | v1.0.0 | PKCE code flow, bound one-time state, token refresh and client credentials | official `golang.org/x/oauth2` |
 | [`auth/oauth2redis`](auth/oauth2redis) | Unreleased | Atomic shared OAuth2 state using the Session Redis pool | official `github.com/redis/go-redis/v9` |
 | [`auth/login`](auth/login) | Unreleased | OAuth2/OIDC or password login, Session rotation and typed application principals | OAuth2, OIDC, Session and auth middleware |
-| [`lifecycle`](lifecycle) | Unreleased | Explicit owned/borrowed resources and reverse-order assembly cleanup | standard library, core |
-| [`auth/password`](auth/password) | Unreleased | Argon2id PHC password hashes, bounded verification and rehash policy | official `golang.org/x/crypto/argon2` |
-| [`storage/s3`](storage/s3) | Unreleased | Bucket-scoped object CRUD, listing and presigned transfers | official AWS SDK for Go v2 |
-| [`scheduler/cron`](scheduler/cron) | Unreleased | Context-aware in-process jobs, overlap suppression and application lifecycle | `github.com/robfig/cron/v3` |
-| [`database/goose`](database/goose) | Unreleased | Explicit instance-scoped SQL migrations and PostgreSQL acceptance | `github.com/pressly/goose/v3` |
-| [`coordination/etcd`](coordination/etcd) | Unreleased | Lease locks, election and fencing revisions | official etcd concurrency SDK |
-| [`transport/cors`](transport/cors) | Unreleased | Explicit browser-origin policy and preflight handling | `github.com/rs/cors` |
-| [`session`](session) | Unreleased | Server-side browser sessions, atomic token rotation and bounded memory store | standard library |
+| [`lifecycle`](lifecycle) | v1.0.0 | Explicit owned/borrowed resources and reverse-order assembly cleanup | standard library, core |
+| [`auth/password`](auth/password) | v1.0.0 | Argon2id PHC password hashes, bounded verification and rehash policy | official `golang.org/x/crypto/argon2` |
+| [`storage/s3`](storage/s3) | v1.0.0 | Bucket-scoped object CRUD, listing and presigned transfers | official AWS SDK for Go v2 |
+| [`scheduler/cron`](scheduler/cron) | v1.0.0 | Context-aware in-process jobs, overlap suppression and application lifecycle | `github.com/robfig/cron/v3` |
+| [`database/goose`](database/goose) | v1.0.0 | Explicit instance-scoped SQL migrations and PostgreSQL acceptance | `github.com/pressly/goose/v3` |
+| [`coordination/etcd`](coordination/etcd) | v1.0.0 | Lease locks, election and fencing revisions | official etcd concurrency SDK |
+| [`transport/cors`](transport/cors) | v1.0.0 | Explicit browser-origin policy and preflight handling | `github.com/rs/cors` |
+| [`session`](session) | v1.0.0 | Server-side browser sessions, atomic token rotation and bounded memory store | standard library |
 | [`session/redis`](session/redis) | Unreleased | Shared Session Store with atomic version checks, token rotation and TTL | official `github.com/redis/go-redis/v9` |
-| [`database/gorm`](database/gorm) | Unreleased | Native GORM telemetry, lifecycle and readiness, with PostgreSQL acceptance | `gorm.io/gorm` |
+| [`database/gorm`](database/gorm) | v1.0.0 | Native GORM telemetry, lifecycle and readiness, with PostgreSQL acceptance | `gorm.io/gorm` |
 | [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on Apache Kafka | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on NATS JetStream | `github.com/nats-io/nats.go` |
@@ -72,19 +72,19 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`config/nacos`](config/nacos) | v1.2.0 | `config.Source` and `config.Watchable` on the Nacos configuration service | `github.com/nacos-group/nacos-sdk-go/v2` |
 | [`config/viper`](config/viper) | v1.0.1 | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
 | [`database/mongodb`](database/mongodb) | v1.2.0 | Tracing and metrics for the MongoDB driver, lifecycle Hook and health check | `go.mongodb.org/mongo-driver/v2` |
-| [`di/do`](di/do) | v1.1.0 | `di.Container` on samber/do with lifecycle and readiness integration, plus centralized wiring examples | `github.com/samber/do/v2` |
+| [`di/do`](di/do) | v1.2.0 | `di.Container` on samber/do with lifecycle and readiness integration, plus centralized wiring examples | `github.com/samber/do/v2` |
 | [`discovery/consul`](discovery/consul) | v1.2.0 | `discovery.Registrar` and `discovery.Discoverer` on the Consul agent | `github.com/hashicorp/consul/api` |
 | [`discovery/etcd`](discovery/etcd) | v1.2.0 | `discovery.Registrar` and `discovery.Discoverer` on etcd leases | `go.etcd.io/etcd/client/v3` |
 | [`discovery/kubernetes`](discovery/kubernetes) | v1.2.0 | `discovery.Discoverer` on Kubernetes EndpointSlices | `k8s.io/client-go` |
 | [`discovery/nacos`](discovery/nacos) | v1.2.0 | `discovery.Registrar` and `discovery.Discoverer` on the Nacos naming service | `github.com/nacos-group/nacos-sdk-go/v2` |
 | [`encoding/proto`](encoding/proto) | v1.1.0 | `encoding.Codec` named `proto` | `google.golang.org/protobuf` |
 | [`encoding/yaml`](encoding/yaml) | v1.2.0 | `encoding.Codec` named `yaml` | `go.yaml.in/yaml/v3` |
-| [`jobqueue/asynq`](jobqueue/asynq) | v1.2.0 | `jobqueue.Enqueuer` and `jobqueue.Runner` on asynq (Redis) | `github.com/hibiken/asynq` |
+| [`jobqueue/asynq`](jobqueue/asynq) | v1.3.0 | `jobqueue.Enqueuer` and `jobqueue.Runner` on asynq (Redis) | `github.com/hibiken/asynq` |
 | [`logger/slog`](logger/slog) | v1.0.0 | `logger.Logger` | `log/slog` |
 | [`logger/zap`](logger/zap) | v1.0.0 | `logger.Logger` | `go.uber.org/zap` |
 | [`metrics/otel`](metrics/otel) | v1.2.0 | `metrics.Meter` on an OpenTelemetry meter | `go.opentelemetry.io/otel/metric` |
 | [`metrics/prometheus`](metrics/prometheus) | v1.2.0 | `metrics.Meter` on the Prometheus client | `github.com/prometheus/client_golang` |
-| [`middleware`](middleware) | v1.4.0 | `endpoint.Middleware`: auth, circuitbreaker, logging, metrics, ratelimit, recovery, retry, timeout, tracing, validate | standard library, servex, kitx and no-op telemetry |
+| [`middleware`](middleware) | v1.5.0 | `endpoint.Middleware`: auth, circuitbreaker, logging, metrics, ratelimit, recovery, retry, timeout, tracing, validate | standard library, servex, kitx and no-op telemetry |
 | [`ratelimit/rate`](ratelimit/rate) | v1.0.0 | Bounded keyed local token buckets for the generic rate-limit middleware | `golang.org/x/time/rate` |
 | [`ratelimit/redis`](ratelimit/redis) | v1.0.0 | Atomic shared Redis token buckets with caller context, retry hints and backend errors | `github.com/redis/go-redis/v9` |
 | [`selector`](selector) | v1.2.0 | `selector.Selector`: weighted random, roundrobin (smooth weighted), p2c (Power of Two Choices) | standard library, servex and kitx |

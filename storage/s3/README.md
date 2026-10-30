@@ -1,6 +1,6 @@
 # s3
 
-**Unreleased.** General object storage using the official AWS SDK for Go v2:
+**v1.0.0 (2026-10-31).** General object storage using the official AWS SDK for Go v2:
 service/s3 v1.114.6, aws v1.47.5. Go 1.27.3; MIT. This is independent of
 agentx-contrib/s3, which loads RAG documents rather than providing object CRUD.
 
@@ -85,7 +85,7 @@ for _, object := range page.Contents {
 
 This is an assembly fragment using the store/context above. Backend results with
 missing, invalid or out-of-namespace keys are rejected. No unbounded listing or
-object buffering occurs. This normalized-key behavior belongs to the unreleased
+object buffering occurs. This normalized-key behavior is included in the
 adapter API; advanced raw SDK calls continue to use full bucket keys.
 
 PresignGet/PresignPut return the SDK URL, method and signed headers. TTL is one

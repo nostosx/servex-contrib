@@ -1,6 +1,6 @@
 # cron
 
-**Unreleased.** In-process scheduling with community robfig/cron/v3 v3.0.1
+**v1.0.0 (2026-10-31).** In-process scheduling with community robfig/cron/v3 v3.0.1
 (MIT), Go 1.27.3. Implements servex app.Hook. No Redis or durable storage is
 required. The upstream version is mature but has a slow release cadence.
 

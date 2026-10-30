@@ -39,19 +39,19 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`cache/memory`](cache/memory) | v1.0.0 | 内存 `cache.Cache` | kitx/ttlcache |
 | [`broker/memory`](broker/memory) | v1.0.0 | 内存发布与订阅 | 标准库、core、kitx |
 | [`auth/jwt`](auth/jwt) | 未发布 | JWT 签发与类型化验证，供应用鉴权回调使用 | `github.com/golang-jwt/jwt/v5` |
-| [`auth/oauth2`](auth/oauth2) | 未发布 | PKCE 授权码流程、浏览器绑定的一次性 state、刷新及客户端凭证 | Go 官方 `golang.org/x/oauth2` |
+| [`auth/oauth2`](auth/oauth2) | v1.0.0 | PKCE 授权码流程、浏览器绑定的一次性 state、刷新及客户端凭证 | Go 官方 `golang.org/x/oauth2` |
 | [`auth/oauth2redis`](auth/oauth2redis) | 未发布 | 与 Session 共用 Redis 连接池的原子 OAuth2 state 存储 | Redis 官方 `github.com/redis/go-redis/v9` |
 | [`auth/login`](auth/login) | 未发布 | OAuth2/OIDC 或密码登录、Session 轮换及统一业务身份 | OAuth2、OIDC、Session 及 auth 中间件 |
-| [`lifecycle`](lifecycle) | 未发布 | 显式资源所有权、装配失败清理及逆序关闭 | 标准库、core |
-| [`auth/password`](auth/password) | 未发布 | Argon2id 密码哈希、受限参数验证及升级判断 | Go 官方 `golang.org/x/crypto/argon2` |
-| [`storage/s3`](storage/s3) | 未发布 | 对象上传下载、删除、元数据、分页及预签名 | AWS 官方 Go SDK v2 |
-| [`scheduler/cron`](scheduler/cron) | 未发布 | 进程内周期任务、取消、重叠抑制与应用生命周期 | 社区 `github.com/robfig/cron/v3` |
-| [`database/goose`](database/goose) | 未发布 | 显式 SQL 版本迁移、状态及 PostgreSQL 验收 | 社区 `github.com/pressly/goose/v3` |
-| [`coordination/etcd`](coordination/etcd) | 未发布 | 租约锁、选主及 fencing revision | etcd 官方 concurrency SDK |
-| [`transport/cors`](transport/cors) | 未发布 | 显式来源策略、凭证配置与预检处理 | 社区 `github.com/rs/cors` |
-| [`session`](session) | 未发布 | 自有服务端 Session、安全 Cookie、原子 Token 轮换及有界内存存储 | 标准库 |
+| [`lifecycle`](lifecycle) | v1.0.0 | 显式资源所有权、装配失败清理及逆序关闭 | 标准库、core |
+| [`auth/password`](auth/password) | v1.0.0 | Argon2id 密码哈希、受限参数验证及升级判断 | Go 官方 `golang.org/x/crypto/argon2` |
+| [`storage/s3`](storage/s3) | v1.0.0 | 对象上传下载、删除、元数据、分页及预签名 | AWS 官方 Go SDK v2 |
+| [`scheduler/cron`](scheduler/cron) | v1.0.0 | 进程内周期任务、取消、重叠抑制与应用生命周期 | 社区 `github.com/robfig/cron/v3` |
+| [`database/goose`](database/goose) | v1.0.0 | 显式 SQL 版本迁移、状态及 PostgreSQL 验收 | 社区 `github.com/pressly/goose/v3` |
+| [`coordination/etcd`](coordination/etcd) | v1.0.0 | 租约锁、选主及 fencing revision | etcd 官方 concurrency SDK |
+| [`transport/cors`](transport/cors) | v1.0.0 | 显式来源策略、凭证配置与预检处理 | 社区 `github.com/rs/cors` |
+| [`session`](session) | v1.0.0 | 自有服务端 Session、安全 Cookie、原子 Token 轮换及有界内存存储 | 标准库 |
 | [`session/redis`](session/redis) | 未发布 | 共享 Session 存储、原子版本校验与轮换、TTL；支持单机/Sentinel | Redis 官方 `github.com/redis/go-redis/v9` |
-| [`database/gorm`](database/gorm) | 未发布 | GORM 原生操作观测、生命周期与健康检查，包含 PostgreSQL 验收 | `gorm.io/gorm` |
+| [`database/gorm`](database/gorm) | v1.0.0 | GORM 原生操作观测、生命周期与健康检查，包含 PostgreSQL 验收 | `gorm.io/gorm` |
 | [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC 发现、ID Token 签名与 JWKS 验证，供应用鉴权回调使用 | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | v1.2.0 | Apache Kafka 上的 `broker.Publisher`、`broker.Subscriber` | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | v1.2.0 | NATS JetStream 上的发布与订阅 | `github.com/nats-io/nats.go` |
@@ -62,19 +62,19 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`config/nacos`](config/nacos) | v1.2.0 | Nacos 配置服务上的读取与监听 | `github.com/nacos-group/nacos-sdk-go/v2` |
 | [`config/viper`](config/viper) | v1.0.1 | `config.Config`, file/env sources, snapshots and validation | `github.com/spf13/viper` |
 | [`database/mongodb`](database/mongodb) | v1.2.0 | MongoDB 驱动的追踪、指标、生命周期与健康检查 | `go.mongodb.org/mongo-driver/v2` |
-| [`di/do`](di/do) | v1.1.0 | 基于 samber/do 实现 `di.Container`，接入生命周期与就绪检查，提供集中装配示例 | `github.com/samber/do/v2` |
+| [`di/do`](di/do) | v1.2.0 | 基于 samber/do 实现 `di.Container`，接入生命周期与就绪检查，提供集中装配示例 | `github.com/samber/do/v2` |
 | [`discovery/consul`](discovery/consul) | v1.2.0 | Consul agent 上的 `discovery.Registrar`、`discovery.Discoverer` | `github.com/hashicorp/consul/api` |
 | [`discovery/etcd`](discovery/etcd) | v1.2.0 | 基于 etcd lease 的注册与发现 | `go.etcd.io/etcd/client/v3` |
 | [`discovery/kubernetes`](discovery/kubernetes) | v1.2.0 | 基于 EndpointSlice 的服务发现 | `k8s.io/client-go` |
 | [`discovery/nacos`](discovery/nacos) | v1.2.0 | Nacos naming 服务上的注册与发现 | `github.com/nacos-group/nacos-sdk-go/v2` |
 | [`encoding/proto`](encoding/proto) | v1.1.0 | 名为 `proto` 的 `encoding.Codec` | `google.golang.org/protobuf` |
 | [`encoding/yaml`](encoding/yaml) | v1.2.0 | 名为 `yaml` 的 `encoding.Codec` | `go.yaml.in/yaml/v3` |
-| [`jobqueue/asynq`](jobqueue/asynq) | v1.2.0 | asynq 上的 `jobqueue.Enqueuer`、`jobqueue.Runner` | `github.com/hibiken/asynq` |
+| [`jobqueue/asynq`](jobqueue/asynq) | v1.3.0 | asynq 上的 `jobqueue.Enqueuer`、`jobqueue.Runner` | `github.com/hibiken/asynq` |
 | [`logger/slog`](logger/slog) | v1.0.0 | `logger.Logger` | `log/slog` |
 | [`logger/zap`](logger/zap) | v1.0.0 | `logger.Logger` | `go.uber.org/zap` |
 | [`metrics/otel`](metrics/otel) | v1.2.0 | OpenTelemetry 上的 `metrics.Meter` | `go.opentelemetry.io/otel/metric` |
 | [`metrics/prometheus`](metrics/prometheus) | v1.2.0 | Prometheus 上的 `metrics.Meter` | `github.com/prometheus/client_golang` |
-| [`middleware`](middleware) | v1.4.0 | 鉴权、熔断、日志、指标、限流、恢复、重试、超时、追踪与校验 | 标准库、servex、kitx、Noop 遥测 |
+| [`middleware`](middleware) | v1.5.0 | 鉴权、熔断、日志、指标、限流、恢复、重试、超时、追踪与校验 | 标准库、servex、kitx、Noop 遥测 |
 | [`ratelimit/rate`](ratelimit/rate) | v1.0.0 | 有 key 数量上限的本地令牌桶，供通用限流中间件使用 | `golang.org/x/time/rate` |
 | [`ratelimit/redis`](ratelimit/redis) | v1.0.0 | 多副本共享的 Redis 原子令牌桶，支持 context、等待提示和后端错误 | `github.com/redis/go-redis/v9` |
 | [`selector`](selector) | v1.2.0 | 加权随机、平滑加权轮询与 P2C 节点选择 | 标准库、servex、kitx |
