@@ -9,8 +9,8 @@ container="servex-it-$backend"
 case "$backend" in
   s3)
     docker run -d --name "$container" -p 127.0.0.1:9000:9000 \
-      -e MINIO_ROOT_USER=servex-test -e MINIO_ROOT_PASSWORD=servex-test-secret \
-      minio/minio:RELEASE.2025-01-20T14-49-07Z server /data
+      -e RUSTFS_ACCESS_KEY=servex-test -e RUSTFS_SECRET_KEY=servex-test-secret \
+      rustfs/rustfs:1.0.3 /data
     setting='SERVEX_IT_S3_ENDPOINT=http://127.0.0.1:9000'
     ;;
   postgres)
@@ -63,7 +63,7 @@ esac
 
 ready() {
   case "$backend" in
-    s3) curl -fsS http://127.0.0.1:9000/minio/health/ready ;;
+    s3) curl -fsS http://127.0.0.1:9000/health ;;
     postgres) docker exec "$container" pg_isready -U servex -d servex_it ;;
     redis) docker exec "$container" redis-cli ping | grep -qx PONG ;;
     mongodb) docker exec "$container" mongosh --quiet --eval 'if (!db.runCommand({ping: 1}).ok) { quit(1); }' ;;
