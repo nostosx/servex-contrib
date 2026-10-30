@@ -1,5 +1,9 @@
 # middleware
 
+For shared HTTP/gRPC/stream/worker observation, use the
+[`profile`](profile/README.md) composition API. Authentication and execution
+policies remain explicit additions to each protocol scope.
+
 `github.com/nostosx/servex-contrib/middleware` is one module holding the
 standard servex middleware. Each package provides `endpoint.Middleware` via `New`,
 which reads call information from `metadata.FromContext` (kind, protocol,
@@ -33,6 +37,54 @@ and the local `TokenBucket` remain unchanged.
 For gRPC streams, explicitly assemble `grpcx.WithStreamMiddleware` or
 `grpcx.WithClientStreamMiddleware`; the unary chain does not apply to streams.
 See the grpcx README for lifecycle and retry constraints.
+
+## Shared protocol profiles (unreleased)
+
+The new `middleware/profile` package defines observability once in `app.go`, then
+returns independent middleware slices for each explicit transport scope. It is
+not included in the existing v1.4.0 tag. Authentication and operation policies
+are supplied explicitly; constructors remain SDK-free.
+
+```go
+signals := profile.New(profile.Config{
+    Logger: log, Tracer: tracer, Propagator: propagator, Meter: meter,
+})
+
+// Composition fragment: authenticate and authenticateStream are application
+// policies; transports, validation and signals are constructed before startup.
+httpServer := httpx.NewServer(
+    httpx.WithMiddleware(signals.Server(authenticate, validate.New())...),
+)
+grpcServer := grpcx.NewServer(
+    grpcx.WithMiddleware(signals.Server(authenticate, validate.New())...),
+    grpcx.WithStreamMiddleware(signals.Stream(authenticateStream)...),
+)
+```
+
+Server and Stream execute **tracing → logging → metrics → recovery → explicit
+policies → handler**. Recovery converts a business panic to an error before the
+surrounding signals record it, so failed calls remain visible in logs, counters
+and spans. Native call metadata supplies protocol, operation and span kind; one
+profile does not rewrite metadata or create a separate identity context.
+
+Stream wraps the complete stream lifetime once. It adds no per-message
+validation, retries or timeouts. Explicit extras must be safe for whole-stream
+execution; unary policies are not automatically copied there. Client returns
+**tracing → logging → metrics → explicit policies → operation**, without recovery
+or replay. Use `signals.Client(...)` with the transport's client-middleware
+option. Retry and timeout behavior stays an explicit application decision.
+
+Every method returns a fresh slice, including a copy of explicit extras; changing
+one transport's slice does not change another. Metric instruments are constructed
+once. Nil loggers disable logging, and nil tracer/meter/propagator use the existing
+individual middleware no-op behavior. Signal implementations must support
+concurrent use across transports.
+
+HTTP-native CORS, CSRF and Session remain outside routing through
+`httpx.WithHTTPMiddleware(...)`. Endpoint profiles run inside matched endpoint
+routes; they do not silently cover raw HandleHTTP handlers, unmatched requests or
+browser preflight. Construct that outer chain once in the HTTP assembly and
+apply authentication at the appropriate route/scope.
 
 ## Typed application middleware
 

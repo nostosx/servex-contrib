@@ -79,6 +79,37 @@ func Shutdown(ctx context.Context, injector do.Injector) error
   Do not register or resolve new services after shutdown begins.
 - Both functions panic on a nil injector instead of using do's global default.
 
+## Plain constructor registration (unreleased)
+
+ProvideConstructors removes provider-closure boilerplate while keeping business
+constructors independent of the container. It is a new source API, not part of
+the published v1.1.0 tag. With the ordinary Config, NewGreeter and NewServer
+constructors in the full example below, registration becomes:
+
+```go
+if err := di.Supply(container, cfg); err != nil { return err }
+if err := dox.ProvideConstructors(container, NewGreeter, NewServer); err != nil {
+    return err
+}
+server, err := di.Resolve[*httpx.Server](container)
+if err != nil { return err }
+```
+
+This is an assembly fragment. Accepted functions return T or (T, error), with
+fixed input parameters. Signature validation and duplicate output checks cover
+the entire batch before registration begins. Container registration failures can
+leave earlier registrations installed; no constructor executes during registration.
+Dependencies and outputs use exact declared types. Bind an interface with a
+constructor returning that interface; a concrete implementation is not inferred
+as an interface registration. Variadic constructors need an explicit wrapper
+that supplies their options.
+
+Reflection is confined to construction of the dependency graph. Resolve root
+services once before serving requests and pass ordinary typed pointers to the
+handlers. Constructor errors preserve their causes. ProvideConstructors adds no
+implicit lifecycle ownership, Close discovery or per-package registration files;
+the lifecycle rules above continue to apply.
+
 ## One entry point with do
 
 This is a complete application. Save it as `main.go` in a separate consumer
