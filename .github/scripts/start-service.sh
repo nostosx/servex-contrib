@@ -7,6 +7,17 @@ container="servex-it-$backend"
 # Each job owns one container; fixed ports are isolated by the hosted runner.
 # Images are intentionally explicit rather than inheriting local shared infra.
 case "$backend" in
+  s3)
+    docker run -d --name "$container" -p 127.0.0.1:9000:9000 \
+      -e MINIO_ROOT_USER=servex-test -e MINIO_ROOT_PASSWORD=servex-test-secret \
+      minio/minio:RELEASE.2025-01-20T14-49-07Z server /data
+    setting='SERVEX_IT_S3_ENDPOINT=http://127.0.0.1:9000'
+    ;;
+  postgres)
+    docker run -d --name "$container" -p 127.0.0.1:5432:5432 \
+      -e POSTGRES_USER=servex -e POSTGRES_PASSWORD=servex -e POSTGRES_DB=servex_it postgres:17.11-alpine3.24
+    setting='SERVEX_IT_POSTGRES_DSN=host=127.0.0.1 port=5432 user=servex password=servex dbname=servex_it sslmode=disable'
+    ;;
   redis)
     docker run -d --name "$container" -p 127.0.0.1:6379:6379 redis:8
     setting='SERVEX_IT_REDIS_ADDR=127.0.0.1:6379'
@@ -52,6 +63,8 @@ esac
 
 ready() {
   case "$backend" in
+    s3) curl -fsS http://127.0.0.1:9000/minio/health/ready ;;
+    postgres) docker exec "$container" pg_isready -U servex -d servex_it ;;
     redis) docker exec "$container" redis-cli ping | grep -qx PONG ;;
     mongodb) docker exec "$container" mongosh --quiet --eval 'if (!db.runCommand({ping: 1}).ok) { quit(1); }' ;;
     rabbitmq)

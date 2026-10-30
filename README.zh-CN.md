@@ -6,7 +6,7 @@
 节点选择算法、遥测后端与中间件。核心保留契约和共享运行机制；仅依赖标准库或 kitx 的
 具体实现同样放在本仓库。
 
-2026-10-29 的配套发布使用 servex v1.4.0 核心契约。下表各模块均通过公开
+2026-10-29 的配套发布使用 servex v1.4.0 核心契约。下表已发布模块均通过公开
 Go 代理解析依赖，无需本地源码替换。API 迁移见核心 BACKEND-MIGRATION.md。
 
 2026-10-28 发布 middleware v1.3.0、transport/grpcx v1.2.0，以及 auth/oidc、di/do、
@@ -38,6 +38,20 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`database/sql`](database/sql) | v1.0.0 | database/sql 追踪、指标、生命周期与就绪检查 | 标准库、core、Noop 遥测 |
 | [`cache/memory`](cache/memory) | v1.0.0 | 内存 `cache.Cache` | kitx/ttlcache |
 | [`broker/memory`](broker/memory) | v1.0.0 | 内存发布与订阅 | 标准库、core、kitx |
+| [`auth/jwt`](auth/jwt) | 未发布 | JWT 签发与类型化验证，供应用鉴权回调使用 | `github.com/golang-jwt/jwt/v5` |
+| [`auth/oauth2`](auth/oauth2) | 未发布 | PKCE 授权码流程、浏览器绑定的一次性 state、刷新及客户端凭证 | Go 官方 `golang.org/x/oauth2` |
+| [`auth/oauth2redis`](auth/oauth2redis) | 未发布 | 与 Session 共用 Redis 连接池的原子 OAuth2 state 存储 | Redis 官方 `github.com/redis/go-redis/v9` |
+| [`auth/login`](auth/login) | 未发布 | OAuth2/OIDC 或密码登录、Session 轮换及统一业务身份 | OAuth2、OIDC、Session 及 auth 中间件 |
+| [`lifecycle`](lifecycle) | 未发布 | 显式资源所有权、装配失败清理及逆序关闭 | 标准库、core |
+| [`auth/password`](auth/password) | 未发布 | Argon2id 密码哈希、受限参数验证及升级判断 | Go 官方 `golang.org/x/crypto/argon2` |
+| [`storage/s3`](storage/s3) | 未发布 | 对象上传下载、删除、元数据、分页及预签名 | AWS 官方 Go SDK v2 |
+| [`scheduler/cron`](scheduler/cron) | 未发布 | 进程内周期任务、取消、重叠抑制与应用生命周期 | 社区 `github.com/robfig/cron/v3` |
+| [`database/goose`](database/goose) | 未发布 | 显式 SQL 版本迁移、状态及 PostgreSQL 验收 | 社区 `github.com/pressly/goose/v3` |
+| [`coordination/etcd`](coordination/etcd) | 未发布 | 租约锁、选主及 fencing revision | etcd 官方 concurrency SDK |
+| [`transport/cors`](transport/cors) | 未发布 | 显式来源策略、凭证配置与预检处理 | 社区 `github.com/rs/cors` |
+| [`session`](session) | 未发布 | 自有服务端 Session、安全 Cookie、原子 Token 轮换及有界内存存储 | 标准库 |
+| [`session/redis`](session/redis) | 未发布 | 共享 Session 存储、原子版本校验与轮换、TTL；支持单机/Sentinel | Redis 官方 `github.com/redis/go-redis/v9` |
+| [`database/gorm`](database/gorm) | 未发布 | GORM 原生操作观测、生命周期与健康检查，包含 PostgreSQL 验收 | `gorm.io/gorm` |
 | [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC 发现、ID Token 签名与 JWKS 验证，供应用鉴权回调使用 | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | v1.2.0 | Apache Kafka 上的 `broker.Publisher`、`broker.Subscriber` | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | v1.2.0 | NATS JetStream 上的发布与订阅 | `github.com/nats-io/nats.go` |
@@ -124,6 +138,26 @@ SDK 客户端上完成这些配置。监听所有网卡的服务器用于本地�
 监听地址或网络访问。服务发现必须公布调用方可达的地址；回环地址只适合
 同一主机上的客户端。
 
+## 应用组合
+
+应用装配集中在 `app.go`，业务保留普通 Go 构造函数。`auth/login` 组合浏览器
+登录和 Session，通过 `middleware/auth.FromContext[P]` 读取统一业务身份。
+`auth/oauth2redis`、`session/redis` 和缓存可借用同一个 Redis 客户端，分别使用
+独立 key 前缀。`database/gorm.OpenPostgres` 的 `GORM()` 与 `SQL()` 共用一个
+连接池；Goose 使用同一个 `SQL()` 执行显式迁移，不在每个副本启动时自动建表。
+
+`lifecycle.Scope` 显式管理 SDK 资源，构造或启动失败也会逆序清理；借用的
+客户端仍由调用方关闭。`middleware/profile` 将日志、追踪和指标配置用于原生
+HTTP、gRPC unary、完整 stream 及 worker，各作用范围显式添加鉴权和执行策略。
+`di/do.ProvideConstructors` 直接注册普通构造函数；S3 列表返回 Store 相对 key，
+可以直接用于 Get/Delete。完整应用见
+[servex-examples](https://github.com/nostosx/servex-examples)。
+
+本轮组合改动尚未发布。源码配套检查使用
+`bash .github/scripts/check-source.sh check lint vulncheck MODULES='auth/login auth/oauth2redis'`。
+检查只在仓库外临时 modfile 中替换源码，不向正式清单写入 replace 或虚构
+checksum。公开安装能力需在配套模块发布后单独验收。
+
 ## 开发
 
 HTTP/gRPC、编解码与常用中间件的基准结果、profile 发现、测量范围和复跑命令见
@@ -171,12 +205,14 @@ miniredis、client-go fake、httptest 与 OpenTelemetry 内存 exporter。
 | `SERVEX_IT_KAFKA_BROKERS` | `broker/kafka` | `127.0.0.1:9092`，多个地址以逗号分隔 |
 | `SERVEX_IT_NATS_URL` | `broker/nats` | `nats://127.0.0.1:4222`，启用 JetStream |
 | `SERVEX_IT_RABBITMQ_URL` | `broker/rabbitmq` | `amqp://guest:guest@127.0.0.1:5672/` |
-| `SERVEX_IT_REDIS_ADDR` | `cache/redis`、`jobqueue/asynq`、`ratelimit/redis` | `127.0.0.1:6379` |
+| `SERVEX_IT_REDIS_ADDR` | `cache/redis`、`jobqueue/asynq`、`ratelimit/redis`、`session/redis`、`auth/oauth2redis` | `127.0.0.1:6379` |
 | `SERVEX_IT_CONSUL_ADDR` | `config/consul`、`discovery/consul` | `127.0.0.1:8500` |
-| `SERVEX_IT_ETCD_ENDPOINTS` | `config/etcd`、`discovery/etcd` | `127.0.0.1:2379`，多个地址以逗号分隔 |
+| `SERVEX_IT_ETCD_ENDPOINTS` | `config/etcd`、`discovery/etcd`、`coordination/etcd` | `127.0.0.1:2379`，多个地址以逗号分隔 |
 | `SERVEX_IT_NACOS_ADDR` | `config/nacos`、`discovery/nacos` | `127.0.0.1:8848`，HTTP API |
 | `SERVEX_IT_NACOS_GRPC_PORT` | `config/nacos`、`discovery/nacos` | 可选，默认为 HTTP 端口加 1000 |
 | `SERVEX_IT_MONGODB_URI` | `database/mongodb` | `mongodb://127.0.0.1:27017` |
+| `SERVEX_IT_POSTGRES_DSN` | `database/gorm`、`database/goose` | `host=127.0.0.1 port=5432 user=servex password=servex dbname=servex_it sslmode=disable` |
+| `SERVEX_IT_S3_ENDPOINT` | `storage/s3` | `http://127.0.0.1:9000`（专用 MinIO 测试实例，见模块文档） |
 | `SERVEX_IT_KUBECONFIG` | `discovery/kubernetes` | kubeconfig 文件路径 |
 
 准备独立的临时服务后运行，例如：
@@ -190,7 +226,7 @@ Task 不启动服务。集成入口会拒绝缺少配置、缺失测试、跳过
 `task check` 仍是独立的单元与静态检查入口。
 
 [CI 工作流](.github/workflows/ci.yml) 包含所有模块的检查矩阵、独立 lint 与漏洞扫描、
-8 组临时 Docker 服务任务，以及 Kubernetes kind 任务。
+9 组临时 Docker 服务任务，以及 Kubernetes kind 任务。
 矩阵检查会核对模块及集成测试目录；服务任务等待就绪后只运行 `TestIntegration*`，
 拒绝缺失、跳过、失败或未完成的结果，并清理服务容器或 kind 集群。
 

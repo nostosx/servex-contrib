@@ -13,6 +13,106 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+### Application composition
+
+- Add `auth/login` to compose OAuth2 PKCE, verified OIDC identities and browser
+  Session around one application-defined principal, with password SignIn,
+  one-time callback consumption, token rotation and shared auth context.
+- Add `auth/oauth2redis` for atomic insert/consume and expiry, borrowing the
+  same official Redis pool as Session/cache without taking ownership.
+- Add `lifecycle` owned/borrowed SDK resources and reverse-order scopes, including
+  construction/start failure cleanup and independent bounded shutdown contexts.
+- Add `database/gorm.OpenPostgres`, exposing one SQL pool for GORM and Goose.
+  Keep schema changes in explicit migration commands.
+- Add `middleware/profile` shared HTTP/unary/stream/worker observation, preserving
+  explicit protocol authentication, validation, timeout and retry policies.
+- Add `di/do.ProvideConstructors` for plain constructors and error propagation.
+- **Breaking (unreleased storage/s3):** List normalizes each returned object key
+  to the Store namespace. Pass it directly to Get/Delete, without adding or
+  removing the configured prefix. Reject backend keys outside that namespace.
+- Validate unreleased peer compositions through external temporary modfiles;
+  canonical manifests retain intended versions without local replacements.
+
+### auth/oauth2
+
+- Add authorization-code login with official x/oauth2 v0.37.0, S256 PKCE,
+  browser-bound one-time state, bounded memory state and an atomic shared-store
+  contract. Preserve SDK refresh/client-credentials APIs and require ID-token
+  verification for authentication. Add a complete OIDC HTTPS composition example.
+
+### auth/password
+
+- Add official x/crypto v0.58.0 Argon2id, salted PHC encoding, constant-time
+  verification, rehash policy and resource/length bounds. No user store is imposed.
+
+### storage/s3
+
+- Add official AWS SDK v2 bucket-scoped streaming CRUD, metadata, bounded listing
+  and presigned GET/PUT. Verify wire behavior plus real MinIO signed transfers.
+
+### scheduler/cron and jobqueue/asynq
+
+- Add robfig/cron v3.0.1 jobs with explicit timeouts, per-job overlap suppression,
+  error/panic handling and app.Hook shutdown. No distributed/exactly-once claim.
+- Add native asynq periodic enqueueing with application lifecycle and borrowed
+  Redis ownership. Verify periodic enqueueing against a disposable Redis backend.
+
+### database/goose
+
+- Add Goose v3.29.0 instance-scoped Up/UpTo/Down/Status with no global migration
+  registry or automatic startup writes. Verify repeat execution, PostgreSQL
+  session locking and failed-migration rollback in a disposable schema.
+
+### coordination/etcd
+
+- Add official etcd v3.7.3 lease-backed locks and elections, ownership signals,
+  idempotent release and fencing revisions. Test contention on embedded/real etcd.
+- Require x/net v0.62.0 to avoid known HTML issues in the SDK's module graph.
+
+### transport/cors and transport/httpx
+
+- Add an isolated rs/cors v1.11.1 adapter with explicit origins, immutable policy
+  slices and rejection of credentials with a universal wildcard. Document and
+  test composition with the standard-library CrossOriginProtection API for CSRF.
+
+### session/redis
+
+- Add an independent Store using the official go-redis/v9 v9.23.0 client, with
+  insert-only creation, CAS updates, atomic rotation, deletion and Redis expiry.
+- Preserve exact uint64 versions and JSON payloads through Lua; keep Session
+  SDK-free. Support standalone/Sentinel clients without claiming Cluster support.
+- Add shared contract and real Redis acceptance; validate the unpublished session
+  peer through temporary external modfiles rather than canonical replacements.
+
+### session
+
+- Add a standard-library-only server-side session implementation with random
+  256-bit cookie tokens, hashed store keys, secure cookies and bounded JSON data.
+- Provide absolute/idle expiry, atomic token rotation, destruction, versioned
+  persistence and a bounded memory store without background goroutines.
+- Persist before response writes/flushes; suppress handler bodies on store errors
+  and reject stale mutations after concurrent logout or rotation.
+
+### database/gorm
+
+- Add native GORM v1.31.2 observability callbacks and reuse SQL lifecycle/readiness
+  hooks, preserving request contexts and original errors without recording SQL
+  parameters or private error messages.
+- Reject transaction handles as lifecycle owners; add official PostgreSQL driver
+  v1.6.3 tests and dedicated PostgreSQL CI integration with CRUD/rollback checks.
+- Require golang.org/x/text v0.41.0 to fix GO-2026-5970 and GO-2026-6629
+  inherited through GORM's dependency graph.
+
+### auth/jwt
+
+- Add an independent golang-jwt/jwt/v5 v5.3.1 adapter for signing and typed
+  verification, with explicit algorithms, context-aware key selection and
+  mandatory issuer/audience/expiration/subject verification.
+- Support SDK custom claims validation, key IDs and configurable clock leeway;
+  reject unsigned tokens, algorithm substitution and undersized HMAC secrets.
+- Compose with existing auth middleware without adding SDK imports to core or
+  generic middleware. Add runnable usage, security regressions and CI coverage.
+
 ## broker/rabbitmq/v1.2.1
 
 Release date: 2026-10-29. Requires servex v1.4.0.

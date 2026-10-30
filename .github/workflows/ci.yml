@@ -23,8 +23,9 @@ defaults:
   run:
     shell: bash
 
-# All modules resolve published dependencies. Preserve the checkout name
-# because depguard rules use the servex-contrib directory.
+# Released modules resolve public dependencies. Unreleased Session/login peers
+# use explicit source helpers with external temporary modfiles.
+# Preserve the checkout name because depguard uses the servex-contrib directory.
 jobs:
   unit:
     name: Check (${{ matrix.module }})
@@ -35,7 +36,12 @@ jobs:
       matrix:
         module:
           # BEGIN MODULES
+          - auth/jwt
+          - auth/login
           - auth/oidc
+          - auth/oauth2
+          - auth/oauth2redis
+          - auth/password
           - broker/kafka
           - broker/memory
           - broker/nats
@@ -47,6 +53,9 @@ jobs:
           - config/etcd
           - config/nacos
           - config/viper
+          - coordination/etcd
+          - database/gorm
+          - database/goose
           - database/mongodb
           - database/sql
           - di/do
@@ -62,6 +71,7 @@ jobs:
           - jobqueue/memory
           - logger/slog
           - logger/zap
+          - lifecycle
           - metrics/otel
           - metrics/noop
           - metrics/prometheus
@@ -69,10 +79,15 @@ jobs:
           - ratelimit/rate
           - ratelimit/redis
           - selector
+          - scheduler/cron
+          - session
+          - session/redis
+          - storage/s3
           - tracing/otel
           - tracing/noop
           - transport/client
           - transport/connectx
+          - transport/cors
           - transport/grpcx
           - transport/ssex
           - transport/websocketx
@@ -101,7 +116,14 @@ jobs:
             servex-contrib/${{ matrix.module }}/go.sum
       - name: Check module (no external services)
         working-directory: servex-contrib
-        run: task check MODULES="${{ matrix.module }}"
+        env:
+          CHECK_MODULE: ${{ matrix.module }}
+        run: |
+          case "$CHECK_MODULE" in
+            auth/login|auth/oauth2redis) bash .github/scripts/check-source.sh check MODULES="$CHECK_MODULE" ;;
+            session/redis) bash .github/scripts/check-session-redis.sh check ;;
+            *) task check MODULES="$CHECK_MODULE" ;;
+          esac
 
   lint:
     name: Lint (Go 1.27.3)
@@ -130,7 +152,11 @@ jobs:
           install-only: true
       - name: Lint all modules
         working-directory: servex-contrib
-        run: task lint
+        run: |
+          modules=$(for file in */go.mod */*/go.mod; do module="${file%/go.mod}"; case "$module" in session/redis|auth/login|auth/oauth2redis) ;; *) printf '%s\n' "$module" ;; esac; done)
+          task lint MODULES="$modules"
+          bash .github/scripts/check-session-redis.sh lint
+          bash .github/scripts/check-source.sh lint MODULES='auth/login auth/oauth2redis'
 
   vulncheck:
     name: Reachable vulnerabilities
@@ -156,7 +182,11 @@ jobs:
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
       - name: Scan all modules (normal and integration builds)
         working-directory: servex-contrib
-        run: task vulncheck
+        run: |
+          modules=$(for file in */go.mod */*/go.mod; do module="${file%/go.mod}"; case "$module" in session/redis|auth/login|auth/oauth2redis) ;; *) printf '%s\n' "$module" ;; esac; done)
+          task vulncheck MODULES="$modules"
+          bash .github/scripts/check-session-redis.sh vulncheck
+          bash .github/scripts/check-source.sh vulncheck MODULES='auth/login auth/oauth2redis'
 
   integration:
     name: Integration (${{ matrix.backend }})
@@ -168,6 +198,10 @@ jobs:
       matrix:
         include:
           # BEGIN INTEGRATIONS
+          - backend: postgres
+            modules: database/gorm database/goose
+          - backend: s3
+            modules: storage/s3
           - backend: kafka
             modules: broker/kafka
           - backend: nats
@@ -175,13 +209,13 @@ jobs:
           - backend: rabbitmq
             modules: broker/rabbitmq
           - backend: redis
-            modules: cache/redis jobqueue/asynq ratelimit/redis
+            modules: cache/redis jobqueue/asynq ratelimit/redis session/redis auth/oauth2redis
           - backend: mongodb
             modules: database/mongodb
           - backend: consul
             modules: config/consul discovery/consul
           - backend: etcd
-            modules: config/etcd discovery/etcd
+            modules: config/etcd discovery/etcd coordination/etcd
           - backend: nacos
             modules: config/nacos discovery/nacos
             # END INTEGRATIONS

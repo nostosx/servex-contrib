@@ -167,9 +167,11 @@ tasks:
           if [ {{.RACE | shellQuote}} = true ] || [ {{.COVER | shellQuote}} = true ]; then
             set -- "$@" -race
           fi
-          {{.GO | shellQuote}} test "$@" .github/scripts/integrationcheck/*.go
-          {{.GO | shellQuote}} test "$@" .github/scripts/matrices/*.go
-          {{.GO | shellQuote}} run .github/scripts/matrices/main.go
+          # These stdlib tooling files run outside a module; module-specific
+          # GOFLAGS such as -modfile must not change their module root.
+          GOFLAGS='' {{.GO | shellQuote}} test "$@" .github/scripts/integrationcheck/*.go
+          GOFLAGS='' {{.GO | shellQuote}} test "$@" .github/scripts/matrices/*.go
+          GOFLAGS='' {{.GO | shellQuote}} run .github/scripts/matrices/main.go
           for module in $modules; do
             printf '\n==> %s: test\n' "$module"
             (cd "$module"

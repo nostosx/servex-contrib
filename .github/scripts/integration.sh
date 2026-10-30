@@ -7,10 +7,12 @@ case "$module" in
   broker/kafka) required=SERVEX_IT_KAFKA_BROKERS ;;
   broker/nats) required=SERVEX_IT_NATS_URL ;;
   broker/rabbitmq) required=SERVEX_IT_RABBITMQ_URL ;;
-  cache/redis|jobqueue/asynq|ratelimit/redis) required=SERVEX_IT_REDIS_ADDR ;;
+  cache/redis|jobqueue/asynq|ratelimit/redis|session/redis|auth/oauth2redis) required=SERVEX_IT_REDIS_ADDR ;;
   database/mongodb) required=SERVEX_IT_MONGODB_URI ;;
+  database/gorm|database/goose) required=SERVEX_IT_POSTGRES_DSN ;;
+  storage/s3) required=SERVEX_IT_S3_ENDPOINT ;;
   config/consul|discovery/consul) required=SERVEX_IT_CONSUL_ADDR ;;
-  config/etcd|discovery/etcd) required=SERVEX_IT_ETCD_ENDPOINTS ;;
+  config/etcd|discovery/etcd|coordination/etcd) required=SERVEX_IT_ETCD_ENDPOINTS ;;
   config/nacos|discovery/nacos) required=SERVEX_IT_NACOS_ADDR ;;
   discovery/kubernetes) required=SERVEX_IT_KUBECONFIG ;;
   *) printf 'Unknown integration module: %s\n' "$module" >&2; exit 1 ;;
@@ -20,6 +22,13 @@ if [ -z "${!required:-}" ]; then
   exit 1
 fi
 if [ "$required" = SERVEX_IT_KUBECONFIG ]; then test -s "$SERVEX_IT_KUBECONFIG"; fi
+
+if [ "$module" = session/redis ] && [ -z "${SERVEX_SESSION_SOURCE_MODFILE:-}" ]; then
+  exec bash "$root/.github/scripts/check-session-redis.sh" test INTEGRATION=true
+fi
+if [ "$module" = auth/oauth2redis ] && [ -z "${SERVEX_SOURCE_MODFILE:-}" ]; then
+  exec bash "$root/.github/scripts/check-source.sh" test INTEGRATION=true MODULES=auth/oauth2redis
+fi
 
 result="$(mktemp)"
 trap 'rm -f "$result"' EXIT

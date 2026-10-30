@@ -8,7 +8,7 @@ middleware. Core owns contracts and shared runtime mechanisms; implementations
 live here even when they use only the standard library or kitx.
 
 The 2026-10-29 coordinated release uses servex v1.4.0 for the extracted
-configuration, logging and backend contracts. All module versions below resolve
+configuration, logging and backend contracts. Published module versions below resolve
 from the public Go proxy without source replacements. See the core
 `BACKEND-MIGRATION.md` for changed import paths and constructors.
 
@@ -48,6 +48,20 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`database/sql`](database/sql) | v1.0.0 | database/sql tracing, metrics, lifecycle and readiness | standard library, core, no-op telemetry |
 | [`cache/memory`](cache/memory) | v1.0.0 | `cache.Cache` in memory | kitx/ttlcache |
 | [`broker/memory`](broker/memory) | v1.0.0 | `broker.Publisher` / `Subscriber` in memory | standard library, core, kitx |
+| [`auth/jwt`](auth/jwt) | Unreleased | JWT signing and typed verification for application auth callbacks | `github.com/golang-jwt/jwt/v5` |
+| [`auth/oauth2`](auth/oauth2) | Unreleased | PKCE code flow, bound one-time state, token refresh and client credentials | official `golang.org/x/oauth2` |
+| [`auth/oauth2redis`](auth/oauth2redis) | Unreleased | Atomic shared OAuth2 state using the Session Redis pool | official `github.com/redis/go-redis/v9` |
+| [`auth/login`](auth/login) | Unreleased | OAuth2/OIDC or password login, Session rotation and typed application principals | OAuth2, OIDC, Session and auth middleware |
+| [`lifecycle`](lifecycle) | Unreleased | Explicit owned/borrowed resources and reverse-order assembly cleanup | standard library, core |
+| [`auth/password`](auth/password) | Unreleased | Argon2id PHC password hashes, bounded verification and rehash policy | official `golang.org/x/crypto/argon2` |
+| [`storage/s3`](storage/s3) | Unreleased | Bucket-scoped object CRUD, listing and presigned transfers | official AWS SDK for Go v2 |
+| [`scheduler/cron`](scheduler/cron) | Unreleased | Context-aware in-process jobs, overlap suppression and application lifecycle | `github.com/robfig/cron/v3` |
+| [`database/goose`](database/goose) | Unreleased | Explicit instance-scoped SQL migrations and PostgreSQL acceptance | `github.com/pressly/goose/v3` |
+| [`coordination/etcd`](coordination/etcd) | Unreleased | Lease locks, election and fencing revisions | official etcd concurrency SDK |
+| [`transport/cors`](transport/cors) | Unreleased | Explicit browser-origin policy and preflight handling | `github.com/rs/cors` |
+| [`session`](session) | Unreleased | Server-side browser sessions, atomic token rotation and bounded memory store | standard library |
+| [`session/redis`](session/redis) | Unreleased | Shared Session Store with atomic version checks, token rotation and TTL | official `github.com/redis/go-redis/v9` |
+| [`database/gorm`](database/gorm) | Unreleased | Native GORM telemetry, lifecycle and readiness, with PostgreSQL acceptance | `gorm.io/gorm` |
 | [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on Apache Kafka | `github.com/twmb/franz-go` |
 | [`broker/nats`](broker/nats) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on NATS JetStream | `github.com/nats-io/nats.go` |
@@ -146,6 +160,30 @@ local testing. A discovery registration must advertise an address reachable
 by its consumers; a loopback address is suitable only for clients on the
 same host.
 
+## Application composition
+
+Assemble applications centrally in `app.go` with ordinary business constructors.
+Use `auth/login` for browser authentication and `auth/oauth2redis` with the
+same borrowed Redis client as `session/redis` and cache. Business handlers read
+the application's principal through `middleware/auth.FromContext[P]`.
+`database/gorm.OpenPostgres` exposes one `GORM()` / `SQL()` pool; pass `SQL()`
+to Goose for explicit migration commands. `lifecycle.Scope` owns created SDK
+resources and closes dependencies in reverse order, including construction or
+startup failures. Borrowed clients remain owned by their caller.
+
+`middleware/profile` shares logging, tracing and metrics across native HTTP,
+unary RPCs, whole streams and workers. Add authentication and execution policies
+explicitly in each scope. `di/do.ProvideConstructors` registers ordinary Go
+constructors at assembly time. S3 listing returns store-relative keys, so each
+listed key can be passed directly to Get/Delete. See the full application in
+[servex-examples](https://github.com/nostosx/servex-examples).
+
+These composition changes are unreleased. For their matching source checks use
+`bash .github/scripts/check-source.sh check lint vulncheck MODULES='auth/login auth/oauth2redis'`.
+The helper uses an external temporary modfile; canonical manifests contain no
+source replacements or invented peer checksums. Public installation must be
+verified after coordinated module publication.
+
 ## Development
 
 See [performance measurements](PERFORMANCE.md) for HTTP/gRPC, codecs and common
@@ -203,12 +241,14 @@ it does not prove the service integrations ran.
 | `SERVEX_IT_KAFKA_BROKERS` | `broker/kafka` | `127.0.0.1:9092` (comma separated) |
 | `SERVEX_IT_NATS_URL` | `broker/nats` | `nats://127.0.0.1:4222` (JetStream enabled) |
 | `SERVEX_IT_RABBITMQ_URL` | `broker/rabbitmq` | `amqp://guest:guest@127.0.0.1:5672/` |
-| `SERVEX_IT_REDIS_ADDR` | `cache/redis`, `jobqueue/asynq`, `ratelimit/redis` | `127.0.0.1:6379` |
+| `SERVEX_IT_REDIS_ADDR` | `cache/redis`, `jobqueue/asynq`, `ratelimit/redis`, `session/redis`, `auth/oauth2redis` | `127.0.0.1:6379` |
 | `SERVEX_IT_CONSUL_ADDR` | `config/consul`, `discovery/consul` | `127.0.0.1:8500` |
-| `SERVEX_IT_ETCD_ENDPOINTS` | `config/etcd`, `discovery/etcd` | `127.0.0.1:2379` (comma separated) |
+| `SERVEX_IT_ETCD_ENDPOINTS` | `config/etcd`, `discovery/etcd`, `coordination/etcd` | `127.0.0.1:2379` (comma separated) |
 | `SERVEX_IT_NACOS_ADDR` | `config/nacos`, `discovery/nacos` | `127.0.0.1:8848` (HTTP API) |
 | `SERVEX_IT_NACOS_GRPC_PORT` | `config/nacos`, `discovery/nacos` | optional, defaults to the HTTP port + 1000 |
 | `SERVEX_IT_MONGODB_URI` | `database/mongodb` | `mongodb://127.0.0.1:27017` |
+| `SERVEX_IT_POSTGRES_DSN` | `database/gorm`, `database/goose` | `host=127.0.0.1 port=5432 user=servex password=servex dbname=servex_it sslmode=disable` |
+| `SERVEX_IT_S3_ENDPOINT` | `storage/s3` | `http://127.0.0.1:9000` (owned MinIO fixture; see module README) |
 | `SERVEX_IT_KUBECONFIG` | `discovery/kubernetes` | path to a kubeconfig file |
 
 For example, after preparing a dedicated local Redis instance:
@@ -224,15 +264,16 @@ contains none. `task check` remains the separate unit and static check entry
 point.
 
 The [CI workflow](.github/workflows/ci.yml) defines an all-module check
-matrix, independent lint and vulnerability jobs, eight disposable Docker
+matrix, independent lint and vulnerability jobs, nine disposable Docker
 service jobs and a kind job for Kubernetes. A matrix check compares the matrices to the module
 and integration-test directories. Each service job waits for readiness,
 exports the required variable, runs only `TestIntegration*` tests and rejects
 absent, skipped, failed or unfinished integration results. The service
 container is removed even on failure; kind-action cleans up its cluster.
 The jobs are independent and run on pull requests, pushes to `main` or manual
-dispatch. Jobs use no sibling sources; refresh matching dependency versions
-and checksums before release.
+dispatch. Unreleased Session/login peer checks explicitly use temporary source
+modfiles; released module checks resolve public dependencies. Refresh matching
+dependency versions and checksums before release.
 Passing unit checks does not substitute for service integration.
 
 ## License

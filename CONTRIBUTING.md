@@ -112,6 +112,33 @@ Do not test against shared or production services.
 
 ## Changes
 
+Application composition belongs in the example application's `app.go`. Keep
+ordinary business constructors independent of DI; `di/do.ProvideConstructors`
+only resolves dependencies during assembly. `lifecycle.Scope` owns explicitly
+created resources; borrowed clients have no implicit Close. Login composes
+OAuth2/OIDC/Session/auth with a directed dependency graph, and oauth2redis borrows
+the shared official Redis client. GORM PostgreSQL exposes one pool to GORM and
+Goose; migrations remain explicit commands. Shared observation lives in
+`middleware/profile` with protocol policies selected by the caller.
+
+`auth/login` and `auth/oauth2redis` have unreleased peers. Run their checks with
+`bash .github/scripts/check-source.sh check lint vulncheck MODULES='auth/login auth/oauth2redis'`.
+Select modules explicitly. The helper creates and deletes a temporary external
+modfile; do not commit local replacements, zero pseudo-versions or invented
+public checksums. Source acceptance does not prove public installation.
+
+The unreleased auth/oauth2, auth/password, storage/s3, database/goose,
+scheduler/cron, coordination/etcd and transport/cors modules own their SDKs.
+Do not import those SDKs into core or generic middleware. Constructors accept
+explicit policy/clients and never select global engines. Database migrations
+are explicitly invoked, never automatic per-replica startup writes. OAuth2 state
+stores require atomic insert/consume; the built-in memory store is process-local.
+Cron jobs require finite timeouts; SDK/client ownership remains with the caller.
+Use standard-library CrossOriginProtection for CSRF composition. The native
+asynq Scheduler adapter shares the existing client and does not elect a leader.
+Run normal gates for each changed module, plus owned PostgreSQL/Redis/etcd/S3
+integration fixtures where configured. See individual module READMEs for limits.
+
 Production packages import public core contracts, their owning SDK and explicit
 shared implementations when needed. Interoperability tests may compose implementations explicitly.
 The core retains only its documented minimal framework runtime: App,
@@ -126,6 +153,24 @@ ratelimit/rate owns golang.org/x/time/rate. They must not add SDK requirements
 or imports to core or generic middleware. Rate composition tests import the
 existing middleware contract from the adapter side. Callers configure validation
 engines before concurrent use; an adapter never selects a global SDK instance.
+auth/jwt owns golang-jwt/jwt/v5; its production code depends only on the SDK and
+standard library. JWT composition tests import existing auth middleware from
+the adapter side. Keep JWT SDK requirements and imports out of core and generic
+middleware.
+session implements browser sessions with only the standard library. Store writes
+and rotations must be atomic and version-checked to prevent stale requests from
+restoring revoked sessions. The bounded memory backend uses lazy expiry with no
+cleanup worker. Run MODULES=session task check lint vulncheck.
+session/redis owns the official go-redis client. Both Session modules are
+unreleased; run `bash .github/scripts/check-session-redis.sh check lint vulncheck`
+to resolve the matching source in a temporary external modfile. The canonical
+session v1.0.0 requirement is the intended release, not public installation
+evidence. The helper is also used by CI and the Redis integration gate. Remove
+this temporary source path when the peer is published and verify public sums.
+database/gorm owns the GORM plugin, SQL lifecycle hooks and PostgreSQL pool;
+its native constructor uses official pgx and the GORM PostgreSQL driver.
+Run the real backend gate with
+SERVEX_IT_POSTGRES_DSN and MODULES=database/gorm against a disposable instance.
 `selector` stays within standard library, servex and kitx. Middleware adds only
 metrics/noop and tracing/noop to that set, including tests; keep all SDKs out. Keep third-party SDKs in the owning module.
 

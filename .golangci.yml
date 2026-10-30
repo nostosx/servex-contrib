@@ -21,6 +21,133 @@ linters:
   settings:
     depguard:
       rules:
+        login-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/auth/login/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex-contrib/auth/oauth2$
+            - github.com/nostosx/servex-contrib/auth/oidc$
+            - github.com/nostosx/servex-contrib/middleware/auth$
+            - github.com/nostosx/servex-contrib/session$
+            - golang.org/x/oauth2$
+        oauth2-redis-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/auth/oauth2redis/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex-contrib/auth/oauth2$
+            - github.com/redis/go-redis/v9$
+        lifecycle-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/lifecycle/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex/app$
+        oauth2-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/auth/oauth2/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - golang.org/x/oauth2$
+            - golang.org/x/oauth2/
+        password-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/auth/password/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - golang.org/x/crypto/argon2$
+        s3-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/storage/s3/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/aws/aws-sdk-go-v2/
+        goose-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/database/goose/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/pressly/goose/v3$
+        cron-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/scheduler/cron/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/robfig/cron/v3$
+            - github.com/nostosx/servex/app$
+        coordination-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/coordination/etcd/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - go.etcd.io/etcd/client/v3$
+            - go.etcd.io/etcd/client/v3/concurrency$
+        cors-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/transport/cors/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/rs/cors$
+        session-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/session/**"
+            - "!**/servex-contrib/session/redis/**"
+            - "!$test"
+          allow:
+            - $gostd
+        session-redis-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/session/redis/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/redis/go-redis/v9$
+            - github.com/nostosx/servex-contrib/session$
+        gorm-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/database/gorm/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - gorm.io/gorm$
+            - gorm.io/gorm/logger$
+            - gorm.io/driver/postgres$
+            - github.com/jackc/pgx/v5$
+            - github.com/jackc/pgx/v5/stdlib$
+            - github.com/nostosx/servex/
+            - github.com/nostosx/servex-contrib/database/sql$
+        jwt-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/auth/jwt/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/golang-jwt/jwt/v5$
         # Optional validation SDKs belong only to their owning adapter modules.
         playground-dependencies:
           list-mode: strict
