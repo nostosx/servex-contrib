@@ -40,6 +40,68 @@ see [module versioning](../../README.md#versioning).
 
 ## Usage
 
+### Periodic enqueueing (unreleased source API)
+
+NewScheduler adds native asynq periodic enqueueing as an app.Hook. The existing
+v1.2.0 tag does not contain this API. The following complete program enqueues a
+task every minute until interrupted; run a worker for the matching queue/type
+separately. The Redis client is borrowed, snapshotted payloads are not mutated,
+and stopping the scheduler does not close the application's connection pool.
+
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+    "os/signal"
+    "syscall"
+    "time"
+
+    sdk "github.com/hibiken/asynq"
+    goredis "github.com/redis/go-redis/v9"
+
+    "github.com/nostosx/servex-contrib/jobqueue/asynq"
+)
+
+func run() error {
+    client := goredis.NewClient(&goredis.Options{Addr:"127.0.0.1:6379",
+        DialTimeout:3*time.Second,ReadTimeout:3*time.Second,WriteTimeout:3*time.Second})
+    defer client.Close()
+    scheduler, err := asynq.NewScheduler(client, &sdk.SchedulerOpts{Location:time.UTC},
+        []asynq.Schedule{{Spec:"@every 1m",Type:"refresh",Payload:[]byte(`{}`),
+            Options:[]sdk.Option{sdk.Queue("maintenance"),sdk.MaxRetry(3)}}})
+    if err != nil { return err }
+    if err := scheduler.Start(context.Background()); err != nil { return err }
+    ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+    defer cancel()
+    <-ctx.Done()
+    stop, finish := context.WithTimeout(context.Background(), 5*time.Second)
+    defer finish()
+    return scheduler.Stop(stop)
+}
+
+func main() { if err := run(); err != nil { log.Fatal(err) } }
+```
+
+At most 1024 schedules are accepted, all parsed before startup. Configure SDK
+PostEnqueueFunc for enqueue outcomes, short callbacks and finite client timeouts.
+One active scheduler is required per schedule set unless the application supplies
+leader coordination; multiple replicas otherwise enqueue duplicates. Missed
+ticks are not replayed. Enqueued tasks are persisted by Redis according to its
+deployment configuration, and worker retries can repeat effects. This adapter
+does not promise exactly-once execution.
+
+Stop starts upstream shutdown once and bounds waiting with its context. The SDK
+cannot interrupt a callback/cleanup already running; later Stop calls can continue
+waiting. Keep the Redis client alive until shutdown finishes, including after a
+Stop timeout. Stop-before-Start is terminal. Startup pings Redis before returning
+ready. The integration gate verifies an actual periodic enqueue and inspects its
+pending task, in addition to the existing queue/worker contracts.
+
+### One-time delayed tasks
+
 Save a complete program below as `main.go`, then run `go mod tidy` and
 `go run .` from that application directory.
 
