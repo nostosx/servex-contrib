@@ -32,3 +32,8 @@ This release uses published auth/oauth2 v1.0.0. Validate with ordinary
 `task check lint vulncheck MODULES=auth/oauth2redis`. Real Redis acceptance uses
 `SERVEX_IT_REDIS_ADDR=... task test INTEGRATION=true MODULES=auth/oauth2redis`.
 No matching source checkout or local module replacement is required.
+
+The backend requires Redis 6.2 or newer for GETDEL. Unit tests use miniredis;
+real acceptance uses two independent clients and a random namespace to verify
+insert-only saves, exactly one concurrent consumer, key expiry and expired-payload
+rejection. It removes only its own keys and closes both borrowed test clients.
