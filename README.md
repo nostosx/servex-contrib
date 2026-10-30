@@ -48,9 +48,9 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`database/sql`](database/sql) | v1.0.0 | database/sql tracing, metrics, lifecycle and readiness | standard library, core, no-op telemetry |
 | [`cache/memory`](cache/memory) | v1.0.0 | `cache.Cache` in memory | kitx/ttlcache |
 | [`broker/memory`](broker/memory) | v1.0.0 | `broker.Publisher` / `Subscriber` in memory | standard library, core, kitx |
-| [`auth/jwt`](auth/jwt) | Unreleased | JWT signing and typed verification for application auth callbacks | `github.com/golang-jwt/jwt/v5` |
+| [`auth/jwt`](auth/jwt) | v1.0.0 | JWT signing and typed verification for application auth callbacks | `github.com/golang-jwt/jwt/v5` |
 | [`auth/oauth2`](auth/oauth2) | v1.0.0 | PKCE code flow, bound one-time state, token refresh and client credentials | official `golang.org/x/oauth2` |
-| [`auth/oauth2redis`](auth/oauth2redis) | Unreleased | Atomic shared OAuth2 state using the Session Redis pool | official `github.com/redis/go-redis/v9` |
+| [`auth/oauth2redis`](auth/oauth2redis) | v1.0.0 | Atomic shared OAuth2 state using the Session Redis pool | official `github.com/redis/go-redis/v9` |
 | [`auth/login`](auth/login) | Unreleased | OAuth2/OIDC or password login, Session rotation and typed application principals | OAuth2, OIDC, Session and auth middleware |
 | [`lifecycle`](lifecycle) | v1.0.0 | Explicit owned/borrowed resources and reverse-order assembly cleanup | standard library, core |
 | [`auth/password`](auth/password) | v1.0.0 | Argon2id PHC password hashes, bounded verification and rehash policy | official `golang.org/x/crypto/argon2` |
@@ -60,7 +60,7 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 | [`coordination/etcd`](coordination/etcd) | v1.0.0 | Lease locks, election and fencing revisions | official etcd concurrency SDK |
 | [`transport/cors`](transport/cors) | v1.0.0 | Explicit browser-origin policy and preflight handling | `github.com/rs/cors` |
 | [`session`](session) | v1.0.0 | Server-side browser sessions, atomic token rotation and bounded memory store | standard library |
-| [`session/redis`](session/redis) | Unreleased | Shared Session Store with atomic version checks, token rotation and TTL | official `github.com/redis/go-redis/v9` |
+| [`session/redis`](session/redis) | v1.0.0 | Shared Session Store with atomic version checks, token rotation and TTL | official `github.com/redis/go-redis/v9` |
 | [`database/gorm`](database/gorm) | v1.0.0 | Native GORM telemetry, lifecycle and readiness, with PostgreSQL acceptance | `gorm.io/gorm` |
 | [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | v1.2.0 | `broker.Publisher` and `broker.Subscriber` on Apache Kafka | `github.com/twmb/franz-go` |

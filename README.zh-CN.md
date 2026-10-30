@@ -38,9 +38,9 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`database/sql`](database/sql) | v1.0.0 | database/sql 追踪、指标、生命周期与就绪检查 | 标准库、core、Noop 遥测 |
 | [`cache/memory`](cache/memory) | v1.0.0 | 内存 `cache.Cache` | kitx/ttlcache |
 | [`broker/memory`](broker/memory) | v1.0.0 | 内存发布与订阅 | 标准库、core、kitx |
-| [`auth/jwt`](auth/jwt) | 未发布 | JWT 签发与类型化验证，供应用鉴权回调使用 | `github.com/golang-jwt/jwt/v5` |
+| [`auth/jwt`](auth/jwt) | v1.0.0 | JWT 签发与类型化验证，供应用鉴权回调使用 | `github.com/golang-jwt/jwt/v5` |
 | [`auth/oauth2`](auth/oauth2) | v1.0.0 | PKCE 授权码流程、浏览器绑定的一次性 state、刷新及客户端凭证 | Go 官方 `golang.org/x/oauth2` |
-| [`auth/oauth2redis`](auth/oauth2redis) | 未发布 | 与 Session 共用 Redis 连接池的原子 OAuth2 state 存储 | Redis 官方 `github.com/redis/go-redis/v9` |
+| [`auth/oauth2redis`](auth/oauth2redis) | v1.0.0 | 与 Session 共用 Redis 连接池的原子 OAuth2 state 存储 | Redis 官方 `github.com/redis/go-redis/v9` |
 | [`auth/login`](auth/login) | 未发布 | OAuth2/OIDC 或密码登录、Session 轮换及统一业务身份 | OAuth2、OIDC、Session 及 auth 中间件 |
 | [`lifecycle`](lifecycle) | v1.0.0 | 显式资源所有权、装配失败清理及逆序关闭 | 标准库、core |
 | [`auth/password`](auth/password) | v1.0.0 | Argon2id 密码哈希、受限参数验证及升级判断 | Go 官方 `golang.org/x/crypto/argon2` |
@@ -50,7 +50,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 | [`coordination/etcd`](coordination/etcd) | v1.0.0 | 租约锁、选主及 fencing revision | etcd 官方 concurrency SDK |
 | [`transport/cors`](transport/cors) | v1.0.0 | 显式来源策略、凭证配置与预检处理 | 社区 `github.com/rs/cors` |
 | [`session`](session) | v1.0.0 | 自有服务端 Session、安全 Cookie、原子 Token 轮换及有界内存存储 | 标准库 |
-| [`session/redis`](session/redis) | 未发布 | 共享 Session 存储、原子版本校验与轮换、TTL；支持单机/Sentinel | Redis 官方 `github.com/redis/go-redis/v9` |
+| [`session/redis`](session/redis) | v1.0.0 | 共享 Session 存储、原子版本校验与轮换、TTL；支持单机/Sentinel | Redis 官方 `github.com/redis/go-redis/v9` |
 | [`database/gorm`](database/gorm) | v1.0.0 | GORM 原生操作观测、生命周期与健康检查，包含 PostgreSQL 验收 | `gorm.io/gorm` |
 | [`auth/oidc`](auth/oidc) | v1.0.0 | OIDC 发现、ID Token 签名与 JWKS 验证，供应用鉴权回调使用 | `github.com/coreos/go-oidc/v3` |
 | [`broker/kafka`](broker/kafka) | v1.2.0 | Apache Kafka 上的 `broker.Publisher`、`broker.Subscriber` | `github.com/twmb/franz-go` |

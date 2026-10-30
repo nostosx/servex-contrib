@@ -120,8 +120,7 @@ jobs:
           CHECK_MODULE: ${{ matrix.module }}
         run: |
           case "$CHECK_MODULE" in
-            auth/login|auth/oauth2redis) bash .github/scripts/check-source.sh check MODULES="$CHECK_MODULE" ;;
-            session/redis) bash .github/scripts/check-session-redis.sh check ;;
+            auth/login) bash .github/scripts/check-source.sh check MODULES="$CHECK_MODULE" ;;
             *) task check MODULES="$CHECK_MODULE" ;;
           esac
 
@@ -153,10 +152,9 @@ jobs:
       - name: Lint all modules
         working-directory: servex-contrib
         run: |
-          modules=$(for file in */go.mod */*/go.mod; do module="${file%/go.mod}"; case "$module" in session/redis|auth/login|auth/oauth2redis) ;; *) printf '%s\n' "$module" ;; esac; done)
+          modules=$(for file in */go.mod */*/go.mod; do module="${file%/go.mod}"; case "$module" in auth/login) ;; *) printf '%s\n' "$module" ;; esac; done)
           task lint MODULES="$modules"
-          bash .github/scripts/check-session-redis.sh lint
-          bash .github/scripts/check-source.sh lint MODULES='auth/login auth/oauth2redis'
+          bash .github/scripts/check-source.sh lint MODULES='auth/login'
 
   vulncheck:
     name: Reachable vulnerabilities
@@ -183,10 +181,9 @@ jobs:
       - name: Scan all modules (normal and integration builds)
         working-directory: servex-contrib
         run: |
-          modules=$(for file in */go.mod */*/go.mod; do module="${file%/go.mod}"; case "$module" in session/redis|auth/login|auth/oauth2redis) ;; *) printf '%s\n' "$module" ;; esac; done)
+          modules=$(for file in */go.mod */*/go.mod; do module="${file%/go.mod}"; case "$module" in auth/login) ;; *) printf '%s\n' "$module" ;; esac; done)
           task vulncheck MODULES="$modules"
-          bash .github/scripts/check-session-redis.sh vulncheck
-          bash .github/scripts/check-source.sh vulncheck MODULES='auth/login auth/oauth2redis'
+          bash .github/scripts/check-source.sh vulncheck MODULES='auth/login'
 
   integration:
     name: Integration (${{ matrix.backend }})

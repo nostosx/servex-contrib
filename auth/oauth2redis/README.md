@@ -28,22 +28,7 @@ Disable automatic transport retries: after a lost `GETDEL` response, the client
 cannot determine whether consumption happened. Begin a fresh login after an
 uncertain callback. Supports single-node/Sentinel `*redis.Client`.
 
-The OAuth2 peer is unreleased. From the contrib root, run:
-
-```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES='auth/oauth2redis'
-```
-
-The helper resolves matching source in an external temporary modfile, without
-modifying canonical requirements or inventing public checksums. Tests exercise
-concurrent one-time consumption using miniredis. The `integration` build adds
-real Redis acceptance with two independent clients sharing a random namespace:
-insert-only saves, exactly one concurrent consumer, Redis key expiry, and
-rejection of expired payloads. It cleans up its own keys and closes both clients.
-
-With a disposable Redis 6.2 or newer already running, select its address:
-
-```sh
-SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 \
-    bash .github/scripts/check-source.sh test INTEGRATION=true MODULES='auth/oauth2redis'
-```
+This release uses published auth/oauth2 v1.0.0. Validate with ordinary
+`task check lint vulncheck MODULES=auth/oauth2redis`. Real Redis acceptance uses
+`SERVEX_IT_REDIS_ADDR=... task test INTEGRATION=true MODULES=auth/oauth2redis`.
+No matching source checkout or local module replacement is required.

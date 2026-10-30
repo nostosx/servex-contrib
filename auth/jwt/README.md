@@ -7,8 +7,7 @@ decoding and standard claim validation are delegated to the SDK. Production
 code imports only the SDK and standard library; middleware composition tests
 also require published servex and middleware v1.4.0.
 
-This module is **unreleased** and requires Go 1.27.3. It has no published
-installation version yet. Its license and the SDK's license are MIT.
+This module is released as v1.0.0 and requires Go 1.27.3. Install the independent v1.0.0 module. Its license and the SDK's license are MIT.
 
 ## API
 

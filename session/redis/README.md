@@ -6,11 +6,9 @@ existing community miniredis fixture is used only in tests. Session itself keeps
 its standard-library-only implementation. This module requires Go 1.27.3 and is
 MIT licensed.
 
-**Unreleased:** both this adapter and its session peer are local source. The
-manifest records the intended session v1.0.0 dependency, which is not published.
-Do not use a public `go get` command yet. The development helper below resolves
-the matching session source through a temporary external modfile, never a
-committed replacement or invented checksum. Publish session before this module.
+Released as v1.0.0 with published session v1.0.0. Install with
+`go get github.com/nostosx/servex-contrib/session/redis@v1.0.0`.
+Release validation uses public dependencies without source replacements.
 
 ## Behavior
 

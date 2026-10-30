@@ -23,13 +23,6 @@ if [ -z "${!required:-}" ]; then
 fi
 if [ "$required" = SERVEX_IT_KUBECONFIG ]; then test -s "$SERVEX_IT_KUBECONFIG"; fi
 
-if [ "$module" = session/redis ] && [ -z "${SERVEX_SESSION_SOURCE_MODFILE:-}" ]; then
-  exec bash "$root/.github/scripts/check-session-redis.sh" test INTEGRATION=true
-fi
-if [ "$module" = auth/oauth2redis ] && [ -z "${SERVEX_SOURCE_MODFILE:-}" ]; then
-  exec bash "$root/.github/scripts/check-source.sh" test INTEGRATION=true MODULES=auth/oauth2redis
-fi
-
 result="$(mktemp)"
 trap 'rm -f "$result"' EXIT
 cd "$root/$module"
