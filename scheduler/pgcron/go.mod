@@ -5,7 +5,7 @@ go 1.27.3
 require (
 	github.com/DATA-DOG/go-sqlmock v1.5.2
 	github.com/jackc/pgx/v5 v5.11.0
-	github.com/nostosx/servex-contrib/database/postgres v0.0.0
+	github.com/nostosx/servex-contrib/database/postgres v1.0.0
 )
 
 require (
