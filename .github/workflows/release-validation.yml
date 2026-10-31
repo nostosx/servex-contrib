@@ -162,12 +162,13 @@ jobs:
       - name: Verify real capabilities and reject skipped tests
         env:
           PROFILE: ${{ matrix.profile }}
+          RELEASE_MODULES: ${{ inputs.modules }}
         run: |
           set -a
           source "$RUNNER_TEMP/servex-postgres.env"
           set +a
           modules=database/postgres
-          if [ "$PROFILE" = general ]; then modules="$modules vector/pgvector"; fi
+          if [ "$PROFILE" = general ] && [[ "$RELEASE_MODULES" == *'"vector/pgvector"'* ]]; then modules="$modules vector/pgvector"; fi
           task test INTEGRATION=true MODULES="$modules"
       - name: Remove owned fixture resources
         if: always()
