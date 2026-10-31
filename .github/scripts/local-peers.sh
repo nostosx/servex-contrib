@@ -6,9 +6,20 @@ shift
 test "$#" -gt 0
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 test -f "$core/go.mod"
-real_go="$(command -v "${GO:-go}")"
-real_lint="$(command -v "${GOLANGCI_LINT:-golangci-lint}" || true)"
-real_vuln="$(command -v "${GOVULNCHECK:-govulncheck}" || true)"
+# Resolve mise shims before exporting a wrapper PATH. Re-entering a shim can
+# rewrite PATH and bypass the Go wrapper used by go/packages' standard-library probe.
+resolve_tool() {
+  local executable
+  executable="$(command -v "$1")" || return
+  case "$executable" in
+    */mise/shims/*) mise which "${executable##*/}" ;;
+    *) printf '%s\n' "$executable" ;;
+  esac
+}
+real_go="$(resolve_tool "${GO:-go}")"
+real_lint="$(resolve_tool "${GOLANGCI_LINT:-golangci-lint}" || true)"
+real_vuln="$(resolve_tool "${GOVULNCHECK:-govulncheck}" || true)"
+
 temporary="$(mktemp -d)"
 trap 'rm -rf -- "$temporary"' EXIT
 declare -a manifests=()
