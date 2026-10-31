@@ -9,7 +9,7 @@ case "$module" in
   broker/rabbitmq) required=SERVEX_IT_RABBITMQ_URL ;;
   cache/redis|jobqueue/asynq|ratelimit/redis|session/redis|auth/oauth2redis) required=SERVEX_IT_REDIS_ADDR ;;
   database/mongodb) required=SERVEX_IT_MONGODB_URI ;;
-  database/gorm|database/goose) required=SERVEX_IT_POSTGRES_DSN ;;
+  database/gorm|database/goose|database/postgres|vector/pgvector|search/postgres|jobqueue/pgmq|scheduler/pgcron) required=SERVEX_IT_POSTGRES_DSN ;;
   storage/s3) required=SERVEX_IT_S3_ENDPOINT ;;
   config/consul|discovery/consul) required=SERVEX_IT_CONSUL_ADDR ;;
   config/etcd|discovery/etcd|coordination/etcd) required=SERVEX_IT_ETCD_ENDPOINTS ;;

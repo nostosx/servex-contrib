@@ -1,5 +1,13 @@
 # servex-contrib
 
+Unreleased PostgreSQL adapters: [database/postgres](database/postgres),
+[vector/pgvector](vector/pgvector), [search/postgres](search/postgres),
+[jobqueue/pgmq](jobqueue/pgmq) and [scheduler/pgcron](scheduler/pgcron).
+See [PostgreSQL capabilities and acceptance](POSTGRESQL.md) for dependencies,
+explicit local-source checks, supported extensions and SQL/operations recipes.
+These additions require matching development sources; they are not included
+in the published-version table below.
+
 English | [简体中文](README.zh-CN.md)
 
 Concrete implementations of the [servex](https://github.com/nostosx/servex)

@@ -12,6 +12,11 @@ on:
         required: true
         default: '[]'
         type: string
+      postgres_profiles:
+        description: 'JSON array of PostgreSQL extension profiles'
+        required: true
+        default: '[]'
+        type: string
 
 permissions:
   contents: read
@@ -62,7 +67,7 @@ jobs:
     name: Release integration (${{ matrix.backend }})
     # MongoDB 8 refuses Linux 6.19+ (SERVER-121912); Ubuntu 22.04 uses kernel 6.8.
     runs-on: ${{ matrix.backend == 'mongodb' && 'ubuntu-22.04' || 'ubuntu-latest' }}
-    timeout-minutes: 30
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:
@@ -97,17 +102,75 @@ jobs:
             export SERVEX_IT_KUBECONFIG="$HOME/.kube/config"
             kubectl --context kind-servex-release wait --for=condition=Ready nodes --all --timeout=120s
           fi
+          if [ "$BACKEND" = postgres-extensions ]; then
+            set -a
+            source "$RUNNER_TEMP/servex-postgres-base.env"
+            set +a
+          fi
           task test INTEGRATION=true MODULES="$RELEASE_MODULES"
       - name: Backend diagnostics
         if: failure() && matrix.backend != 'kind'
         env:
           BACKEND: ${{ matrix.backend }}
-        run: docker logs "servex-it-$BACKEND"
+        run: |
+          if [ "$BACKEND" = postgres-extensions ]; then
+            fixture_env="$RUNNER_TEMP/servex-postgres-base.env"
+            if [ -f "$fixture_env" ]; then
+              # shellcheck disable=SC1090
+              source "$fixture_env"
+              docker logs "$SERVEX_FIXTURE_NAME"
+            fi
+          else
+            docker logs "servex-it-$BACKEND"
+          fi
       - name: Remove disposable backend
         if: always() && matrix.backend != 'kind'
         env:
           BACKEND: ${{ matrix.backend }}
         run: |
-          if docker container inspect "servex-it-$BACKEND" >/dev/null 2>&1; then
+          if [ "$BACKEND" = postgres-extensions ]; then
+            fixture_env="$RUNNER_TEMP/servex-postgres-base.env"
+            if [ -f "$fixture_env" ]; then bash tests/postgres/fixture.sh down "$fixture_env"; fi
+          elif docker container inspect "servex-it-$BACKEND" >/dev/null 2>&1; then
             docker rm -f -v "servex-it-$BACKEND"
           fi
+
+  postgres-capabilities:
+    if: inputs.postgres_profiles != '[]'
+    name: Release PostgreSQL capabilities (${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: ${{ fromJSON(inputs.postgres_profiles) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: servex-contrib
+      - uses: go-task/setup-task@v2
+        with:
+          version: '3.53.1'
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: servex-contrib/**/go.sum
+      - name: Install extensions in disposable upstream containers
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: bash tests/postgres/fixture.sh up "$PROFILE" "$RUNNER_TEMP/servex-postgres.env"
+      - name: Verify real capabilities and reject skipped tests
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          set -a
+          source "$RUNNER_TEMP/servex-postgres.env"
+          set +a
+          modules=database/postgres
+          if [ "$PROFILE" = general ]; then modules="$modules vector/pgvector"; fi
+          task test INTEGRATION=true MODULES="$modules"
+      - name: Remove owned fixture resources
+        if: always()
+        run: |
+          fixture_env="$RUNNER_TEMP/servex-postgres.env"
+          if [ -f "$fixture_env" ]; then bash tests/postgres/fixture.sh down "$fixture_env"; fi

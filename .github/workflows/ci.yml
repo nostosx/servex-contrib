@@ -93,6 +93,11 @@ jobs:
           - transport/httpx
           - validation/playground
           - validation/protovalidate
+          - database/postgres
+          - vector/pgvector
+          - search/postgres
+          - jobqueue/pgmq
+          - scheduler/pgcron
           # END MODULES
     defaults:
       run:
@@ -184,6 +189,8 @@ jobs:
       matrix:
         include:
           # BEGIN INTEGRATIONS
+          - backend: postgres-extensions
+            modules: database/postgres vector/pgvector search/postgres jobqueue/pgmq scheduler/pgcron
           - backend: postgres
             modules: database/gorm database/goose
           - backend: s3
@@ -240,9 +247,54 @@ jobs:
         env:
           BACKEND: ${{ matrix.backend }}
         run: |
-          if docker container inspect "servex-it-$BACKEND" >/dev/null 2>&1; then
+          if [ "$BACKEND" = postgres-extensions ]; then
+            fixture_env="$RUNNER_TEMP/servex-postgres-base.env"
+            if [ -f "$fixture_env" ]; then bash servex-contrib/tests/postgres/fixture.sh down "$fixture_env"; fi
+          elif docker container inspect "servex-it-$BACKEND" >/dev/null 2>&1; then
             docker rm -f -v "servex-it-$BACKEND"
           fi
+
+  postgres-capabilities:
+    name: PostgreSQL capabilities (${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [general, timescale, citus, duckdb]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          path: servex-contrib
+      - uses: go-task/setup-task@v2
+        with:
+          version: '3.53.1'
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: servex-contrib/**/go.sum
+      - name: Install extensions in disposable upstream containers
+        working-directory: servex-contrib
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: bash tests/postgres/fixture.sh up "$PROFILE" "$RUNNER_TEMP/servex-postgres.env"
+      - name: Verify real capabilities and reject skipped tests
+        working-directory: servex-contrib
+        env:
+          PROFILE: ${{ matrix.profile }}
+        run: |
+          set -a
+          source "$RUNNER_TEMP/servex-postgres.env"
+          set +a
+          modules=database/postgres
+          if [ "$PROFILE" = general ]; then modules="$modules vector/pgvector"; fi
+          task test INTEGRATION=true MODULES="$modules"
+      - name: Remove owned fixture resources
+        if: always()
+        working-directory: servex-contrib
+        run: |
+          fixture_env="$RUNNER_TEMP/servex-postgres.env"
+          if [ -f "$fixture_env" ]; then bash tests/postgres/fixture.sh down "$fixture_env"; fi
 
   integration-kubernetes:
     name: Integration (kind)

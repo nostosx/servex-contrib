@@ -13,6 +13,51 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## database/postgres/v1.0.0
+
+Release date: 2026-10-31. Requires Servex v1.5.0.
+
+- Add driver-neutral SQLSTATE/transaction/identifier/metadata helpers and explicit
+  extension inspection, requirement and enablement.
+- Add TimescaleDB, Citus and JSON Schema administration helpers.
+- Exercise extension behavior on base/general/time-series/distributed/analytical
+  profiles, including FDW peers, HTTP targets and real Citus workers.
+- Provide disposable upstream-container installation without Dockerfiles.
+
+## vector/pgvector/v1.0.0
+
+Release date: 2026-10-31. Requires Servex v1.5.0 and database/postgres v1.0.0.
+
+- Add namespaced cosine/L2 storage with atomic batches and caller transactions.
+- Keep exhaustive retrieval as the default; ANN requires explicit opt-in.
+- Add explicit HNSW/IVFFlat/DiskANN/VectorChord index operations and real plans.
+
+## search/postgres/v1.0.0
+
+Release date: 2026-10-31. Requires Servex v1.5.0 and database/postgres v1.0.0.
+
+- Add native full-text, ParadeDB, PGroonga and trigram document retrieval.
+- Bind namespace/metadata filters, preserve opaque payloads and support atomic
+  batches and caller-owned transactions with explicit index creation.
+
+## jobqueue/pgmq/v1.0.0
+
+Release date: 2026-10-31. Requires Servex v1.5.0 and database/postgres v1.0.0.
+
+- Add transactional enqueue, uniqueness reservations, retries/archive and worker lifecycle.
+- Fence receipts and renew leases using server time after row locking; reject
+  leases that expire while waiting, verified by real PostgreSQL regressions.
+- Bound producer and consumer envelopes and archive malformed/oversized messages.
+- Build atomic recurring SQL templates with fresh job identities for pg_cron.
+
+## scheduler/pgcron/v1.0.0
+
+Release date: 2026-10-31. Requires database/postgres v1.0.0.
+
+- Manage persistent named SQL jobs with explicit removal and scoped catalogs.
+- Reject qualified names above PostgreSQL's 63-byte limit before database I/O
+  to prevent truncation, overwrites and invisible jobs.
+
 ## transport/httpx/v1.1.0
 
 Release date: 2026-10-31.

@@ -7,6 +7,16 @@ container="servex-it-$backend"
 # Each job owns one container; fixed ports are isolated by the hosted runner.
 # Images are intentionally explicit rather than inheriting local shared infra.
 case "$backend" in
+  postgres-extensions)
+    fixture_env="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/servex-postgres-base.env"
+    SERVEX_FIXTURE_NAME="$container" bash tests/postgres/fixture.sh up base "$fixture_env"
+    # shellcheck disable=SC1090
+    source "$fixture_env"
+    printf '%s\n' "SERVEX_IT_POSTGRES_DSN=$SERVEX_IT_POSTGRES_DSN" \
+      "SERVEX_IT_SEARCH_ENGINES=$SERVEX_IT_SEARCH_ENGINES" \
+      "SERVEX_IT_POSTGRES_EXTENSIONS=$SERVEX_IT_POSTGRES_EXTENSIONS" >> "$GITHUB_ENV"
+    exit 0
+    ;;
   s3)
     docker run -d --name "$container" -p 127.0.0.1:9000:9000 \
       -e RUSTFS_ACCESS_KEY=servex-test -e RUSTFS_SECRET_KEY=servex-test-secret \
