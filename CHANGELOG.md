@@ -13,6 +13,13 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## transport/httpx/v1.1.0
+
+Release date: 2026-10-31.
+
+- Add a bounded restricted HTTP client with DNS address pinning, private/reserved address rejection, credential-free HTTP(S) validation, redirect/downgrade checks and decompressed body limits.
+- Reusable by web readers and cloud connectors without changing core contracts or inheriting ambient proxy/retry settings. Existing HTTP server/client APIs remain available.
+
 ## auth/jwt/v1.0.0
 
 Release date: 2026-10-31.

@@ -39,7 +39,7 @@ unrelated backend SDKs. Interoperability tests may compose implementations.
 |---|---|---|---|
 | [`cache/loader`](cache/loader) | v1.0.0 | Read-through cache loading with explicit codec, shared owner and write-back policy | standard library, core, kitx/singleflight |
 | [`transport/client`](transport/client) | v1.0.0 | Shared discovery, selection and invocation engine for HTTP/gRPC adapters | standard library, core, kitx/backoff |
-| [`transport/httpx`](transport/httpx) | v1.0.0 | HTTP transport server/client | net/http, JSON codec, selector |
+| [`transport/httpx`](transport/httpx) | v1.1.0 | HTTP transport server/client | net/http, JSON codec, selector |
 | [`tracing/noop`](tracing/noop) | v1.0.0 | `tracing.Tracer` / `Propagator` no-op backend | standard library, core |
 | [`metrics/noop`](metrics/noop) | v1.0.0 | `metrics.Meter` no-op backend | standard library, core |
 | [`jobqueue/memory`](jobqueue/memory) | v1.0.0 | `jobqueue.Enqueuer` / `Runner` in memory | standard library, core, kitx |

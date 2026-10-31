@@ -29,7 +29,7 @@ middleware 模块自 `middleware/v1.1.0` 起提供类型化 CQRS 日志、指标
 |---|---|---|---|
 | [`cache/loader`](cache/loader) | v1.0.0 | 显式 Codec、owner 共享执行与写回策略的缓存加载器 | 标准库、core、kitx/singleflight |
 | [`transport/client`](transport/client) | v1.0.0 | HTTP/gRPC 复用的发现、选择与调用引擎 | 标准库、core、kitx/backoff |
-| [`transport/httpx`](transport/httpx) | v1.0.0 | HTTP 服务端与客户端 | net/http、JSON 编解码器、selector |
+| [`transport/httpx`](transport/httpx) | v1.1.0 | HTTP 服务端与客户端 | net/http、JSON 编解码器、selector |
 | [`tracing/noop`](tracing/noop) | v1.0.0 | `tracing.Tracer` / `Propagator` 空操作后端 | 标准库、core |
 | [`metrics/noop`](metrics/noop) | v1.0.0 | `metrics.Meter` 空操作后端 | 标准库、core |
 | [`jobqueue/memory`](jobqueue/memory) | v1.0.0 | 内存任务队列 `jobqueue.Enqueuer` / `Runner` | 标准库、core、kitx |
