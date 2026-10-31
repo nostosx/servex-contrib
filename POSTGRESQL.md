@@ -1,9 +1,9 @@
 # PostgreSQL capabilities
 
-This is unreleased source integration. New core contracts and contrib modules
-must be validated together. No tags, public-proxy availability, deployment or
-publication is implied. New contrib dependencies use v0.0.0 until a separately
-authorized coordinated release. Never publish those development manifests.
+Servex v1.5.0 defines the contracts. The five contrib modules below are
+independently published as v1.0.0: database/postgres, vector/pgvector,
+search/postgres, jobqueue/pgmq and scheduler/pgcron. Their manifests select real
+published dependencies, without source replacements or placeholder versions.
 
 ## Ownership and layout
 
@@ -49,10 +49,17 @@ adapters consume injected core contracts and encode rag.Chunk as opaque payload.
 They do not replace the existing memory/RAG store or migrate its data. See that
 module's README for supported filters and score conversion.
 
-## Local source acceptance
+## Standalone acceptance and optional source development
 
-Use Go 1.27.3, Task 3.53.1 and the repository's lint/vulnerability tools. Before
-publication, run the explicit helper from this repository:
+Use Go 1.27.3, Task 3.53.1 and the repository's lint/vulnerability tools.
+Normal release acceptance is standalone, using published modules:
+
+```sh
+task check lint vulncheck MODULES='database/postgres vector/pgvector search/postgres jobqueue/pgmq scheduler/pgcron'
+```
+
+For explicitly requested work across unpublished peer changes, the optional
+development helper keeps overrides outside the repository:
 
 ```sh
 bash .github/scripts/local-peers.sh /absolute/path/to/servex \
@@ -62,7 +69,8 @@ bash .github/scripts/local-peers.sh /absolute/path/to/servex \
 
 GO can select an absolute Go binary. The helper copies manifests/sums to an
 external temporary directory, adds source replacements there, and supplies a
-temporary go wrapper to Task/tools. It never changes checked-in manifests,
+temporary go wrapper to Task/tools. Public checksums for replaced modules are
+omitted only from those temporary sums. It never changes checked-in manifests,
 creates a go.work, modifies Git state or installs a global Go configuration.
 Ordinary standalone tasks remain the release acceptance path after real core
 and foundation versions have been published and consumers updated.
@@ -123,9 +131,8 @@ done
 
 The base CI integration row uses the same script. The separate
 postgres-capabilities CI matrix covers the other four profiles without
-repeating the primary module-coverage matrix. These are unreleased sources;
-ordinary CI dependency resolution still requires the coordinated real module
-versions described above. Local-source acceptance uses the explicit helper.
+repeating the primary module-coverage matrix; ordinary CI resolves the published versions directly. Local-source development
+uses the explicit helper and does not establish public consumer acceptance.
 
 Capability selection is explicit through SERVEX_IT_POSTGRES_CAPABILITIES;
 unknown/repeated names fail. SERVEX_IT_VECTOR_INDEX_KINDS selects diskann and

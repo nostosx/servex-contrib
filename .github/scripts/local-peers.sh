@@ -56,6 +56,12 @@ set -euo pipefail
 if [ "${GO111MODULE:-}" = off ]; then
   # go/packages probes the standard library in GOPATH mode; -modfile is invalid there.
   export GOFLAGS=''
+  # go/packages can also copy GOFLAGS into explicit command arguments.
+  filtered=()
+  for argument in "$@"; do
+    case "$argument" in -modfile=*) ;; *) filtered+=("$argument") ;; esac
+  done
+  set -- "${filtered[@]}"
 elif [ -n "${SERVEX_DEV_CONSUMER:-}" ] && [ "$PWD" = "$SERVEX_DEV_CONSUMER" ]; then
   export GOFLAGS="${GOFLAGS:-} '-modfile=$SERVEX_DEV_CONSUMER_MODFILE'"
 else
@@ -83,7 +89,7 @@ cp "$temporary/bin/go" "$temporary/bin/govulncheck"
 export SERVEX_DEV_ROOT="$root" SERVEX_DEV_MODFILES="$temporary/mods" SERVEX_DEV_GO_BIN="$real_go"
 export SERVEX_DEV_LINT_BIN="$real_lint" SERVEX_DEV_VULN_BIN="$real_vuln"
 export SERVEX_DEV_CONSUMER="$consumer" SERVEX_DEV_CONSUMER_MODFILE="$temporary/consumer/go.mod"
-export PATH="$temporary/bin:$PATH" GO="$temporary/bin/go" GOWORK=off
+export PATH="$temporary/bin:$PATH" GO="$temporary/bin/go" GOWORK=off GO111MODULE=on
 export GOLANGCI_LINT="$temporary/bin/golangci-lint" GOVULNCHECK="$temporary/bin/govulncheck"
 cd "${consumer:-$root}"
 "$@"

@@ -1,12 +1,21 @@
 # servex-contrib
 
-Unreleased PostgreSQL adapters: [database/postgres](database/postgres),
+PostgreSQL adapters (v1.0.0; Servex v1.5.0): [database/postgres](database/postgres),
 [vector/pgvector](vector/pgvector), [search/postgres](search/postgres),
 [jobqueue/pgmq](jobqueue/pgmq) and [scheduler/pgcron](scheduler/pgcron).
 See [PostgreSQL capabilities and acceptance](POSTGRESQL.md) for dependencies,
 explicit local-source checks, supported extensions and SQL/operations recipes.
 These additions require matching development sources; they are not included
 in the published-version table below.
+
+
+| PostgreSQL module | Version | Capability |
+|---|---|---|
+| [database/postgres](database/postgres) | v1.0.0 | Driver-neutral SQL and explicit extension administration |
+| [vector/pgvector](vector/pgvector) | v1.0.0 | Exact/ANN vector retrieval and caller transactions |
+| [search/postgres](search/postgres) | v1.0.0 | Native, ParadeDB, PGroonga and trigram search |
+| [jobqueue/pgmq](jobqueue/pgmq) | v1.0.0 | Transactional enqueue, receipt fencing and workers |
+| [scheduler/pgcron](scheduler/pgcron) | v1.0.0 | Persistent named SQL schedules |
 
 English | [简体中文](README.zh-CN.md)
 

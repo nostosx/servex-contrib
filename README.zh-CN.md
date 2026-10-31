@@ -1,10 +1,19 @@
 # servex-contrib
 
-未发布的 PostgreSQL 实现：[database/postgres](database/postgres)、
+PostgreSQL 实现（v1.0.0，依赖 Servex v1.5.0）：[database/postgres](database/postgres)、
 [vector/pgvector](vector/pgvector)、[search/postgres](search/postgres)、
 [jobqueue/pgmq](jobqueue/pgmq) 与 [scheduler/pgcron](scheduler/pgcron)。
 [PostgreSQL 接入与验收指南](POSTGRESQL.md) 记录依赖、显式源码验证、扩展能力映射和
 SQL／运维示例。这些新增模块需要匹配的开发源码，不属于下方已发布版本表。
+
+
+| PostgreSQL module | Version | Capability |
+|---|---|---|
+| [database/postgres](database/postgres) | v1.0.0 | Driver-neutral SQL and explicit extension administration |
+| [vector/pgvector](vector/pgvector) | v1.0.0 | Exact/ANN vector retrieval and caller transactions |
+| [search/postgres](search/postgres) | v1.0.0 | Native, ParadeDB, PGroonga and trigram search |
+| [jobqueue/pgmq](jobqueue/pgmq) | v1.0.0 | Transactional enqueue, receipt fencing and workers |
+| [scheduler/pgcron](scheduler/pgcron) | v1.0.0 | Persistent named SQL schedules |
 
 [English](README.md) | 简体中文
 
