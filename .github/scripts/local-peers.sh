@@ -16,12 +16,22 @@ for file in "$root"/*/go.mod "$root"/*/*/go.mod; do
   if [ -f "$file" ]; then manifests+=("$file"); fi
 done
 test "${#manifests[@]}" -gt 0
+# Replaced modules need no public checksum in a source-only modfile. Preserve
+# published sums in the repository; omit only replaced paths in temporary sums.
+printf '%s\n' github.com/nostosx/servex > "$temporary/local-modules"
+for file in "${manifests[@]}"; do
+  peer_dir="${file%/go.mod}"
+  printf 'github.com/nostosx/servex-contrib/%s\n' "${peer_dir#"$root"/}" >> "$temporary/local-modules"
+done
+copy_sum() {
+  awk 'NR==FNR {local[$0]=1; next} !($1 in local)' "$temporary/local-modules" "$1" > "$2"
+}
 for file in "${manifests[@]}"; do
   module_dir="${file%/go.mod}"
   relative="${module_dir#"$root"/}"
   mkdir -p "$temporary/mods/$relative"
   cp "$file" "$temporary/mods/$relative/go.mod"
-  if [ -f "$module_dir/go.sum" ]; then cp "$module_dir/go.sum" "$temporary/mods/$relative/go.sum"; fi
+  if [ -f "$module_dir/go.sum" ]; then copy_sum "$module_dir/go.sum" "$temporary/mods/$relative/go.sum"; fi
   replacements=("-replace=github.com/nostosx/servex=$core")
   for peer in "${manifests[@]}"; do
     peer_dir="${peer%/go.mod}"
@@ -36,7 +46,7 @@ if [ -n "$consumer" ]; then
   test -f "$consumer/go.mod"
   mkdir -p "$temporary/consumer"
   cp "$consumer/go.mod" "$temporary/consumer/go.mod"
-  if [ -f "$consumer/go.sum" ]; then cp "$consumer/go.sum" "$temporary/consumer/go.sum"; fi
+  if [ -f "$consumer/go.sum" ]; then copy_sum "$consumer/go.sum" "$temporary/consumer/go.sum"; fi
   (cd "$consumer"; "$real_go" mod edit -modfile="$temporary/consumer/go.mod" "${replacements[@]}")
 fi
 mkdir -p "$temporary/bin"

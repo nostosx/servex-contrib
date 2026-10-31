@@ -30,7 +30,10 @@ case "$profile" in
     apt-get update
     apt-get install -y --no-install-recommends postgresql-17-pgvector postgresql-17-cron \
       postgresql-17-postgis-3 postgresql-17-partman postgresql-17-pgaudit \
-      postgresql-17-hypopg postgresql-17-pgroonga
+      postgresql-17-hypopg postgresql-17-pgroonga opentelemetry-cpp
+    if ldd /usr/lib/postgresql/17/lib/pgroonga.so | grep 'not found'; then
+      echo 'PGroonga runtime dependency is missing' >&2; exit 1
+    fi
     arch="$(dpkg --print-architecture)"
     curl --retry 3 -fsSL "https://github.com/paradedb/paradedb/releases/download/v0.26.4/postgresql-17-pg-search_0.26.4-1PARADEDB-${VERSION_CODENAME}_${arch}.deb" -o /tmp/pgsearch.deb
     apt-get install -y /tmp/pgsearch.deb
