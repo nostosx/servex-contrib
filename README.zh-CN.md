@@ -4,7 +4,7 @@ PostgreSQL 实现（v1.0.0，依赖 Servex v1.5.0）：[database/postgres](datab
 [vector/pgvector](vector/pgvector)、[search/postgres](search/postgres)、
 [jobqueue/pgmq](jobqueue/pgmq) 与 [scheduler/pgcron](scheduler/pgcron)。
 [PostgreSQL 接入与验收指南](POSTGRESQL.md) 记录依赖、显式源码验证、扩展能力映射和
-SQL／运维示例。这些新增模块需要匹配的开发源码，不属于下方已发布版本表。
+SQL／运维示例。PostgreSQL 模块单独列于下表，开发时也可显式选择本地源码验证。
 
 
 | PostgreSQL module | Version | Capability |

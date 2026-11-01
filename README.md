@@ -5,8 +5,8 @@ PostgreSQL adapters (v1.0.0; Servex v1.5.0): [database/postgres](database/postgr
 [jobqueue/pgmq](jobqueue/pgmq) and [scheduler/pgcron](scheduler/pgcron).
 See [PostgreSQL capabilities and acceptance](POSTGRESQL.md) for dependencies,
 explicit local-source checks, supported extensions and SQL/operations recipes.
-These additions require matching development sources; they are not included
-in the published-version table below.
+The PostgreSQL modules are listed separately below. The integration guide also
+provides explicit local-source checks for development.
 
 
 | PostgreSQL module | Version | Capability |
