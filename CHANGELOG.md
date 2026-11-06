@@ -13,6 +13,31 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- **Breaking, auth/oauth2 v1.1.0:** consolidate client and server into
+  `auth/oauth2/client` and `auth/oauth2/server`; move shared state from
+  `auth/oauth2redis` to nested module `auth/oauth2/redis` v1.0.0. Update imports,
+  package qualifiers and module requirements together. Old tags remain immutable.
+  Existing pending client states fail closed and require a fresh login; server
+  tables and credential formats are retained.
+- auth/oauth2: add Google, GitHub, Microsoft (explicit tenant), GitLab, Discord,
+  LinkedIn, Apple and trusted generic OIDC login adapters. Verify signed ID tokens
+  or authenticated provider profiles; bind state to the client and provider.
+  Bound HTTP responses and reject credential-bearing backend redirects.
+- auth/login v1.2.0: compose provider identities with application resolvers and
+  browser sessions; support bounded Apple form_post callbacks. Account mapping
+  stays application-owned; document exact callback CSRF and cookie policy.
+- Tooling: map integration subpackages to their nearest containing module,
+  retaining independent nested-module CI and service gates.
+
+## auth/oidc/v1.0.2
+
+Release date: 2026-11-07. Requires Go 1.27.3.
+
+- Accept Google's documented `accounts.google.com` issuer only when the configured
+  issuer is `https://accounts.google.com`, matching the upstream verifier. Keep
+  exact matching for other issuers, signature/audience/expiry/nonce checks and
+  negative regressions for lookalike issuer variants.
+
 ## auth/oauth2server/v1.0.0
 
 Release date: 2026-11-06. Requires Go 1.27.3.

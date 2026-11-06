@@ -93,7 +93,9 @@ func NewRemote(ctx context.Context, issuer, audience, jwksURL string, opts ...Op
 	return &Verifier{verifier: coreoidc.NewVerifier(issuer, keys, &coreoidc.Config{ClientID: audience, SupportedSigningAlgs: o.algorithms}), issuer: issuer, audience: audience}, nil
 }
 
-// Verify checks signature, exact issuer, audience, expiry and subject. It also
+// Verify checks signature, issuer, audience, expiry and subject. Google's
+// documented accounts.google.com issuer is equivalent to its HTTPS issuer.
+// All other issuers must match exactly. It also
 // checks azp when present, and requires it when the token has multiple
 // audiences. The SDK validates nbf with its documented five-minute leeway.
 // Use VerifyNonce for ID tokens received during an OIDC login flow.
@@ -108,7 +110,8 @@ func (v *Verifier) Verify(ctx context.Context, raw string) (*IDToken, error) {
 		}
 		return nil, fmt.Errorf("oidc: verify id token: %w", err)
 	}
-	if token.Issuer != v.issuer || token.Subject == "" {
+	googleIssuer := v.issuer == "https://accounts.google.com" && token.Issuer == "accounts.google.com"
+	if (token.Issuer != v.issuer && !googleIssuer) || token.Subject == "" {
 		return nil, errors.New("oidc: invalid issuer or missing subject")
 	}
 	var claims struct {

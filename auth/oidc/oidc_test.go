@@ -94,6 +94,26 @@ func signToken(t *testing.T, key *rsa.PrivateKey, kid string, claims map[string]
 	return unsigned + "." + base64.RawURLEncoding.EncodeToString(signature)
 }
 
+func TestGoogleIssuerEquivalence(t *testing.T) {
+	p := newIdentityProvider(t)
+	verifier, err := oidc.NewRemote(t.Context(), "https://accounts.google.com", "client", p.server.URL+"/keys", oidc.WithInsecureHTTP())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, issuer := range []string{"accounts.google.com", "https://accounts.google.com"} {
+		t.Run(issuer, func(t *testing.T) {
+			if _, err := verifier.VerifyNonce(t.Context(), p.token(t, map[string]any{"iss": issuer}), "nonce-1"); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+	for _, issuer := range []string{"https://accounts.google.com/", "http://accounts.google.com", "https://attacker.example"} {
+		if _, err := verifier.Verify(t.Context(), p.token(t, map[string]any{"iss": issuer})); err == nil {
+			t.Fatalf("untrusted issuer accepted: %s", issuer)
+		}
+	}
+}
+
 func TestVerifyDiscoveryAndRemote(t *testing.T) {
 	for _, discovery := range []bool{false, true} {
 		t.Run(map[bool]string{false: "explicit jwks", true: "discovery"}[discovery], func(t *testing.T) {
