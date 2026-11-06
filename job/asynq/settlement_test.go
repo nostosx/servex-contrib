@@ -55,12 +55,14 @@ func (b backend) testLateHandlerCannotReleaseReservation(t *testing.T) {
 			q.confirm(t.Context(), key, id)
 
 			entered, finish, returned := make(chan struct{}), make(chan struct{}), make(chan struct{})
+			canceled := make(chan struct{})
 			var once sync.Once
 			release := func() { once.Do(func() { close(finish) }) }
 			h := q.handler(t.Context(), map[string]job.Handler{"work": func(ctx context.Context, _ *job.Job) error {
 				close(entered)
 				if !tt.complete {
 					<-ctx.Done()
+					close(canceled)
 				}
 				<-finish
 				return tt.lateErr
@@ -91,9 +93,19 @@ func (b backend) testLateHandlerCannotReleaseReservation(t *testing.T) {
 			case tt.shutdown:
 				srv.Shutdown()
 			case !tt.timeout:
-				if err := q.inspector.CancelProcessing(id); err != nil {
-					t.Fatal(err)
-				}
+				// CancelProcessing only publishes a best-effort signal. Start may
+				// return before the SDK subscriber is ready, so require delivery.
+				eventually(t, "handler cancellation", func() bool {
+					select {
+					case <-canceled:
+						return true
+					default:
+						if err := q.inspector.CancelProcessing(id); err != nil {
+							t.Fatal(err)
+						}
+						return false
+					}
+				})
 			}
 			eventually(t, "processor settlement", func() bool {
 				info, err := q.inspector.GetTaskInfo(q.opts.queue, id)
