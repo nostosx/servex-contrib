@@ -1,254 +1,257 @@
 # middleware
 
-For shared HTTP/gRPC/stream/worker observation, use the
-[`profile`](profile/README.md) composition API. Authentication and execution
-policies remain explicit additions to each protocol scope.
+Explicit AOP policies for published servex v1.7.0 contracts. Current source is
+unreleased and requires Go 1.27.3. Use the
+[source-validation commands](../CONTRIBUTING.md#checks) while peers are unpublished.
 
-`github.com/nostosx/servex-contrib/middleware` is one module holding the
-standard servex middleware. Each package provides `endpoint.Middleware` via `New`,
-which reads call information from `metadata.FromContext` (kind, protocol,
-operation, header) and works with any transport, consumer or worker. The
-module depends only on the standard library, servex, kitx and the SDK-free
-metrics/noop and tracing/noop backends. External capabilities are injected
-through functions and interfaces.
+## Package layout
 
-| Package | Side | Main API | Behaviour |
-|---|---|---|---|
-| `recovery` | server | `New(WithLogger, WithHandler)` | Turns panics into `errorx.Internal` (reason `PANIC`, not retryable) and logs the stack. |
-| `auth` | server, client | `New[P](verify, WithHeader, WithScheme)`, `FromContext[P]`, `Client(token, ...)` | Server: verifies the `Authorization: Bearer` token and stores the principal; missing or invalid tokens are `Unauthenticated`. Client: writes the token into the outbound header. |
-| `validate` | server | `New()` | Calls `Validate() error` on requests that implement it (protoc-gen-validate compatible); failures are `InvalidArgument`. |
-| `ratelimit` | server | `New(Limiter, WithKey)`, `TokenBucket(rate, burst, WithClock, WithIdleTimeout)` | Rejects with `ResourceExhausted` (reason `RATE_LIMITED`). The token bucket is keyed and evicts idle buckets without a goroutine. |
-| `tracing` | both | `New(tracing.Tracer, tracing.Propagator)`, `IsServerFault` | Server spans continue the inbound trace; client spans are injected into the outbound header. Following OpenTelemetry, server and internal spans get an error status only for server faults (Unknown, DeadlineExceeded, Unimplemented, Internal, Unavailable, DataLoss); client spans for every failure. The `servex.code` attribute is always set. |
-| `logging` | both | `New(logger.Logger, WithLevel)` | One record per call with kind, protocol, operation, duration and errorx code. |
-| `metrics` | both | `New(metrics.Meter, WithBuckets)` | `servex_requests_total{kind,protocol,operation,code}` and `servex_request_duration_seconds{kind,protocol,operation}`. |
-| `retry` | client | `New(WithMaxAttempts, WithBackoff, WithRetryIf)`, `Exponential(base, limit)` | Retries retryable errors (default 3 attempts, exponential backoff with jitter from 100ms to 2s); stops when the caller's context ends. A remote error is retried only by the hop that received it: servex servers report it to their callers as not retryable. |
-| `circuitbreaker` | client | `New(WithKey, WithK, WithWindow, WithBuckets, WithMinRequests, ...)`, `ErrOpen` | Google SRE adaptive throttling per operation; rejects with a non-retryable `Unavailable` (reason `CIRCUIT_OPEN`), so an outer retry stops. |
-| `timeout` | client | `New(d)` | Bounds a single attempt; an exceeded deadline is `DeadlineExceeded` (reason `TIMEOUT`). |
+Ordinary policies live in one package per execution boundary. Functions and files
+name the capability; using logging, metrics and recovery together needs one import.
 
-## Distributed rate limiting and gRPC streams
+| Package | Execution boundary | Main factories |
+|---|---|---|
+| [endpoint](endpoint) | Inbound endpoints and server streams | Logging, Metrics, Tracing, Authentication, Validation, Recovery, RateLimit, ContextRateLimit, Budget, Bulkhead |
+| [application](application) | Typed business handlers, commands and queries | Logging, Metrics, Tracing, Validation, Authorization, Transaction, Idempotency, Audit, QueryCache, Budget, Bulkhead |
+| [client](client) | Outbound logical calls and selected-node attempts | Logging, Metrics, Tracing, AttemptLogging, AttemptMetrics, AttemptTracing, Authentication, CircuitBreaker, Bulkhead |
+| [messaging](messaging) | Publication, consumption and native settlement events | PublishLogging/Metrics/Tracing, ConsumeLogging/Metrics/Tracing, SettlementLogging/Metrics/Tracing, Identity, Timeout, Recovery, Deduplicate, Bulkhead |
+| [job](job) | Enqueue, execution and native runtime events | EnqueueLogging/Metrics/Tracing, ExecutionLogging/Metrics/Tracing, EventLogging/Metrics/Tracing, Timeout, Recovery, Deduplicate, Bulkhead |
+| [bulkhead](bulkhead) | Explicitly shared concurrency capacity | New creates a Limiter; Acquire grants a release function |
 
-Since middleware v1.3.0, `ratelimit.NewContext` accepts a `ContextLimiter` with caller context, a
-retry-delay hint and backend errors. It supports distributed adapters such as
-`servex-contrib/ratelimit/redis` without a cross-module import. Backend errors
-reject by default; `WithFailOpen(true)` explicitly admits calls on a backend
-failure. Caller cancellation and quota rejection are never bypassed. `New`
-and the local `TokenBucket` remain unchanged.
+Each boundary directly implements its execution wrappers. Shared signal recording
+and option resolution live in [observe](observe), which also provides the default
+`Level` classifier (use `errorx.IsServerFault` for fault classification);
+[tokenauth](tokenauth) and [validation](validation) provide named support functions.
+They belong to the same module and introduce no SDK dependency. There are no
+internal directories or separate signal-factory forwarding packages. Cross-scope
+observation tests and benchmarks live in the module root's test files.
 
-For gRPC streams, explicitly assemble `grpcx.WithStreamMiddleware` or
-`grpcx.WithClientStreamMiddleware`; the unary chain does not apply to streams.
-See the grpcx README for lifecycle and retry constraints.
+Endpoint and Client logical-call factories return core `endpoint.Middleware`.
+Application factories return `application.Middleware[Request, Result]`. Native
+attempt, message and job factories retain their own contracts. No implicit
+policies are installed and the first wrapper is outermost. `endpoint.Recommended`
+and `client.Recommended` return a chain in canonical order, and `Order`/`Check`
+expose and verify that order for teams that assemble chains by hand; see
+[Policy order](#policy-order).
 
-## Shared protocol profiles (v1.5.0)
+The middleware module is SDK-free. Optional SDK adapters are independent
+capability modules: [auth](../auth), [validation](../validation) and
+[ratelimit](../ratelimit); browser sessions and login live under
+[session](../session) and [auth/login](../auth/login). Concrete signal backends
+live under [observability](../observability).
 
-The new `middleware/profile` package defines observability once in `app.go`, then
-returns independent middleware slices for each explicit transport scope. It is
-not included in the existing v1.4.0 tag. Authentication and operation policies
-are supplied explicitly; constructors remain SDK-free.
+## Endpoint middleware
 
 ```go
-signals := profile.New(profile.Config{
-    Logger: log, Tracer: tracer, Propagator: propagator, Meter: meter,
-})
+import endpointmw "github.com/nostosx/servex-contrib/middleware/endpoint"
 
-// Composition fragment: authenticate and authenticateStream are application
-// policies; transports, validation and signals are constructed before startup.
-httpServer := httpx.NewServer(
-    httpx.WithMiddleware(signals.Server(authenticate, validate.New())...),
-)
-grpcServer := grpcx.NewServer(
-    grpcx.WithMiddleware(signals.Server(authenticate, validate.New())...),
-    grpcx.WithStreamMiddleware(signals.Stream(authenticateStream)...),
-)
+handler := endpoint.Chain(
+    endpointmw.Tracing(tracer, propagator),
+    endpointmw.Logging(log),
+    endpointmw.Metrics(meter),
+    endpointmw.Recovery(endpointmw.WithRecoveryLogger(log)),
+    endpointmw.Authentication(verify),
+    endpointmw.Validation(),
+)(businessEndpoint)
 ```
 
-Server and Stream execute **tracing → logging → metrics → recovery → explicit
-policies → handler**. Recovery converts a business panic to an error before the
-surrounding signals record it, so failed calls remain visible in logs, counters
-and spans. Native call metadata supplies protocol, operation and span kind; one
-profile does not rewrite metadata or create a separate identity context.
+Pass the same factories to httpx.WithMiddleware or grpcx.WithMiddleware. A matched
+endpoint chain does not cover raw handlers or routing failures. For a whole HTTP
+request use httpx.WithHTTPMiddleware and httpx.EndpointFilter. Native HTTP
+middleware handles CORS, CSRF, login and Session.
 
-Stream wraps the complete stream lifetime once. It adds no per-message
-validation, retries or timeouts. Explicit extras must be safe for whole-stream
-execution; unary policies are not automatically copied there. Client returns
-**tracing → logging → metrics → explicit policies → operation**, without recovery
-or replay. Use `signals.Client(...)` with the transport's client-middleware
-option. Retry and timeout behavior stays an explicit application decision.
-
-Every method returns a fresh slice, including a copy of explicit extras; changing
-one transport's slice does not change another. Metric instruments are constructed
-once. Nil loggers disable logging, and nil tracer/meter/propagator use the existing
-individual middleware no-op behavior. Signal implementations must support
-concurrent use across transports.
-
-HTTP-native CORS, CSRF and Session remain outside routing through
-`httpx.WithHTTPMiddleware(...)`. Endpoint profiles run inside matched endpoint
-routes; they do not silently cover raw HandleHTTP handlers, unmatched requests or
-browser preflight. Construct that outer chain once in the HTTP assembly and
-apply authentication at the appropriate route/scope.
+Authentication exposes the verified principal through PrincipalFromContext.
+Client Authentication fails closed: an empty token returns Unauthenticated unless
+WithAllowAnonymous is supplied explicitly.
+RateLimit accepts a synchronous limiter; ContextRateLimit accepts a backend using
+context. Recovery returns non-retryable Internal/PANIC; raw panic diagnostics
+require WithPanicDetails. Budget sets a cooperative execution deadline. Validation
+calls the request's Validate method. Optional SDK validation, JWT/OIDC and rate
+limit adapters remain separately selected dependencies.
 
 ## Typed application middleware
 
-Version v1.1.0 also provides `logging.Command[C,R]` / `Query[Q,R]`,
-`metrics.Command[C,R]` / `Query[Q,R]` and `tracing.Command[C,R]` / `Query[Q,R]`.
-These use servex/cqrs v1.1.0;
-**middleware/v1.0.0 does not contain these APIs**. Keep the endpoint API above
-for transport calls. Application wrappers consume `cqrs.Metadata{Kind, Operation}`
-from `ChainCommand` / `ChainQuery`, independently of transport metadata.
-
-Assemble once in the application composition root, with stable operation names:
-
 ```go
-handler := cqrs.ChainCommand("catalog.create_product", command,
-    tracing.Command[Create, Product](tracer),
-    metrics.Command[Create, Product](meter),
-    logging.Command[Create, Product](logger),
+import applicationmw "github.com/nostosx/servex-contrib/middleware/application"
+
+handler := application.Decorate(application.Metadata{
+    Kind: application.KindCommand, Operation: "run.start",
+}, startRunHandler,
+    applicationmw.Tracing[StartRun, Run](tracer),
+    applicationmw.Logging[StartRun, Run](log),
+    applicationmw.Metrics[StartRun, Run](meter),
+    applicationmw.Authorization[StartRun, Run](authorizeStartRun),
+    applicationmw.Idempotency(idempotencyConfig),
+    applicationmw.Transaction[StartRun, Run](transactionRunner),
 )
 ```
 
-This is an assembly fragment; request/result types, command and sinks belong to
-the application. For a complete command/query program see the executable
-[ExampleCommand](logging/cqrs_test.go). The first wrapper is outermost; logging
-runs inside the internal span for trace correlation. Nil loggers disable logging
-and no-op metrics/tracing; WithLevel and WithBuckets apply to the typed factories.
-Use concurrency-safe sinks and handlers. No automatic retry or transaction is added.
+These are assembly fragments: application-owned types, handlers, sinks and policies
+are supplied by app.go. IdempotencyConfig and QueryCacheConfig carry typed policy
+settings; TransactionRunner/TransactionRunnerFunc define the transaction boundary.
+Audit records business outcomes. Validation accepts a typed check, with a nil check
+selecting the request's Validate method. QueryCache applies only to queries, with
+explicit TTL, trusted scope and FailOpen behavior.
 
-- Logs: kind, operation, duration, code, and trace/span IDs when valid.
-- Metrics: `servex_usecase_calls_total{kind,operation,code}` and
-  `servex_usecase_duration_seconds{kind,operation}`; bounded operation names only.
-- Traces: internal child spans named after the operation; kind, operation and code.
-  Caller context is preserved through the child context; no transport headers are
-  extracted, injected or changed.
+application.Wrap retains a function signature. application.Decorate with
+`Metadata{Kind: application.KindCommand}` or `KindQuery` supplies intent metadata
+for the same handler contract. Conditional composition uses
+application.When and application.Operations. Direct receiver calls bypass decorators.
+Recovery, retries and transactions are explicit. Observation records interrupted
+Internal outcomes while panic/Goexit continue unchanged. Requests, results, raw
+error text and panic values are excluded from observation signals.
 
-Requests, results, error text, error reasons and panic values are excluded from
-these signals. Spans always carry the errorx code (`Unknown` for unclassified
-errors); only server faults record a code-only error and an error status, so
-client-class results such as NotFound or InvalidArgument do not. Panics count as `Internal`, end the span once and propagate unchanged;
-recovery belongs at the outer transport/process boundary. Results and original
-errors pass back unchanged, including nonzero results returned together with errors.
+A PostgreSQL idempotency store can commit successful results with participating
+business SQL writes. Audit atomicity needs a recorder joining that transaction;
+resource authorization needing its snapshot belongs inside the transaction.
+Cache invalidation, consistency and stampede handling remain application choices.
 
-## Install
-
-Requires Go 1.27.3 or later. Version v1.3.0 uses published servex v1.3.0
-and kitx v1.0.0, without local replacements.
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/middleware@v1.4.0
-```
-
-The example version corresponds to the tag `middleware/v1.4.0`;
-see [module versioning](../README.md#versioning).
-
-## Usage
-
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
-
-Middleware runs in the order written; servex never reorders it. The
-recommended chains:
-
-```
-server:   recovery -> tracing -> logging -> metrics -> auth -> ratelimit -> validate -> handler
-client:   tracing -> logging -> metrics -> retry -> circuitbreaker -> timeout -> [select node -> invoke]
-consumer: recovery -> tracing -> logging -> metrics -> handler
-```
-
-`timeout` inside `retry` bounds each attempt (the overall budget is the
-caller's deadline); `circuitbreaker` inside `retry` makes an open breaker end
-the retries; `auth` before `ratelimit` allows limiting per caller.
+## Client middleware
 
 ```go
-package main
+import clientmw "github.com/nostosx/servex-contrib/middleware/client"
 
-import (
-	"context"
-	"errors"
-	"log"
-	"log/slog"
-	"time"
-
-	slogadapter "github.com/nostosx/servex-contrib/logger/slog"
-	metricsnoop "github.com/nostosx/servex-contrib/metrics/noop"
-	"github.com/nostosx/servex-contrib/middleware/auth"
-	"github.com/nostosx/servex-contrib/middleware/circuitbreaker"
-	"github.com/nostosx/servex-contrib/middleware/logging"
-	mwmetrics "github.com/nostosx/servex-contrib/middleware/metrics"
-	"github.com/nostosx/servex-contrib/middleware/ratelimit"
-	"github.com/nostosx/servex-contrib/middleware/recovery"
-	"github.com/nostosx/servex-contrib/middleware/retry"
-	"github.com/nostosx/servex-contrib/middleware/timeout"
-	mwtracing "github.com/nostosx/servex-contrib/middleware/tracing"
-	"github.com/nostosx/servex-contrib/middleware/validate"
-	tracingnoop "github.com/nostosx/servex-contrib/tracing/noop"
-	"github.com/nostosx/servex-contrib/transport/httpx"
+remote, err := httpx.NewClient(ctx, target,
+    httpx.WithClientMiddleware(
+        clientmw.Tracing(tracer, propagator),
+        clientmw.Logging(log),
+        clientmw.Metrics(meter),
+        clientmw.Authentication(token),
+        clientmw.CircuitBreaker(),
+    ),
+    httpx.WithClientAttemptMiddleware(
+        clientmw.AttemptTracing(tracer, propagator),
+        clientmw.AttemptLogging(log),
+        clientmw.AttemptMetrics(meter),
+    ),
+    httpx.WithCallPolicy(clientpolicy.Policy{
+        Timeout: 3*time.Second, AttemptTimeout: time.Second,
+        MaxAttempts: 3, RetrySafe: true, RetryIf: errorx.IsRetryable,
+    }),
 )
-
-type Claims struct{ Subject string }
-
-func verify(_ context.Context, token string) (Claims, error) {
-	if token != "secret" {
-		return Claims{}, errors.New("unknown token")
-	}
-	return Claims{Subject: "alice"}, nil
-}
-
-func main() {
-	logger := slogadapter.New(slog.Default())
-	// Use real backends, for example servex-contrib/tracing/otel and
-	// servex-contrib/metrics/prometheus.
-	tracer, propagator, meter := tracingnoop.New(), tracingnoop.NewPropagator(), metricsnoop.New()
-
-	srv := httpx.NewServer(httpx.WithMiddleware(
-		recovery.New(recovery.WithLogger(logger)),
-		mwtracing.New(tracer, propagator),
-		logging.New(logger),
-		mwmetrics.New(meter),
-		auth.New(verify),
-		ratelimit.New(ratelimit.TokenBucket(100, 200)), // 100 calls/s, bursts of 200
-		validate.New(),
-	))
-	_ = srv // register routes, add to app.App
-
-	client, err := httpx.NewClient(context.Background(), "http://127.0.0.1:8000", httpx.WithClientMiddleware(
-		mwtracing.New(tracer, propagator),
-		logging.New(logger),
-		mwmetrics.New(meter),
-		auth.Client(func(context.Context) (string, error) { return "secret", nil }),
-		retry.New(retry.WithMaxAttempts(3)),
-		circuitbreaker.New(),
-		timeout.New(time.Second),
-	))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer client.Close()
-}
 ```
 
-Handlers read the authenticated principal with `auth.FromContext[Claims](ctx)`.
-Each package has a runnable `Example` in its `example_test.go`.
+clientpolicy names contrib transport/client; grpcx exposes the same options.
+A logical-call chain wraps all attempts and backoff. An attempt chain wraps one
+selected-node invocation and never replays next. transport/client.Attempt adapts
+an explicitly chosen endpoint-shaped policy to one attempt; node-specific policies
+also need a node-aware key. Client Authentication injects a token; inbound token
+verification belongs to endpoint.Authentication.
 
-## Testing
+Retries and total/attempt deadlines belong exclusively to transport/client.Policy.
+WithOperationPolicies replaces the policy for exact stable operation names.
+Multiple attempts require RetrySafe and RetryIf; Backoff may use kitx/backoff.
+Configure SDK retry behavior to keep one retry owner. Logging uses WithLogLevel;
+metrics uses WithMetricBuckets. Only tracing owns trace propagation.
+
+## Message and job middleware
+
+```go
+import messagingmw "github.com/nostosx/servex-contrib/middleware/messaging"
+
+publisher := messaging.DecoratePublisher(rawPublisher,
+    messagingmw.Identity(),
+    messagingmw.PublishTracing(tracer, propagator),
+    messagingmw.PublishLogging(log),
+    messagingmw.PublishMetrics(meter),
+)
+consume := messaging.ChainConsume(
+    messagingmw.ConsumeTracing(tracer, propagator),
+    messagingmw.ConsumeLogging(log),
+    messagingmw.ConsumeMetrics(meter),
+    messagingmw.Recovery(),
+    messagingmw.Timeout(2*time.Second),
+    messagingmw.Deduplicate(store, messageKey),
+)(handleMessage)
+```
+
+messaging and job name core contracts; messagingmw and jobmw identify contrib
+policies. Job composition uses job.ChainEnqueue and job.ChainExecution with
+jobmw.EnqueueLogging/Metrics/Tracing and jobmw.ExecutionLogging/Metrics/Tracing.
+Each boundary preserves native inputs and options.
+
+```go
+import jobmw "github.com/nostosx/servex-contrib/middleware/job"
+
+execute := job.ChainExecution(
+    jobmw.ExecutionTracing(tracer, propagator),
+    jobmw.ExecutionLogging(log),
+    jobmw.ExecutionMetrics(meter),
+    jobmw.Recovery(),
+    jobmw.Timeout(2*time.Second),
+)(handleJob)
+```
+
+Message ACK/redelivery and job scheduling, leases, retries and completion remain
+with the backend. Deduplicate requires a stable ID, trusted scope, canonical digest
+and Store; it does not make arbitrary external effects or acknowledgement atomic.
+Use messagingmw.SettlementLogging/Metrics/Tracing and jobmw.EventLogging/Metrics/Tracing
+to observe real native outcomes. Combine selected callbacks explicitly and pass
+them to backend observer options; handler success alone is not settlement success.
+
+## Streams and limits
+
+Select grpcx.WithStreamMiddleware and WithClientStreamMiddleware separately from
+unary chains, using endpoint and client factories respectively. They wrap the
+whole stream lifetime without replay or implicit per-message validation. SSE,
+WebSocket and Connect may use whole-request HTTP policies; message processing
+remains explicit.
+
+Budget and Timeout use cooperative context deadlines. They do not detach or
+forcibly terminate handlers. Create one middleware/bulkhead.Limiter and pass it
+to the boundary Bulkhead factories only when those chains should share capacity.
+Use different limiters for different isolation scopes.
+
+## Policy order
+
+The first wrapper is outermost, so order changes meaning. `endpoint.Recommended`
+and `client.Recommended` take a `map[Policy]endpoint.Middleware` and return the
+chain in canonical order, omitting nil entries; `Order` returns that sequence and
+`Check` verifies a hand-built one. An unknown policy panics during assembly.
+
+Inbound, outermost first:
+
+| Policy | Position rationale |
+|---|---|
+| `PolicyTracing` | Outermost, so rejected calls are traced too |
+| `PolicyLogging` | Inside tracing for trace/span IDs, outside recovery so a recovered panic is logged as a classified outcome |
+| `PolicyMetrics` | Same reasoning as logging |
+| `PolicyRecovery` | Outside every remaining policy, so a panic anywhere downstream becomes a non-retryable Internal error |
+| `PolicyBudget` | Bounds all downstream work including remote admission and verification |
+| `PolicyRateLimit` | Rejects over-quota calls before a concurrency slot is spent |
+| `PolicyBulkhead` | Bounds concurrency before paying for authentication |
+| `PolicyAuthentication` | Establishes the principal |
+| `PolicyValidation` | Closest to the handler |
+
+Outbound, outermost first:
+
+| Policy | Position rationale |
+|---|---|
+| `PolicyTracing` | Outermost, so the span covers attempts and local rejections |
+| `PolicyLogging` / `PolicyMetrics` | Inside tracing; they observe accepted and rejected calls |
+| `PolicyAuthentication` | Outside the breaker, so an unavailable token source never counts against the target's health |
+| `PolicyBulkhead` | Must stay outside the breaker: `IsCircuitBreakerFailure` counts `ResourceExhausted` as a backend failure, so an inner bulkhead would let local overload open it |
+| `PolicyCircuitBreaker` | Innermost logical-call policy, so local authentication and bulkhead rejections do not count against the backend |
+
+```go
+handler := endpoint.Chain(endpointmw.Recommended(map[endpointmw.Policy]endpoint.Middleware{
+	endpointmw.PolicyTracing:        endpointmw.Tracing(tracer, propagator),
+	endpointmw.PolicyLogging:        endpointmw.Logging(log),
+	endpointmw.PolicyRecovery:       endpointmw.Recovery(endpointmw.WithRecoveryLogger(log)),
+	endpointmw.PolicyAuthentication: endpointmw.Authentication(verify),
+	endpointmw.PolicyValidation:     endpointmw.Validation(),
+})...)(businessEndpoint)
+```
+
+## Validation
+
+From the repository root:
 
 ```sh
-GOWORK=off go test -race -count=1 ./...
-GOWORK=off go list -m all   # only this module, github.com/nostosx/servex and github.com/nostosx/kitx
+bash .github/scripts/check-source.sh check lint vulncheck MODULES=middleware
 ```
 
-There are no integration tests.
-
-## License
-
-Licensed under the [MIT License](../LICENSE).
-
-Logger API in the 2026-10-29 release: pass a core logger.Logger, wrapping an explicitly
-selected slog or Zap backend. Nil disables logging; backend adapters live in
-logger/slog and logger/zap. Historical published versions accept *slog.Logger.
-
-## Release
-
-Version v1.4.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/middleware@v1.4.0
-```
+Select independent SDK modules explicitly when changing them. Tests cover ordering,
+error identity, safe classification, propagation, interruption, business policy
+composition and native runtime events. The observe package shares recording
+semantics; each execution boundary owns its middleware factories.
