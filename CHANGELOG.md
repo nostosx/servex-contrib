@@ -13,6 +13,21 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- **Breaking, auth/oauth2/redis v1.0.0:** relocate oauth2redis to the OAuth2
+  capability directory; import auth/oauth2/redis with package name redis.
+- auth/login v1.2.0: compose provider identities with application resolvers and
+  browser sessions; support bounded Apple form_post callbacks. Account mapping
+  stays application-owned; document exact callback CSRF and cookie policy.
+
+## 2026-11-07: typed configuration and automatic schema migration
+
+Release date: 2026-11-07. Requires Go 1.27.3 and published servex v1.7.0.
+
+| Module | Version |
+|---|---|
+| config/viper | v1.1.0 |
+| storage/database/gorm | v1.1.0 |
+
 - config/viper: add typed one-time `Load` with fresh application defaults and
   automatic `Validate() error` dispatch, isolated `Values` override sources and
   `file.WithOptional()` for missing default files. Services retain their own
@@ -21,12 +36,6 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
   `AutoMigrate(ctx, db, models...)`. PostgreSQL model reconciliation runs in one
   transaction under a shared advisory lock; errors and cancellation propagate,
   caller-owned pools remain open and constructors do not change schema.
-
-- **Breaking, auth/oauth2/redis v1.0.0:** relocate oauth2redis to the OAuth2
-  capability directory; import auth/oauth2/redis with package name redis.
-- auth/login v1.2.0: compose provider identities with application resolvers and
-  browser sessions; support bounded Apple form_post callbacks. Account mapping
-  stays application-owned; document exact callback CSRF and cookie policy.
 
 ## auth/oauth2/v1.1.0
 
