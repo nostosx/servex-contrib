@@ -3,6 +3,7 @@ package file
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"maps"
@@ -33,6 +34,7 @@ type Source struct {
 	path     string
 	codecs   map[string]encoding.Codec
 	interval time.Duration
+	optional bool
 }
 
 // Option configures a Source.
@@ -42,6 +44,7 @@ type Option func(*options)
 type options struct {
 	codecs   map[string]encoding.Codec
 	interval time.Duration
+	optional bool
 }
 
 // New returns a Source for the file at path. The file is not read until
@@ -57,7 +60,13 @@ func New(path string, opts ...Option) *Source {
 			opt(&o)
 		}
 	}
-	return &Source{path: path, codecs: maps.Clone(o.codecs), interval: o.interval}
+	return &Source{path: path, codecs: maps.Clone(o.codecs), interval: o.interval, optional: o.optional}
+}
+
+// WithOptional makes a missing file an empty source. Permission, decoding and
+// other read errors still fail. Explicitly requested files should remain required.
+func WithOptional() Option {
+	return func(o *options) { o.optional = true }
 }
 
 // WithCodec registers c for files with extension ext, including the dot, as
@@ -99,6 +108,9 @@ func (s *Source) Load(ctx context.Context) (map[string]any, error) {
 		return nil, fmt.Errorf("file: load %s: no codec for extension %q", s.path, ext)
 	}
 	data, err := os.ReadFile(s.path)
+	if s.optional && errors.Is(err, os.ErrNotExist) {
+		return map[string]any{}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("file: load %s: %w", s.path, err)
 	}

@@ -1,6 +1,6 @@
 # config/viper
 
-Module version for this revision: **v1.0.2**.
+Module version for this revision: **v1.1.0**.
 
 Use Go 1.27.3; core integration requires published servex v1.7.0. See the
 [validation commands](../../CONTRIBUTING.md#checks).
@@ -61,6 +61,28 @@ Reload; validators must not reenter Reload. Applying new values to running
 components is the application's responsibility.
 
 ## Component configuration
+
+For one-time startup, use `Load` with a factory for service-owned defaults:
+
+```go
+settings, err := cfgviper.Load(ctx, []config.Source{
+ file.New("config.toml", file.WithOptional()),
+ cfgviper.Env("APP_"),
+ cfgviper.Values(map[string]any{"http.address": "127.0.0.1:8080"}),
+}, Default)
+```
+
+`Default` returns the application's concrete settings type. Load decodes over
+those fresh defaults and calls `Validate() error` on the value or its pointer
+when implemented. Loading, decoding or validation failures return a zero result
+and preserve error identity. `Values` snapshots a nested map (or dotted keys)
+for explicit overrides, isolating it from caller mutations and repeated loads.
+`file.WithOptional()` only ignores a missing file; malformed content and other
+read failures still reject startup. Keep explicitly selected files required.
+CLI flag names, bindings and business rules remain application-owned.
+
+`Load` is a one-time operation, not a typed live configuration binding. For
+reloadable snapshots use `New` and `WithValidator` as below.
 
 Applications compose component-owned configuration models; this loader does not
 own a global database/logger/server configuration or import their SDKs. Initialize
