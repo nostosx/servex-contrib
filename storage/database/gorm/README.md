@@ -1,13 +1,14 @@
 # storage/database/gorm
 
-Module version for this revision: **v1.0.0**.
+Module version for this revision: **v1.1.0**.
 
 Use Go 1.27.3; core integration requires published servex v1.7.0. See the
 [validation commands](../../../CONTRIBUTING.md#checks).
 
 Native GORM integration for servex observability, lifecycle and readiness.
 Applications retain `*gorm.DB`, normal transactions and native driver APIs.
-There is no parallel CRUD/repository abstraction or automatic schema migration.
+There is no parallel CRUD/repository abstraction. Explicit AutoMigrate calls
+reconcile application-owned models before serving; constructors do not migrate.
 Other dialects can use the plugin; backend acceptance currently covers PostgreSQL.
 
 ## API
@@ -22,6 +23,8 @@ Other dialects can use the plugin; backend acceptance currently covers PostgreSQ
 | `WithGORMConfig(native)` | Injects runtime callbacks, plugins and naming strategy outside the file configuration |
 | `OpenPostgres(name, config, tracer, meter, options...)` | Constructs one owned SQL pool plus instrumented native GORM handle; performs no automatic ping or migration |
 | `Database.GORM()` / `Database.SQL()` | Native handles sharing exactly the same pool; SQL can be passed directly to Goose |
+| `Database.AutoMigrate(ctx, models...)` | Reconciles models in one PostgreSQL transaction under an advisory lock using the resource's native GORM configuration |
+| `AutoMigrate(ctx, sqlPool, models...)` | Same operation for an existing borrowed SQL pool; never creates or closes a pool |
 | `Database.Start` / `Check` / `Stop` | Application lifecycle and readiness, including cleanup before Start |
 | `Database.Close` / `Shutdown` | Idempotent construction rollback and DI shutdown aliases of the same pool owner |
 
@@ -111,8 +114,29 @@ Startup retains the ping error and any cleanup error observed within its context
 a later Close joins cleanup that outlives a canceled startup. Stop initiates Close once
 and bounds waiting with its context. SQL Close cannot be canceled after it starts;
 a later Stop/Close waits for the same cleanup. Close is valid even before Start.
-Pass Database.SQL() directly to storage/database/goose.New to share the pool for explicit
-migrations; the migrator must not close it or run automatically in each replica.
+Use AutoMigrate explicitly during application startup before listeners/workers.
+The PostgreSQL transaction advisory lock serializes concurrent callers using
+either contrib entry point; context cancellation bounds both waiting and DDL.
+Errors roll back that operation and propagate to the caller. The borrowed-pool
+entry point uses default GORM naming and disables SQL logging; use the owning
+Database method when custom native naming or GORM configuration is required.
+
+```go
+if err := database.AutoMigrate(ctx, &Account{}, &Session{}); err != nil {
+    return err
+}
+// Existing SQL applications can keep their queries and pool owner:
+if err := gorm.AutoMigrate(ctx, sqlPool, &Account{}, &Session{}); err != nil {
+    return err
+}
+```
+
+Models and constraints belong to their data owner. GORM adds missing tables,
+columns, constraints and indexes and may alter column types/nullability. It does
+not remove obsolete columns. Renames, destructive changes and data backfills
+require an explicit operation. Automatic migration is opt-in through the call,
+not a constructor side effect. Goose remains available for applications choosing
+versioned migrations; both approaches borrow the existing pool.
 
 Do not attach a request context to a global GORM handle. Normal
 GORM transaction semantics, ErrRecordNotFound and context errors are preserved.
