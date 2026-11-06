@@ -76,6 +76,10 @@ func New(config Config, store Store) (*Server, error) {
 	cfg.SendDebugMessagesToClients = false
 	cfg.ScopeStrategy, cfg.AudienceMatchingStrategy = fosite.ExactScopeStrategy, fosite.ExactAudienceMatchingStrategy
 	cfg.RefreshTokenScopes = []string{"offline_access"}
+	// SDK getters lazily assign these defaults. Initialize them before serving
+	// concurrent requests so first-time client authentication cannot race.
+	_ = cfg.GetSecretsHasher(context.Background())
+	_ = cfg.GetJWKSFetcherStrategy(context.Background())
 	key := &jose.JSONWebKey{Key: config.Key, KeyID: config.KeyID, Algorithm: "RS256", Use: "sig"}
 	keyGetter := func(context.Context) (any, error) { return key, nil }
 	strategy := &compose.CommonStrategy{

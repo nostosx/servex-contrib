@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -140,4 +141,22 @@ func TestRejectsInsecureConfiguration(t *testing.T) {
 	if err == nil {
 		t.Fatal("insecure issuer accepted")
 	}
+}
+
+func TestConcurrentClientAuthenticationDefaults(t *testing.T) {
+	server, store := testProvider(t)
+	store.Clients["confidential"] = &fosite.DefaultClient{ID: "confidential", GrantTypes: []string{"client_credentials"}, Scopes: []string{"tasks:read"}, Secret: []byte("malformed-test-hash")}
+	start := make(chan struct{})
+	var wait sync.WaitGroup
+	for range 16 {
+		wait.Go(func() {
+			<-start
+			status, _ := tokenRequest(t, server, url.Values{"grant_type": {"client_credentials"}, "client_id": {"confidential"}, "client_secret": {"invalid-fixture-credential"}, "scope": {"tasks:read"}})
+			if status != http.StatusUnauthorized {
+				t.Errorf("invalid client secret returned %d", status)
+			}
+		})
+	}
+	close(start)
+	wait.Wait()
 }
