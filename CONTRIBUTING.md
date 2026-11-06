@@ -122,13 +122,13 @@ matching variables and select the modules:
 | `SERVEX_IT_KAFKA_BROKERS` | `messaging/kafka` | `127.0.0.1:9092` (comma separated) |
 | `SERVEX_IT_NATS_URL` | `messaging/nats` | `nats://127.0.0.1:4222` (JetStream enabled) |
 | `SERVEX_IT_RABBITMQ_URL` | `messaging/rabbitmq` | `amqp://guest:guest@127.0.0.1:5672/` |
-| `SERVEX_IT_REDIS_ADDR` | `storage/cache/redis`, `job/asynq`, `ratelimit/redis`, `session/redis`, `auth/oauth2redis` | `127.0.0.1:6379` |
+| `SERVEX_IT_REDIS_ADDR` | `storage/cache/redis`, `job/asynq`, `ratelimit/redis`, `session/redis`, `auth/oauth2/redis` | `127.0.0.1:6379` |
 | `SERVEX_IT_CONSUL_ADDR` | `config/consul`, `discovery/consul` | `127.0.0.1:8500` |
 | `SERVEX_IT_ETCD_ENDPOINTS` | `config/etcd`, `discovery/etcd`, `coordination/etcd` | `127.0.0.1:2379` (comma separated) |
 | `SERVEX_IT_NACOS_ADDR` | `config/nacos`, `discovery/nacos` | `127.0.0.1:8848` (HTTP API) |
 | `SERVEX_IT_NACOS_GRPC_PORT` | `config/nacos`, `discovery/nacos` | optional, defaults to the HTTP port + 1000 |
 | `SERVEX_IT_MONGODB_URI` | `storage/database/mongodb` | `mongodb://127.0.0.1:27017` |
-| `SERVEX_IT_POSTGRES_DSN` | `storage/database/gorm`, `storage/database/goose` | `host=127.0.0.1 port=5432 user=servex password=servex dbname=servex_it sslmode=disable` |
+| `SERVEX_IT_POSTGRES_DSN` | `auth/oauth2`, `storage/database/gorm`, `storage/database/goose` | `host=127.0.0.1 port=5432 user=servex password=servex dbname=servex_it sslmode=disable` |
 | `SERVEX_IT_S3_ENDPOINT` | `storage/s3` | `http://127.0.0.1:9000` (owned MinIO fixture; see module README) |
 | `SERVEX_IT_KUBECONFIG` | `discovery/kubernetes` | path to a kubeconfig file |
 

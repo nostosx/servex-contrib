@@ -13,11 +13,20 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
-- **Breaking, auth/oauth2/redis v1.0.0:** relocate oauth2redis to the OAuth2
-  capability directory; import auth/oauth2/redis with package name redis.
 - auth/login v1.2.0: compose provider identities with application resolvers and
   browser sessions; support bounded Apple form_post callbacks. Account mapping
   stays application-owned; document exact callback CSRF and cookie policy.
+
+## auth/oauth2/redis/v1.0.0
+
+Release date: 2026-11-07. Requires Go 1.27.3 and auth/oauth2 v1.1.0.
+
+- **Breaking migration:** relocate oauth2redis to auth/oauth2/redis, with package
+  name redis and client.StateStore from the consolidated OAuth2 module. Update
+  imports, package qualifiers and module requirements. Old tags remain immutable.
+- Retain borrowed Redis-client ownership, insert-only save and atomic GETDEL.
+  Preserve client/provider state bindings across replicas; uncertain consumption
+  requires a fresh login. Real Redis race/expiry tests cover the new module.
 
 ## 2026-11-07: typed configuration and automatic schema migration
 

@@ -1,4 +1,4 @@
-package oauth2redis
+package redis
 
 import (
 	"context"
@@ -13,7 +13,7 @@ import (
 	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/nostosx/servex-contrib/auth/oauth2"
+	oauthclient "github.com/nostosx/servex-contrib/auth/oauth2/client"
 )
 
 func TestAtomicSharedConsumption(t *testing.T) {
@@ -23,11 +23,11 @@ func TestAtomicSharedConsumption(t *testing.T) {
 	first, _ := New(client, "app:oauth:")
 	second, _ := New(client, "app:oauth:")
 	key := strings.Repeat("a", 64)
-	attempt := oauth2.Attempt{Verifier: "pkce", Nonce: "nonce", ExpiresAt: time.Now().Add(time.Minute)}
+	attempt := oauthclient.Attempt{Verifier: "pkce", Nonce: "nonce", ExpiresAt: time.Now().Add(time.Minute)}
 	if err := first.Save(t.Context(), key, attempt); err != nil {
 		t.Fatal(err)
 	}
-	if err := first.Save(t.Context(), key, attempt); !errors.Is(err, oauth2.ErrInvalidState) {
+	if err := first.Save(t.Context(), key, attempt); !errors.Is(err, oauthclient.ErrInvalidState) {
 		t.Fatal(err)
 	}
 	var winners atomic.Int32
@@ -46,14 +46,14 @@ func TestAtomicSharedConsumption(t *testing.T) {
 	if winners.Load() != 1 {
 		t.Fatal(winners.Load())
 	}
-	if _, err := first.Take(t.Context(), key); !errors.Is(err, oauth2.ErrInvalidState) {
+	if _, err := first.Take(t.Context(), key); !errors.Is(err, oauthclient.ErrInvalidState) {
 		t.Fatal(err)
 	}
 	if err := first.Save(t.Context(), key, attempt); err != nil {
 		t.Fatal(err)
 	}
 	server.FastForward(2 * time.Minute)
-	if _, err := second.Take(t.Context(), key); !errors.Is(err, oauth2.ErrInvalidState) {
+	if _, err := second.Take(t.Context(), key); !errors.Is(err, oauthclient.ErrInvalidState) {
 		t.Fatal(err)
 	}
 }
@@ -87,19 +87,19 @@ func TestStateStoreRejectsInvalidInputAndPreservesCanceledState(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := strings.Repeat("a", 64)
-	live := oauth2.Attempt{Verifier: "pkce", Nonce: "nonce", ExpiresAt: time.Now().Add(time.Minute)}
+	live := oauthclient.Attempt{Verifier: "pkce", Nonce: "nonce", ExpiresAt: time.Now().Add(time.Minute)}
 	for _, tt := range []struct {
 		name    string
 		key     string
-		attempt oauth2.Attempt
+		attempt oauthclient.Attempt
 	}{
 		{name: "short key", key: "bad", attempt: live},
 		{name: "nonhex key", key: strings.Repeat("z", 64), attempt: live},
-		{name: "expired attempt", key: key, attempt: oauth2.Attempt{ExpiresAt: time.Now().Add(-time.Second)}},
-		{name: "oversized attempt", key: key, attempt: oauth2.Attempt{Verifier: strings.Repeat("v", 4096), ExpiresAt: live.ExpiresAt}},
+		{name: "expired attempt", key: key, attempt: oauthclient.Attempt{ExpiresAt: time.Now().Add(-time.Second)}},
+		{name: "oversized attempt", key: key, attempt: oauthclient.Attempt{Verifier: strings.Repeat("v", 4096), ExpiresAt: live.ExpiresAt}},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := store.Save(t.Context(), tt.key, tt.attempt); !errors.Is(err, oauth2.ErrInvalidState) {
+			if err := store.Save(t.Context(), tt.key, tt.attempt); !errors.Is(err, oauthclient.ErrInvalidState) {
 				t.Fatal("invalid attempt accepted", err)
 			}
 			if len(server.Keys()) != 0 {
@@ -108,7 +108,7 @@ func TestStateStoreRejectsInvalidInputAndPreservesCanceledState(t *testing.T) {
 		})
 	}
 	for _, key := range []string{"bad", strings.Repeat("z", 64)} {
-		if _, err := store.Take(t.Context(), key); !errors.Is(err, oauth2.ErrInvalidState) {
+		if _, err := store.Take(t.Context(), key); !errors.Is(err, oauthclient.ErrInvalidState) {
 			t.Fatal("invalid key accepted", err)
 		}
 	}
@@ -140,7 +140,7 @@ func TestStateStoreConsumesInvalidRecordsAndPreservesBackendErrors(t *testing.T)
 		t.Fatal(err)
 	}
 	key := strings.Repeat("a", 64)
-	expired, err := json.Marshal(oauth2.Attempt{ExpiresAt: time.Now().Add(-time.Second)})
+	expired, err := json.Marshal(oauthclient.Attempt{ExpiresAt: time.Now().Add(-time.Second)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestStateStoreConsumesInvalidRecordsAndPreservesBackendErrors(t *testing.T)
 			if err := server.Set("app:oauth:"+key, tt.data); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := store.Take(t.Context(), key); !errors.Is(err, oauth2.ErrInvalidState) {
+			if _, err := store.Take(t.Context(), key); !errors.Is(err, oauthclient.ErrInvalidState) {
 				t.Fatal("invalid record accepted", err)
 			}
 			if server.Exists("app:oauth:" + key) {
@@ -166,7 +166,7 @@ func TestStateStoreConsumesInvalidRecordsAndPreservesBackendErrors(t *testing.T)
 	}
 	const want = "ERR state backend unavailable"
 	server.SetError(want)
-	live := oauth2.Attempt{ExpiresAt: time.Now().Add(time.Minute)}
+	live := oauthclient.Attempt{ExpiresAt: time.Now().Add(time.Minute)}
 	if err := store.Save(t.Context(), key, live); err == nil || err.Error() != want {
 		t.Fatal("Save replaced backend error", err)
 	} else if _, ok := errors.AsType[redis.Error](err); !ok {

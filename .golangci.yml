@@ -37,11 +37,10 @@ linters:
         oauth2-redis-dependencies:
           list-mode: strict
           files:
-            - "**/servex-contrib/auth/oauth2redis/**"
+            - "**/servex-contrib/auth/oauth2/redis/**"
             - "!$test"
           allow:
             - $gostd
-            - github.com/nostosx/servex-contrib/auth/oauth2$
             - github.com/nostosx/servex-contrib/auth/oauth2/client$
             - github.com/redis/go-redis/v9$
         lifecycle-dependencies:

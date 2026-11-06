@@ -1,6 +1,6 @@
 //go:build integration
 
-package oauth2redis
+package redis
 
 import (
 	"context"
@@ -16,7 +16,7 @@ import (
 
 	"github.com/redis/go-redis/v9"
 
-	"github.com/nostosx/servex-contrib/auth/oauth2"
+	oauthclient "github.com/nostosx/servex-contrib/auth/oauth2/client"
 )
 
 func TestIntegrationRedis(t *testing.T) {
@@ -64,8 +64,9 @@ func TestIntegrationRedis(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	attempt := oauth2.Attempt{
+	attempt := oauthclient.Attempt{
 		Verifier: "pkce-verifier", Nonce: "oidc-nonce", Binding: sha256.Sum256([]byte("browser-binding")),
+		Client:    sha256.Sum256([]byte("registered-client")),
 		ExpiresAt: time.Now().Add(time.Minute),
 	}
 	t.Run("insert only and one-time consumption", func(t *testing.T) {
@@ -74,7 +75,7 @@ func TestIntegrationRedis(t *testing.T) {
 		}
 		replacement := attempt
 		replacement.Nonce = "replacement"
-		if err := stores[1].Save(t.Context(), keys[0], replacement); !errors.Is(err, oauth2.ErrInvalidState) {
+		if err := stores[1].Save(t.Context(), keys[0], replacement); !errors.Is(err, oauthclient.ErrInvalidState) {
 			t.Fatalf("duplicate Save = %v, want invalid state", err)
 		}
 		got, err := stores[1].Take(t.Context(), keys[0])
@@ -82,7 +83,7 @@ func TestIntegrationRedis(t *testing.T) {
 			t.Fatal(err)
 		}
 		assertIntegrationAttempt(t, got, attempt)
-		if _, err := stores[0].Take(t.Context(), keys[0]); !errors.Is(err, oauth2.ErrInvalidState) {
+		if _, err := stores[0].Take(t.Context(), keys[0]); !errors.Is(err, oauthclient.ErrInvalidState) {
 			t.Fatalf("second Take = %v, want invalid state", err)
 		}
 	})
@@ -91,7 +92,7 @@ func TestIntegrationRedis(t *testing.T) {
 			t.Fatal(err)
 		}
 		type result struct {
-			attempt oauth2.Attempt
+			attempt oauthclient.Attempt
 			err     error
 		}
 		const consumers = 24
@@ -113,7 +114,7 @@ func TestIntegrationRedis(t *testing.T) {
 			if result.err == nil {
 				winners++
 				assertIntegrationAttempt(t, result.attempt, attempt)
-			} else if !errors.Is(result.err, oauth2.ErrInvalidState) {
+			} else if !errors.Is(result.err, oauthclient.ErrInvalidState) {
 				t.Errorf("Take returned an unexpected transport error: %v", result.err)
 			}
 		}
@@ -144,14 +145,14 @@ func TestIntegrationRedis(t *testing.T) {
 			}
 			time.Sleep(10 * time.Millisecond)
 		}
-		if _, err := stores[1].Take(t.Context(), keys[2]); !errors.Is(err, oauth2.ErrInvalidState) {
+		if _, err := stores[1].Take(t.Context(), keys[2]); !errors.Is(err, oauthclient.ErrInvalidState) {
 			t.Fatalf("expired Take = %v, want invalid state", err)
 		}
 	})
 	t.Run("expired payload is rejected and consumed", func(t *testing.T) {
 		expired := attempt
 		expired.ExpiresAt = time.Now().Add(-time.Second)
-		if err := stores[0].Save(t.Context(), keys[3], expired); !errors.Is(err, oauth2.ErrInvalidState) {
+		if err := stores[0].Save(t.Context(), keys[3], expired); !errors.Is(err, oauthclient.ErrInvalidState) {
 			t.Fatalf("expired Save = %v, want invalid state", err)
 		}
 		data, err := json.Marshal(expired)
@@ -161,7 +162,7 @@ func TestIntegrationRedis(t *testing.T) {
 		if err := clients[0].Set(t.Context(), prefix+keys[3], data, time.Minute).Err(); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := stores[1].Take(t.Context(), keys[3]); !errors.Is(err, oauth2.ErrInvalidState) {
+		if _, err := stores[1].Take(t.Context(), keys[3]); !errors.Is(err, oauthclient.ErrInvalidState) {
 			t.Fatalf("expired payload Take = %v, want invalid state", err)
 		}
 		if exists, err := clients[0].Exists(t.Context(), prefix+keys[3]).Result(); err != nil || exists != 0 {
@@ -170,9 +171,9 @@ func TestIntegrationRedis(t *testing.T) {
 	})
 }
 
-func assertIntegrationAttempt(t *testing.T, got, want oauth2.Attempt) {
+func assertIntegrationAttempt(t *testing.T, got, want oauthclient.Attempt) {
 	t.Helper()
-	if got.Verifier != want.Verifier || got.Nonce != want.Nonce || got.Binding != want.Binding || !got.ExpiresAt.Equal(want.ExpiresAt) {
+	if got.Verifier != want.Verifier || got.Nonce != want.Nonce || got.Binding != want.Binding || got.Client != want.Client || !got.ExpiresAt.Equal(want.ExpiresAt) {
 		t.Fatalf("Take = %+v, want %+v", got, want)
 	}
 }

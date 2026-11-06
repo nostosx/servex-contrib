@@ -1,30 +1,32 @@
-# auth/oauth2redis
+# auth/oauth2/redis
 
-Module version for this revision: **v1.0.1**.
+Module version for this revision: **v1.0.0**.
 
 Use Go 1.27.3; core integration requires published servex v1.7.0. See the
-[validation commands](../../CONTRIBUTING.md#checks).
+[validation commands](../../../CONTRIBUTING.md#checks).
 
-`oauth2redis` implements `oauth2.StateStore` using the official
+`redis` implements `client.StateStore` using the official
 `github.com/redis/go-redis/v9` client. It borrows a client and never closes it.
 Share that pool with Session and cache adapters and give each a distinct prefix.
-Its import path is `github.com/nostosx/servex-contrib/auth/oauth2redis`;
-the package name remains `oauth2redis`.
+Its import path is `github.com/nostosx/servex-contrib/auth/oauth2/redis`;
+the package name is `redis`.
 
 ```go
-client := redis.NewClient(&redis.Options{
+// Import go-redis/v9 as goredis and auth/oauth2/redis as redis.
+client := goredis.NewClient(&goredis.Options{
     Addr: "127.0.0.1:6379",
     MaxRetries: -1,
     DialTimeout: 3 * time.Second,
     ReadTimeout: 3 * time.Second,
     WriteTimeout: 3 * time.Second,
 })
-states, err := oauth2redis.New(client, "myapp:oauth-state:")
+states, err := redis.New(client, "myapp:oauth-state:")
 ```
 
 This assembly fragment belongs in the application composition root, which owns
-`client.Close`. Pass `states` to `oauth2.New`; use the same backend on all
-replicas. The complete browser flow is provided by [`auth/login`](../login).
+`client.Close`. Pass `states` to OAuth2 `client.New` or `client.NewProvider`; use
+the same backend on all replicas. The browser flow is provided by
+[`auth/login`](../../login).
 
 `Save` uses insert-only `SET NX` with absolute expiry. `Take` atomically reads
 and deletes with `GETDEL`, then checks payload size and expiry again. Only hashed
@@ -35,14 +37,14 @@ Disable automatic transport retries: after a lost `GETDEL` response, the client
 cannot determine whether consumption happened. Begin a fresh login after an
 uncertain callback. Supports single-node/Sentinel `*redis.Client`.
 
-These OAuth2 and Redis adapters retain their existing module paths. From the
-repository root, validate the modules and run real Redis acceptance
+This adapter moves from auth/oauth2redis to auth/oauth2/redis. Update its module
+requirement and imports together. From the repository root, run real acceptance
 against an explicitly configured disposable service:
 
 ```sh
-task check lint vulncheck MODULES=auth/oauth2redis
+task check lint vulncheck MODULES=auth/oauth2/redis
 SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 \
-  task test INTEGRATION=true MODULES=auth/oauth2redis
+  task test INTEGRATION=true MODULES=auth/oauth2/redis
 ```
 
 The backend requires Redis 6.2 or newer for GETDEL. Unit tests use miniredis;

@@ -67,9 +67,8 @@ select and assemble each required module explicitly.
 | [`messaging/rabbitmq`](messaging/rabbitmq) | `messaging.Publisher` and `messaging.Subscriber` on RabbitMQ (AMQP 0-9-1) | `github.com/rabbitmq/amqp091-go` |
 | [`middleware`](middleware) | Boundary-specific logging, metrics, tracing and explicit authentication, validation, authorization, isolation and consistency policies | standard library, servex and no-op telemetry |
 | [`auth/jwt`](auth/jwt) | JWT signing and typed verification for application auth callbacks | `github.com/golang-jwt/jwt/v5` |
-| [`auth/oauth2`](auth/oauth2) | PKCE code flow, bound one-time state, token refresh and client credentials | official `golang.org/x/oauth2` |
-| [`auth/oauth2redis`](auth/oauth2redis) | Atomic shared OAuth2 state using the Session Redis pool | official `github.com/redis/go-redis/v9` |
-| [`auth/oauth2server`](auth/oauth2server) | Authorization-code/PKCE OIDC provider, machine grants, rotation/revocation/introspection and PostgreSQL protocol storage | Ory Fosite |
+| [`auth/oauth2`](auth/oauth2) | Client/server OAuth2, common login providers, OIDC, PKCE and PostgreSQL protocol storage | Go OAuth2 SDK / go-oidc / Ory Fosite |
+| [`auth/oauth2/redis`](auth/oauth2/redis) | Atomic shared OAuth2 state using the Session Redis pool | official `github.com/redis/go-redis/v9` |
 | [`auth/oidc`](auth/oidc) | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
 | [`auth/password`](auth/password) | Argon2id PHC password hashes, bounded verification and rehash policy | official `golang.org/x/crypto/argon2` |
 | [`auth/login`](auth/login) | OAuth2/OIDC or password login, Session rotation and typed application principals | OAuth2, OIDC, Session and auth middleware |
