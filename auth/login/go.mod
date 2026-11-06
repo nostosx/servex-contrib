@@ -5,9 +5,9 @@ go 1.27.3
 require (
 	github.com/alicebob/miniredis/v2 v2.40.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/nostosx/servex-contrib/auth/oauth2 v1.0.1
-	github.com/nostosx/servex-contrib/auth/oauth2redis v1.0.1
-	github.com/nostosx/servex-contrib/auth/oidc v1.0.1
+	github.com/nostosx/servex-contrib/auth/oauth2 v1.1.0
+	github.com/nostosx/servex-contrib/auth/oauth2/redis v1.0.0
+	github.com/nostosx/servex-contrib/auth/oidc v1.0.2
 	github.com/nostosx/servex-contrib/middleware v1.6.0
 	github.com/nostosx/servex-contrib/session v1.0.1
 	github.com/nostosx/servex-contrib/session/redis v1.0.1
@@ -24,5 +24,5 @@ require (
 	github.com/nostosx/servex-contrib/observability/tracing/noop v1.0.0 // indirect
 	github.com/yuin/gopher-lua v1.1.1 // indirect
 	go.uber.org/atomic v1.12.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 )

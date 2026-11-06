@@ -21,8 +21,8 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 	sdk "golang.org/x/oauth2"
 
-	"github.com/nostosx/servex-contrib/auth/oauth2"
-	oauth2redis "github.com/nostosx/servex-contrib/auth/oauth2redis"
+	oauthclient "github.com/nostosx/servex-contrib/auth/oauth2/client"
+	redisstore "github.com/nostosx/servex-contrib/auth/oauth2/redis"
 	"github.com/nostosx/servex-contrib/auth/oidc"
 	"github.com/nostosx/servex-contrib/middleware/endpoint"
 	"github.com/nostosx/servex-contrib/session"
@@ -103,11 +103,11 @@ func newReviewLogin(t *testing.T) *reviewLogin {
 			ReadTimeout: 5 * time.Second, WriteTimeout: 5 * time.Second,
 		})
 		t.Cleanup(func() { _ = client.Close() })
-		states, err := oauth2redis.New(client, "review:oauth:")
+		states, err := redisstore.New(client, "review:oauth:")
 		if err != nil {
 			t.Fatal(err)
 		}
-		flow, err := oauth2.New(oauth2.Config{
+		flow, err := oauthclient.New(oauthclient.Config{
 			OAuth: sdk.Config{ClientID: "browser", RedirectURL: "https://app.example/callback",
 				Endpoint: sdk.Endpoint{AuthURL: provider.URL + "/authorize", TokenURL: provider.URL + "/token", AuthStyle: sdk.AuthStyleInParams}},
 			AllowInsecureLoopback: true,

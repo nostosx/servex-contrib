@@ -13,9 +13,20 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
-- auth/login v1.2.0: compose provider identities with application resolvers and
-  browser sessions; support bounded Apple form_post callbacks. Account mapping
-  stays application-owned; document exact callback CSRF and cookie policy.
+## auth/login/v1.2.0
+
+Release date: 2026-11-07. Requires Go 1.27.3, auth/oauth2 v1.1.0 and
+auth/oauth2/redis v1.0.0 for shared-state composition tests.
+
+- Compose provider identities with application resolvers and browser sessions;
+  support bounded Apple form_post callbacks. Account mapping stays
+  application-owned; document exact callback CSRF and cookie policy.
+- **Breaking:** OAuth client types now come from auth/oauth2/client, and Config
+  gains the optional Provider field. Update imports and use keyed Config literals.
+  Existing lower-level OIDC and password/session APIs remain available.
+- Reject duplicate state/code fields, provider errors, invalid callback methods
+  and malformed/oversized POST forms. Never merge Apple's POST fields with query
+  values. Verify provider identity before rotating/persisting the local session.
 
 ## auth/oauth2/redis/v1.0.0
 

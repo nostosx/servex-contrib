@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"mime"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,7 +14,7 @@ import (
 
 	sdk "golang.org/x/oauth2"
 
-	"github.com/nostosx/servex-contrib/auth/oauth2"
+	oauthclient "github.com/nostosx/servex-contrib/auth/oauth2/client"
 	"github.com/nostosx/servex-contrib/auth/oidc"
 	"github.com/nostosx/servex-contrib/middleware/endpoint"
 	"github.com/nostosx/servex-contrib/session"
@@ -22,9 +23,16 @@ import (
 // OIDC declares the complete provider flow. Resolve maps a verified provider
 // identity to the application's own user record/principal and access policy.
 type OIDC[P any] struct {
-	Client   *oauth2.Client
+	Client   *oauthclient.Client
 	Verifier *oidc.Verifier
 	Resolve  func(context.Context, *oidc.IDToken) (P, error)
+}
+
+// Provider maps an authenticated third-party identity to application policy.
+// Resolve owns account creation/linking; matching email is not proof of linkage.
+type Provider[P any] struct {
+	Client  *oauthclient.Provider
+	Resolve func(context.Context, oauthclient.Identity) (P, error)
 }
 
 // Config selects application principal validation and optional OIDC login.
@@ -34,6 +42,7 @@ type Config[P any] struct {
 	SessionKey string
 	Valid      func(P) bool
 	OIDC       *OIDC[P]
+	Provider   *Provider[P]
 	SuccessURL string
 	HTTPClient *http.Client
 }
@@ -73,11 +82,21 @@ func New[P any](sessions *session.Manager, config Config[P]) (*Manager[P], error
 		return nil, errors.New("login: success URL must be a local absolute path")
 	}
 	if config.OIDC != nil {
+		if config.Provider != nil {
+			return nil, errors.New("login: select either OIDC or Provider")
+		}
 		if config.OIDC.Client == nil || config.OIDC.Verifier == nil || config.OIDC.Resolve == nil {
 			return nil, errors.New("login: complete OIDC provider configuration required")
 		}
 		copyProvider := *config.OIDC
 		config.OIDC = &copyProvider
+	}
+	if config.Provider != nil {
+		if config.Provider.Client == nil || config.Provider.Resolve == nil {
+			return nil, errors.New("login: complete provider configuration required")
+		}
+		copyProvider := *config.Provider
+		config.Provider = &copyProvider
 	}
 	return &Manager[P]{sessions: sessions, config: config}, nil
 }
@@ -148,14 +167,14 @@ func (m *Manager[P]) Require(next http.Handler) http.Handler {
 	})
 }
 
-// Begin and Callback support query-based authorization-code callbacks. Browser
+// Begin and Callback support authorization-code callbacks. Browser
 // state is bound to the already managed Session; no second binding cookie exists.
 func (m *Manager[P]) Begin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if m.config.OIDC == nil {
+	if m.config.OIDC == nil && m.config.Provider == nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -169,7 +188,13 @@ func (m *Manager[P]) Begin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "login unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	authorization, err := m.config.OIDC.Client.Begin(r.Context(), binding)
+	var authorization oauthclient.Authorization
+	var err error
+	if m.config.Provider != nil {
+		authorization, err = m.config.Provider.Client.Begin(r.Context(), binding)
+	} else {
+		authorization, err = m.config.OIDC.Client.Begin(r.Context(), binding)
+	}
 	if err != nil {
 		http.Error(w, "login unavailable", http.StatusServiceUnavailable)
 		return
@@ -177,16 +202,39 @@ func (m *Manager[P]) Begin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, authorization.URL, http.StatusFound)
 }
 
-// Callback handles a GET authorization-code response, verifies its session binding
-// and OIDC nonce, and signs in the resolved application principal before redirecting.
-// Mount it inside Middleware alongside Begin.
+// Callback verifies an authorization-code response and signs in the resolved
+// principal. Apple requires POST, Secure SameSite=None session cookies and an
+// exact-path CSRF middleware exception for this callback only. State and binding
+// validation remain mandatory. Mount it inside Middleware alongside Begin.
 func (m *Manager[P]) Callback(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	method := http.MethodGet
+	if m.config.Provider != nil {
+		method = m.config.Provider.Client.CallbackMethod()
+	}
+	if r.Method != method {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if m.config.OIDC == nil {
+	if m.config.OIDC == nil && m.config.Provider == nil {
 		http.NotFound(w, r)
+		return
+	}
+	values := r.URL.Query()
+	if method == http.MethodPost {
+		contentType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+		if err != nil || contentType != "application/x-www-form-urlencoded" {
+			http.Error(w, "login failed", http.StatusBadRequest)
+			return
+		}
+		r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "login failed", http.StatusBadRequest)
+			return
+		}
+		values = r.PostForm
+	}
+	if values.Get("error") != "" || len(values["state"]) != 1 || len(values["code"]) != 1 {
+		http.Error(w, "login failed", http.StatusUnauthorized)
 		return
 	}
 	current, ok := session.FromContext(r.Context())
@@ -201,23 +249,33 @@ func (m *Manager[P]) Callback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := context.WithValue(r.Context(), sdk.HTTPClient, m.config.HTTPClient)
-	result, err := m.config.OIDC.Client.Complete(ctx, binding, r.URL.Query().Get("state"), r.URL.Query().Get("code"))
-	if err != nil {
-		http.Error(w, "login failed", http.StatusUnauthorized)
-		return
-	}
-	raw, _ := result.Token.Extra("id_token").(string)
-	token, err := m.config.OIDC.Verifier.VerifyNonce(r.Context(), raw, result.Nonce)
-	if err != nil {
-		http.Error(w, "login failed", http.StatusUnauthorized)
-		return
-	}
-	principal, err := m.config.OIDC.Resolve(r.Context(), token)
+	principal, err := m.resolve(ctx, binding, values.Get("state"), values.Get("code"))
 	if err != nil || m.SignIn(r.Context(), principal) != nil {
 		http.Error(w, "login failed", http.StatusUnauthorized)
 		return
 	}
 	http.Redirect(w, r, m.config.SuccessURL, http.StatusSeeOther)
+}
+
+func (m *Manager[P]) resolve(ctx context.Context, binding, state, code string) (P, error) {
+	var zero P
+	if m.config.Provider != nil {
+		identity, err := m.config.Provider.Client.Complete(ctx, binding, state, code)
+		if err != nil {
+			return zero, err
+		}
+		return m.config.Provider.Resolve(ctx, identity)
+	}
+	result, err := m.config.OIDC.Client.Complete(ctx, binding, state, code)
+	if err != nil {
+		return zero, err
+	}
+	raw, _ := result.Token.Extra("id_token").(string)
+	token, err := m.config.OIDC.Verifier.VerifyNonce(ctx, raw, result.Nonce)
+	if err != nil {
+		return zero, err
+	}
+	return m.config.OIDC.Resolve(ctx, token)
 }
 
 // Logout handles POST session revocation and returns 204 on success. Mount it

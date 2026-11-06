@@ -28,7 +28,6 @@ linters:
             - "!$test"
           allow:
             - $gostd
-            - github.com/nostosx/servex-contrib/auth/oauth2$
             - github.com/nostosx/servex-contrib/auth/oauth2/client$
             - github.com/nostosx/servex-contrib/auth/oidc$
             - github.com/nostosx/servex-contrib/middleware/endpoint$
