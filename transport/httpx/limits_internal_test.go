@@ -14,6 +14,8 @@ import (
 	"testing/synctest"
 	"time"
 
+	httptransport "github.com/nostosx/servex/transport/http"
+
 	"github.com/nostosx/servex/errorx"
 )
 
@@ -178,7 +180,7 @@ func TestNativeReadHeaderTimeout(t *testing.T) {
 func TestNativeReadTimeoutIncludesBody(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		s := NewServer(WithReadTimeout(time.Second))
-		Route[struct{}](s, "POST /", func(context.Context, any) (any, error) {
+		httptransport.Route[struct{}](s, "POST /", func(context.Context, any) (any, error) {
 			t.Error("incomplete request body reached endpoint")
 			return nil, nil
 		})

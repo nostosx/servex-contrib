@@ -16,6 +16,7 @@ import (
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/metadata"
+	httptransport "github.com/nostosx/servex/transport/http"
 )
 
 // captured is the last request seen by a capture server.
@@ -193,7 +194,7 @@ func TestClientHeadersAndOperation(t *testing.T) {
 		}
 	}
 	c := newTestClient(t, h, "http://example.com", httpx.WithClientMiddleware(setHeader))
-	reply, err := httpx.Call[userReply](c, "get", "/v1/ping")(t.Context(), nil)
+	reply, err := c.Endpoint("get", "/v1/ping", func() any { return new(userReply) })(t.Context(), nil)
 	if err != nil {
 		t.Fatalf("call: %v", err)
 	}
@@ -222,14 +223,14 @@ func TestClientReplyHandling(t *testing.T) {
 	})
 	t.Run("bad reply body", func(t *testing.T) {
 		c := newTestClient(t, &capture{status: 200, contentType: "application/json", body: `{"id":`}, "http://example.com")
-		if _, err := httpx.Call[userReply](c, "GET", "/")(t.Context(), nil); err == nil {
+		if _, err := c.Endpoint("GET", "/", func() any { return new(userReply) })(t.Context(), nil); err == nil {
 			t.Error("decoding a malformed reply succeeded")
 		}
 	})
 	t.Run("json reply with custom codec", func(t *testing.T) {
 		c := newTestClient(t, &capture{status: 200, contentType: "application/json", body: `{"name":"j"}`},
 			"http://example.com", httpx.WithCodec(textCodec{}))
-		reply, err := httpx.Call[userReply](c, "GET", "/")(t.Context(), nil)
+		reply, err := c.Endpoint("GET", "/", func() any { return new(userReply) })(t.Context(), nil)
 		if err != nil || reply.(*userReply).Name != "j" {
 			t.Errorf("reply = %v, %v", reply, err)
 		}
@@ -277,7 +278,7 @@ func TestClientErrorDecoding(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := newTestClient(t, &capture{status: tt.status, contentType: tt.contentType, body: tt.body}, "http://example.com")
-			_, err := httpx.Call[userReply](c, "GET", "/")(t.Context(), nil)
+			_, err := c.Endpoint("GET", "/", func() any { return new(userReply) })(t.Context(), nil)
 			e, ok := errors.AsType[*errorx.Error](err)
 			if !ok {
 				t.Fatalf("err = %v, want *errorx.Error", err)
@@ -291,7 +292,7 @@ func TestClientErrorDecoding(t *testing.T) {
 
 	t.Run("long body truncated", func(t *testing.T) {
 		c := newTestClient(t, &capture{status: 500, body: strings.Repeat("x", 4096)}, "http://example.com")
-		_, err := httpx.Call[userReply](c, "GET", "/")(t.Context(), nil)
+		_, err := c.Endpoint("GET", "/", func() any { return new(userReply) })(t.Context(), nil)
 		if e := errorx.From(err); len(e.Message) > 600 {
 			t.Errorf("message length %d", len(e.Message))
 		}
@@ -366,3 +367,42 @@ func TestNewClientTargets(t *testing.T) {
 
 // Compile-time check that the test codec is a Codec.
 var _ encoding.Codec = textCodec{}
+
+func TestClientClosePreservesBorrowedHTTPClient(t *testing.T) {
+	requests := 0
+	var client *httpx.Client
+	hc := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		requests++
+		if err := client.Close(); err != nil {
+			t.Error(err)
+		}
+		return &http.Response{StatusCode: http.StatusOK, Header: http.Header{"Content-Type": {"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"id":7}`))}, nil
+	})}
+	var err error
+	client, err = httpx.NewClient(t.Context(), "http://example.com", httpx.WithHTTPClient(hc))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	call := httptransport.Call[getUserReq, userReply](client, "GET", "/")
+	if reply, err := call(t.Context(), nil); err != nil || reply == nil || reply.ID != 7 {
+		t.Fatalf("running exchange=%v, %v", reply, err)
+	}
+	for _, call := range []func(context.Context, *getUserReq) (*userReply, error){call, httptransport.Call[getUserReq, userReply](client, "GET", "/")} {
+		_, err := call(t.Context(), nil)
+		if got := errorx.Classify(err); got.Code != errorx.FailedPrecondition || got.Retryable {
+			t.Fatalf("closed client=%v", err)
+		}
+	}
+	if requests != 1 {
+		t.Fatalf("closed client sent %d requests", requests)
+	}
+	response, err := hc.Get("http://example.com/")
+	if err != nil {
+		t.Fatalf("borrowed client closed: %v", err)
+	}
+	response.Body.Close()
+	if requests != 2 {
+		t.Fatal("borrowed HTTP client no longer usable")
+	}
+}

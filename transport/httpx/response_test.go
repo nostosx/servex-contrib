@@ -16,6 +16,8 @@ import (
 	"strings"
 	"testing"
 
+	httptransport "github.com/nostosx/servex/transport/http"
+
 	"github.com/nostosx/servex-contrib/transport/httpx"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
@@ -27,7 +29,7 @@ func TestResponseEncoder(t *testing.T) {
 	s := httpx.NewServer()
 	s.Handle("POST /items", func(context.Context, any) (any, error) {
 		return "created item", nil
-	}, nil, httpx.WithResponseEncoder(func(w http.ResponseWriter, r *http.Request, reply any) error {
+	}, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, r *http.Request, reply any) error {
 		if r.Method != http.MethodPost || reply != "created item" {
 			t.Errorf("encoder request %s, reply %v", r.Method, reply)
 		}
@@ -74,7 +76,7 @@ func TestResponseEncoderNilReplyAndDefault(t *testing.T) {
 			s := httpx.NewServer()
 			called := false
 			s.Handle("GET /", func(context.Context, any) (any, error) { return tt.reply, nil }, nil,
-				httpx.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, reply any) error {
+				httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, reply any) error {
 					called = true
 					if reply != tt.reply {
 						t.Errorf("reply = %v, want %v", reply, tt.reply)
@@ -99,10 +101,10 @@ func TestResponseEncoderNilReplyAndDefault(t *testing.T) {
 		t.Run("nil encoder/"+tt.name, func(t *testing.T) {
 			s := httpx.NewServer()
 			s.Handle("GET /", func(context.Context, any) (any, error) { return tt.reply, nil }, nil,
-				httpx.WithResponseEncoder(func(http.ResponseWriter, *http.Request, any) error {
+				httptransport.WithResponseEncoder(func(http.ResponseWriter, *http.Request, any) error {
 					t.Error("replaced encoder called")
 					return nil
-				}), httpx.WithResponseEncoder(nil))
+				}), httptransport.WithResponseEncoder(nil))
 			if w := do(s, httptest.NewRequest(http.MethodGet, "/", nil)); w.Code != tt.status || w.Body.String() != tt.body {
 				t.Errorf("response %d %q, want %d %q", w.Code, w.Body.String(), tt.status, tt.body)
 			}
@@ -125,11 +127,11 @@ func TestResponseEncoderMetadataAndMiddleware(t *testing.T) {
 	}
 	s := httpx.NewServer(httpx.WithMiddleware(middleware("outer"), middleware("inner")))
 	var endpointInfo metadata.Info
-	httpx.Route[userReq](s, "GET /items/{id}", func(ctx context.Context, req any) (any, error) {
+	httptransport.Route[userReq](s, "GET /items/{id}", func(ctx context.Context, req any) (any, error) {
 		order = append(order, "endpoint")
 		endpointInfo, _ = metadata.FromContext(ctx)
 		return req.(*userReq).ID, nil
-	}, httpx.WithOperation("items.Get"), httpx.WithResponseEncoder(func(w http.ResponseWriter, r *http.Request, reply any) error {
+	}, httptransport.WithOperation("items.Get"), httptransport.WithResponseEncoder(func(w http.ResponseWriter, r *http.Request, reply any) error {
 		order = append(order, "encoder")
 		info, ok := metadata.FromContext(r.Context())
 		if !ok || info.Kind != metadata.KindServer || info.Protocol != "http" || info.Operation != "items.Get" || info.Operation != endpointInfo.Operation || info.Header.Get("x-request-id") != "abc" {
@@ -167,12 +169,12 @@ func TestResponseEncoderBypassedOnErrors(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			s := httpx.NewServer()
-			httpx.Route[userReq](s, "POST /", func(context.Context, any) (any, error) {
+			httptransport.Route[userReq](s, "POST /", func(context.Context, any) (any, error) {
 				if tt.err == nil {
 					t.Error("endpoint called after binding failure")
 				}
 				return "ignored reply", tt.err
-			}, httpx.WithResponseEncoder(func(http.ResponseWriter, *http.Request, any) error {
+			}, httptransport.WithResponseEncoder(func(http.ResponseWriter, *http.Request, any) error {
 				t.Error("encoder called after request failure")
 				return nil
 			}))
@@ -189,7 +191,7 @@ func TestResponseEncoderErrorBeforeCommit(t *testing.T) {
 	t.Parallel()
 	var logs bytes.Buffer
 	s := httpx.NewServer(httpx.WithLogger(testLogger(slog.New(slog.NewTextHandler(&logs, nil)))))
-	s.Handle("GET /", echo, nil, httpx.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+	s.Handle("GET /", echo, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 		w.Header().Set("X-Existing", "changed")
 		w.Header().Del("X-Preserved")
 		w.Header().Set("Content-Type", "application/octet-stream")
@@ -215,7 +217,7 @@ func TestResponseEncoderErrorBeforeCommit(t *testing.T) {
 			t.Errorf("partial %s survived: %q", name, got)
 		}
 	}
-	if w.Header().Get("Content-Type") != "application/json" || strings.Contains(w.Body.String(), "private") || !strings.Contains(logs.String(), "private encoder failure") {
+	if w.Header().Get("Content-Type") != "application/json" || strings.Contains(w.Body.String(), "private") || strings.Contains(logs.String(), "private encoder failure") || !strings.Contains(logs.String(), "reason=ENCODE_REPLY") {
 		t.Errorf("body %q, headers %v, logs %q", w.Body.String(), w.Header(), logs.String())
 	}
 }
@@ -237,7 +239,7 @@ func TestResponseEncoderErrorAfterCommit(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var logs bytes.Buffer
 			s := httpx.NewServer(httpx.WithLogger(testLogger(slog.New(slog.NewTextHandler(&logs, nil)))))
-			s.Handle("GET /", echo, nil, httpx.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+			s.Handle("GET /", echo, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 				w.Header().Set("Content-Type", "text/plain")
 				if err := tt.commit(w); err != nil {
 					t.Errorf("commit: %v", err)
@@ -248,7 +250,7 @@ func TestResponseEncoderErrorAfterCommit(t *testing.T) {
 			if w.Code != tt.status || w.Body.String() != tt.body || w.Header().Get("Content-Type") != "text/plain" {
 				t.Errorf("response %d %q, headers %v", w.Code, w.Body.String(), w.Header())
 			}
-			if !strings.Contains(logs.String(), "encoder failed after output") || !strings.Contains(logs.String(), "operation=\"GET /\"") {
+			if strings.Contains(logs.String(), "encoder failed after output") || !strings.Contains(logs.String(), "httpx: response encoding failed after commitment") || !strings.Contains(logs.String(), "code=Unknown") || !strings.Contains(logs.String(), "operation=\"GET /\"") {
 				t.Errorf("logs = %q", logs.String())
 			}
 		})
@@ -258,7 +260,7 @@ func TestResponseEncoderErrorAfterCommit(t *testing.T) {
 func TestResponseEncoderInformationalHeaders(t *testing.T) {
 	t.Parallel()
 	s := httpx.NewServer(httpx.WithLogger(testLogger(slog.New(slog.DiscardHandler))))
-	s.Handle("GET /", echo, nil, httpx.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+	s.Handle("GET /", echo, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 		w.Header().Set("Link", "</style.css>; rel=preload")
 		w.WriteHeader(http.StatusEarlyHints)
 		w.WriteHeader(http.StatusProcessing)
@@ -294,12 +296,12 @@ func TestResponseEncoderInformationalHeaders(t *testing.T) {
 func TestResponseEncoderNativeHTTPBehavior(t *testing.T) {
 	t.Parallel()
 	s := httpx.NewServer()
-	s.Handle("GET /head", echo, nil, httpx.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+	s.Handle("GET /head", echo, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 		w.Header().Set("Content-Type", "text/plain")
 		_, err := io.WriteString(w, "head body")
 		return err
 	}))
-	s.Handle("GET /empty", echo, nil, httpx.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+	s.Handle("GET /empty", echo, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 		w.WriteHeader(http.StatusNoContent)
 		_, err := io.WriteString(w, "discarded body")
 		if !errors.Is(err, http.ErrBodyNotAllowed) {
@@ -344,7 +346,7 @@ func TestResponseEncoderNativeHijack(t *testing.T) {
 	var logs bytes.Buffer
 	s := httpx.NewServer(httpx.WithLogger(testLogger(slog.New(slog.NewTextHandler(&logs, nil)))))
 	finished := make(chan struct{})
-	s.Handle("GET /", echo, nil, httpx.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+	s.Handle("GET /", echo, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 		conn, buffered, err := http.NewResponseController(w).Hijack()
 		if err != nil {
 			return err
@@ -376,7 +378,7 @@ func TestResponseEncoderNativeHijack(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || string(body) != "hijacked" {
 		t.Errorf("response %d %q", resp.StatusCode, body)
 	}
-	if !strings.Contains(logs.String(), "encoder failed after hijack") || strings.Contains(logs.String(), "httpx: request failed") {
+	if strings.Contains(logs.String(), "encoder failed after hijack") || !strings.Contains(logs.String(), "httpx: response encoding failed after commitment") || strings.Contains(logs.String(), "httpx: request failed") {
 		t.Errorf("logs = %q", logs.String())
 	}
 }
@@ -405,10 +407,10 @@ func TestResponseEncoderMultipartFileLifetime(t *testing.T) {
 	defer func() { _ = r.MultipartForm.RemoveAll() }()
 	s := httpx.NewServer()
 	var header *multipart.FileHeader
-	httpx.Route[userReq](s, "POST /upload", func(_ context.Context, req any) (any, error) {
+	httptransport.Route[userReq](s, "POST /upload", func(_ context.Context, req any) (any, error) {
 		header = req.(*userReq).File
 		return header, nil
-	}, httpx.WithResponseEncoder(func(w http.ResponseWriter, req *http.Request, reply any) error {
+	}, httptransport.WithResponseEncoder(func(w http.ResponseWriter, req *http.Request, reply any) error {
 		if req.MultipartForm == nil || reply != header {
 			t.Errorf("encoder form %v, reply %v", req.MultipartForm, reply)
 		}

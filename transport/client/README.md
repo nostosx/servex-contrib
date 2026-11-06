@@ -1,8 +1,12 @@
 # transport/client
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 Shared client execution over the core transport, discovery and selector contracts.
 This module is SDK-free and is used by both transport/httpx and transport/grpcx.
-Requires servex v1.4.0; resolve its dependencies from the public Go proxy.
+Requires servex v1.7.0; use matching contrib sources while this revision is unreleased.
 
 ## Migration
 
@@ -46,19 +50,45 @@ the last known nodes while recovery uses exponential backoff from 100ms to 5s.
 Only endpoints matching the configured scheme enter the node set; weights and
 metadata are copied from each discovery instance.
 
-Endpoint installs client call metadata, runs middleware in declaration order,
-selects a node and invokes the protocol adapter. Selection is inside middleware,
-so every retry selects again and reports its result through selector.Done.
+Endpoint installs client call metadata and runs logical-call middleware in
+its declared order. The engine then executes the configured Policy, selecting a
+node and reporting the result through selector.Done for each native attempt.
 The engine does not own protocol connections or the injected selector.
+
+## Call and attempt policies
+
+`WithPolicy` selects a default `Policy`; `WithOperationPolicies` replaces it for
+exact stable operation names. Configure `Timeout`, `AttemptTimeout`, `MaxAttempts`,
+`RetrySafe`, `RetryIf` and `Backoff` here. A zero policy makes one attempt with the
+caller deadline. Multiple attempts require both explicit replay safety and a
+retry predicate. The engine is the only retry owner; the removed generic retry
+and timeout Endpoint middleware must not be recreated around it.
+
+HTTP and gRPC expose these policies as `WithCallPolicy` and
+`WithOperationPolicies`. `WithMiddleware` observes the logical call, while
+`WithAttemptMiddleware` wraps the selected-node invocation. Applications import
+`middleware/client` once and choose Logging, Metrics and Tracing for logical calls,
+or AttemptLogging, AttemptMetrics and AttemptTracing for selected-node invocations. Inbound factories live under
+middleware/endpoint; typed business factories live under middleware/application.
+The `Attempt` adapter can also apply an explicitly chosen client policy, such as
+`middleware/client.CircuitBreaker`, at that native boundary. A per-node circuit
+breaker requires an explicit node key; the adapter must never replay next.
+
+Operation policy maps are captured during construction. Configuration watching
+does not automatically replace a running client's policy. Streams retain their
+own lifetime and are never replayed by unary policies.
 
 WithNodeObserver reports changes in Addr, Weight and Metadata. Its initial call
 finishes before New returns; subsequent calls are serialized with discovery
 updates and receive deep copies. Observers must return promptly and must not
 call Close. No observation occurs after Close returns.
 
-Close stops and joins the discovery watcher and is idempotent. Existing endpoints
-retain the last known node set; protocol adapters control connection shutdown
-and rejection of calls after their own Close. All prior behavior is preserved.
+Unreleased Close rejects new calls and retry attempts with non-retryable
+FailedPrecondition/CLIENT_CLOSED, then stops and joins the discovery watcher.
+It is idempotent. Running invocations obey their contexts; protocol adapters
+own connection shutdown. Closing during selection still reports its outcome
+through selector.Done without invoking the transport. A permissive RetryIf
+cannot replay the terminal closed error.
 
 ## Validation
 
@@ -68,11 +98,3 @@ only on core, kitx/backoff and the standard library, including its tests.
 Discovery/memory owns the existing backend composition and concurrency
 regressions; HTTP/gRPC tests cover real protocol roundtrips over the engine.
 Do not commit local replacements or claim public-proxy acceptance before release.
-
-## Release
-
-Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/transport/client@v1.0.0
-```

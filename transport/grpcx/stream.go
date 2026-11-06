@@ -138,7 +138,7 @@ func (c *Client) runMiddlewareStream(ctx context.Context, cancel context.CancelF
 	}()
 	var called atomic.Bool
 	info := &StreamInfo{ClientStreams: desc.ClientStreams, ServerStreams: desc.ServerStreams}
-	ep := c.tc.Endpoint(method, transport.InvokerFunc(func(ctx context.Context, addr string, _ any) (any, error) {
+	ep := c.tc.StreamEndpoint(method, transport.InvokerFunc(func(ctx context.Context, addr string, _ any) (any, error) {
 		if !called.CompareAndSwap(false, true) {
 			return nil, errStreamReplayed
 		}

@@ -11,16 +11,25 @@ import (
 	"github.com/nostosx/servex-contrib/transport/httpx"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
+	"github.com/nostosx/servex/metadata"
+	httptransport "github.com/nostosx/servex/transport/http"
 )
 
 func TestRouteFunc(t *testing.T) {
 	s := httpx.NewServer()
-	httpx.RouteFunc(s, "GET /v1/users/{id}", func(_ context.Context, req *userReq) (*userReply, error) {
-		if req.ID == "0" {
-			return nil, errorx.New(errorx.InvalidArgument, "INVALID_ID", "id must be positive")
-		}
-		return &userReply{ID: len(req.ID), Name: "ada" + req.ID}, nil
-	}, httpx.WithOperation("users.Get"))
+	register := func(router httptransport.EndpointRouter) {
+		httptransport.RouteFunc(router, "GET /v1/users/{id}", func(ctx context.Context, req *userReq) (*userReply, error) {
+			info, _ := metadata.FromContext(ctx)
+			if info.Operation != "users.Get" {
+				t.Error("core route option lost")
+			}
+			if req.ID == "0" {
+				return nil, errorx.New(errorx.InvalidArgument, "INVALID_ID", "id must be positive")
+			}
+			return &userReply{ID: len(req.ID), Name: "ada" + req.ID}, nil
+		}, httptransport.WithOperation("users.Get"))
+	}
+	register(s)
 
 	w := do(s, httptest.NewRequest(http.MethodGet, "/v1/users/7", nil))
 	if got := decodeJSON[userReply](t, w); w.Code != http.StatusOK || got.ID != 1 || got.Name != "ada7" {
@@ -34,7 +43,7 @@ func TestRouteFunc(t *testing.T) {
 
 func TestRouteFuncNilReply(t *testing.T) {
 	s := httpx.NewServer()
-	httpx.RouteFunc(s, "DELETE /v1/users/{id}", func(context.Context, *userReq) (*userReply, error) {
+	httptransport.RouteFunc(s, "DELETE /v1/users/{id}", func(context.Context, *userReq) (*userReply, error) {
 		return nil, nil
 	})
 	if w := do(s, httptest.NewRequest(http.MethodDelete, "/v1/users/7", nil)); w.Code != http.StatusNoContent {
@@ -49,7 +58,7 @@ func TestTypedMismatchIsInternal(t *testing.T) {
 		return func(ctx context.Context, _ any) (any, error) { return next(ctx, "not a request") }
 	}
 	s := httpx.NewServer(httpx.WithMiddleware(swap), httpx.WithLogger(testLogger(slog.New(slog.DiscardHandler))))
-	httpx.RouteFunc(s, "GET /x", func(context.Context, *userReq) (*userReply, error) {
+	httptransport.RouteFunc(s, "GET /x", func(context.Context, *userReq) (*userReply, error) {
 		t.Error("fn called with a mismatched request")
 		return nil, nil
 	})

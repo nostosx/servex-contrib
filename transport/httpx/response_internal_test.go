@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	httptransport "github.com/nostosx/servex/transport/http"
 )
 
 func nilReplyEndpoint(context.Context, any) (any, error) { return nil, nil }
@@ -88,7 +90,7 @@ func TestResponseWriterOptionalOperations(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			s := NewServer(WithLogger(testLogger(slog.New(slog.DiscardHandler))))
-			s.Handle("GET /", nilReplyEndpoint, nil, WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+			s.Handle("GET /", nilReplyEndpoint, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 				if _, ok := w.(http.Flusher); ok {
 					t.Error("plain writer claims http.Flusher")
 				}
@@ -124,7 +126,7 @@ func TestResponseWriterControllerUnwrap(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	underlying := &responseControlWriter{ResponseWriter: recorder}
 	s := NewServer()
-	s.Handle("GET /", nilReplyEndpoint, nil, WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+	s.Handle("GET /", nilReplyEndpoint, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 		unwrapper, ok := w.(interface{ Unwrap() http.ResponseWriter })
 		if !ok || unwrapper.Unwrap() == nil {
 			t.Fatal("encoder writer does not unwrap")
@@ -162,7 +164,7 @@ func TestResponseWriterFlushErrorCommitment(t *testing.T) {
 			recorder := httptest.NewRecorder()
 			underlying := &responseFlushErrorWriter{ResponseWriter: recorder, err: tt.err}
 			s := NewServer(WithLogger(testLogger(slog.New(slog.DiscardHandler))))
-			s.Handle("GET /", nilReplyEndpoint, nil, WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+			s.Handle("GET /", nilReplyEndpoint, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 				if err := http.NewResponseController(w).Flush(); err != tt.err {
 					t.Errorf("Flush = %v, want %v", err, tt.err)
 				}
@@ -201,7 +203,7 @@ func TestResponseWriterHijackCommitment(t *testing.T) {
 				writer = &responseHijackUnwrapper{underlying}
 			}
 			s := NewServer(WithLogger(testLogger(slog.New(slog.DiscardHandler))))
-			s.Handle("GET /", nilReplyEndpoint, nil, WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+			s.Handle("GET /", nilReplyEndpoint, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 				if _, _, err := http.NewResponseController(w).Hijack(); err != tt.err {
 					t.Errorf("Hijack = %v, want %v", err, tt.err)
 				}
@@ -223,7 +225,7 @@ func TestResponseWriterWriteErrorCommitment(t *testing.T) {
 	t.Parallel()
 	recorder := httptest.NewRecorder()
 	s := NewServer(WithLogger(testLogger(slog.New(slog.DiscardHandler))))
-	s.Handle("GET /", nilReplyEndpoint, nil, WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
+	s.Handle("GET /", nilReplyEndpoint, nil, httptransport.WithResponseEncoder(func(w http.ResponseWriter, _ *http.Request, _ any) error {
 		_, err := w.Write([]byte("output"))
 		return err
 	}))

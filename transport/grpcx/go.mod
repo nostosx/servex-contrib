@@ -3,10 +3,10 @@ module github.com/nostosx/servex-contrib/transport/grpcx
 go 1.27.3
 
 require (
-	github.com/nostosx/servex v1.4.0
-	github.com/nostosx/servex-contrib/discovery/memory v1.0.0
-	github.com/nostosx/servex-contrib/selector v1.2.0
-	github.com/nostosx/servex-contrib/transport/client v1.0.0
+	github.com/nostosx/servex v1.7.0
+	github.com/nostosx/servex-contrib/discovery/memory v1.0.1
+	github.com/nostosx/servex-contrib/selector v1.2.1
+	github.com/nostosx/servex-contrib/transport/client v1.1.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800
 	google.golang.org/grpc v1.84.0
 )

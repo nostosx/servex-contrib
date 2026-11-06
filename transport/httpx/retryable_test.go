@@ -57,7 +57,7 @@ func TestClientDecodesRetryable(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := newTestClient(t, &capture{status: tc.status, contentType: "application/json", body: tc.body}, "http://example.com")
-			_, err := httpx.Call[userReply](c, "GET", "/")(t.Context(), nil)
+			_, err := c.Endpoint("GET", "/", func() any { return new(userReply) })(t.Context(), nil)
 			if errorx.CodeOf(err) != tc.code || errorx.IsRetryable(err) != tc.retryable {
 				t.Errorf("err = %v retryable=%t, want %v retryable=%t", err, errorx.IsRetryable(err), tc.code, tc.retryable)
 			}
@@ -70,7 +70,7 @@ func TestClientDecodesRetryable(t *testing.T) {
 			return nil, errorx.New(errorx.Unavailable, "BUSY", "busy").WithRetryable(false)
 		}, nil)
 		c := newTestClient(t, s, "http://example.com")
-		_, err := httpx.Call[userReply](c, "POST", "/fail")(t.Context(), nil)
+		_, err := c.Endpoint("POST", "/fail", func() any { return new(userReply) })(t.Context(), nil)
 		if e := errorx.From(err); e.Code != errorx.Unavailable || e.Reason != "BUSY" || e.Retryable() {
 			t.Errorf("err = %v retryable=%t, want non-retryable Unavailable BUSY", err, e.Retryable())
 		}

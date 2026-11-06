@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	httptransport "github.com/nostosx/servex/transport/http"
+
 	"github.com/nostosx/servex-contrib/transport/httpx"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
@@ -65,7 +67,7 @@ type errBody struct {
 
 func TestServerLifecycle(t *testing.T) {
 	s := httpx.NewServer(httpx.WithAddress("127.0.0.1:0"))
-	httpx.Route[userReq](s, "GET /v1/users/{id}", echo)
+	httptransport.Route[userReq](s, "GET /v1/users/{id}", echo)
 	if s.Name() != "http" {
 		t.Errorf("Name = %q", s.Name())
 	}
@@ -77,7 +79,7 @@ func TestServerLifecycle(t *testing.T) {
 	}
 
 	s = httpx.NewServer(httpx.WithAddress("127.0.0.1:0"))
-	httpx.Route[userReq](s, "GET /v1/users/{id}", echo)
+	httptransport.Route[userReq](s, "GET /v1/users/{id}", echo)
 	if err := s.Start(t.Context()); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
@@ -136,7 +138,7 @@ func TestServerLifecycle(t *testing.T) {
 
 func TestBindingOrder(t *testing.T) {
 	s := httpx.NewServer()
-	httpx.Route[userReq](s, "POST /v1/users/{id}", echo)
+	httptransport.Route[userReq](s, "POST /v1/users/{id}", echo)
 
 	body := `{"id":"body","name":"body","age":30,"tags":["body"],"active":true,"score":1.5}`
 	r := httptest.NewRequest(http.MethodPost, "/v1/users/path?name=query&tags=a&tags=b&limit=5", strings.NewReader(body))
@@ -158,7 +160,7 @@ func TestBindingOrder(t *testing.T) {
 func TestBindingForms(t *testing.T) {
 	s := httpx.NewServer()
 	var bound *userReq
-	httpx.Route[userReq](s, "POST /v1/users/{id}", func(_ context.Context, req any) (any, error) {
+	httptransport.Route[userReq](s, "POST /v1/users/{id}", func(_ context.Context, req any) (any, error) {
 		bound = req.(*userReq)
 		return nil, nil
 	})
@@ -226,11 +228,11 @@ func TestBindingForms(t *testing.T) {
 func TestBindingErrors(t *testing.T) {
 	s := httpx.NewServer()
 	called := false
-	httpx.Route[userReq](s, "POST /v1/users/{id}", func(context.Context, any) (any, error) {
+	httptransport.Route[userReq](s, "POST /v1/users/{id}", func(context.Context, any) (any, error) {
 		called = true
 		return nil, nil
 	})
-	httpx.Route[struct {
+	httptransport.Route[struct {
 		ID int `json:"id"`
 	}](s, "GET /v1/items/{id}", echo)
 
@@ -290,7 +292,7 @@ func (textCodec) Unmarshal(data []byte, v any) error {
 
 func TestCodecNegotiation(t *testing.T) {
 	s := httpx.NewServer(httpx.WithCodecs(textCodec{}, nil))
-	httpx.Route[map[string]string](s, "POST /echo", func(_ context.Context, req any) (any, error) {
+	httptransport.Route[map[string]string](s, "POST /echo", func(_ context.Context, req any) (any, error) {
 		m := *req.(*map[string]string)
 		if m == nil {
 			m = map[string]string{}
@@ -480,7 +482,7 @@ func TestServerMetadataAndMiddleware(t *testing.T) {
 		return nil, nil
 	}
 	s.Handle("GET /v1/users/{id}", ep, nil)
-	httpx.Route[userReq](s, "PUT /v1/users/{id}", ep, httpx.WithOperation("users.Update"))
+	httptransport.Route[userReq](s, "PUT /v1/users/{id}", ep, httptransport.WithOperation("users.Update"))
 	s.HandleHTTP("GET /raw", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		order = append(order, "raw")
 		w.WriteHeader(http.StatusTeapot)

@@ -13,6 +13,7 @@ import (
 
 	"github.com/nostosx/servex/discovery"
 	"github.com/nostosx/servex/endpoint"
+	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/metadata"
 	"github.com/nostosx/servex/selector"
 	"github.com/nostosx/servex/transport"
@@ -22,6 +23,8 @@ import (
 
 // discoveryScheme is the target scheme that selects service discovery.
 const discoveryScheme = "discovery"
+
+var errClientClosed = errorx.New(errorx.FailedPrecondition, "CLIENT_CLOSED", "client is closed").WithRetryable(false)
 
 // Backoff bounds for retrying a failing Watcher.Next in the background.
 const (
@@ -39,6 +42,9 @@ type clientOptions struct {
 	scheme     string
 	middleware []endpoint.Middleware
 	observer   func([]selector.Node)
+	policy     Policy
+	policies   map[string]Policy
+	attempt    []transport.AttemptMiddleware
 }
 
 // WithDiscoverer sets the Discoverer used to resolve "discovery:///<name>"
@@ -94,6 +100,9 @@ type Client struct {
 	scheme     string
 	selector   selector.Selector
 	middleware []endpoint.Middleware
+	policy     Policy
+	policies   map[string]Policy
+	attempt    []transport.AttemptMiddleware
 
 	// nodes is the current node set; it is replaced, never mutated.
 	nodes atomic.Pointer[[]selector.Node]
@@ -131,6 +140,9 @@ func New(ctx context.Context, target string, opts ...Option) (*Client, error) {
 	if o.selector == nil {
 		return nil, fmt.Errorf("transport: WithSelector is required")
 	}
+	if err := validatePolicies(o); err != nil {
+		return nil, err
+	}
 	u, err := url.Parse(target)
 	if err != nil {
 		return nil, fmt.Errorf("transport: invalid target %q: %w", target, err)
@@ -140,6 +152,9 @@ func New(ctx context.Context, target string, opts ...Option) (*Client, error) {
 		middleware: slices.Clone(o.middleware),
 		observer:   o.observer,
 		closed:     make(chan struct{}),
+		policy:     o.policy,
+		policies:   maps.Clone(o.policies),
+		attempt:    slices.Clone(o.attempt),
 	}
 	if u.Scheme != discoveryScheme {
 		if u.Scheme == "" || u.Host == "" {
@@ -289,11 +304,40 @@ func cloneNodes(nodes []selector.Node) []selector.Node {
 // than once, such as retry, selects a node for each attempt. When there is
 // no node the call fails with selector.ErrNoAvailable.
 func (c *Client) Endpoint(operation string, inv transport.Invoker, mw ...endpoint.Middleware) endpoint.Endpoint {
+	return c.endpoint(operation, inv, true, mw...)
+}
+
+// StreamEndpoint selects a node without unary retry/attempt policies. The
+// transport owns the complete stream lifetime and its dedicated middleware.
+func (c *Client) StreamEndpoint(operation string, inv transport.Invoker, mw ...endpoint.Middleware) endpoint.Endpoint {
+	return c.endpoint(operation, inv, false, mw...)
+}
+
+func (c *Client) endpoint(operation string, inv transport.Invoker, unary bool, mw ...endpoint.Middleware) endpoint.Endpoint {
+	policy := c.policy
+	if selected, ok := c.policies[operation]; ok {
+		policy = selected
+	}
+	if unary {
+		inv = chainAttempts(c.attempt...)(inv)
+	} else {
+		policy = Policy{}
+	}
 	chain := endpoint.Chain(slices.Concat(c.middleware, mw)...)
 	ep := chain(func(ctx context.Context, req any) (any, error) {
-		return c.invoke(ctx, inv, req)
+		return policy.call(ctx, req, func(attemptCtx context.Context, request any, number int) (any, error) {
+			return c.invoke(transport.WithAttempt(attemptCtx, transport.Attempt{Number: number}), inv, request)
+		})
 	})
 	return func(ctx context.Context, req any) (any, error) {
+		if c.isClosed() {
+			return nil, errClientClosed
+		}
+		if policy.Timeout > 0 {
+			bounded, cancel := context.WithTimeout(ctx, policy.Timeout)
+			defer cancel()
+			ctx = bounded
+		}
 		ctx = metadata.NewContext(ctx, metadata.Info{
 			Kind:      metadata.KindClient,
 			Protocol:  c.scheme,
@@ -306,6 +350,9 @@ func (c *Client) Endpoint(operation string, inv transport.Invoker, mw ...endpoin
 
 // invoke selects a node and calls inv on it.
 func (c *Client) invoke(ctx context.Context, inv transport.Invoker, req any) (any, error) {
+	if c.isClosed() {
+		return nil, errClientClosed
+	}
 	nodes := *c.nodes.Load()
 	if len(nodes) == 0 {
 		return nil, selector.ErrNoAvailable
@@ -314,15 +361,42 @@ func (c *Client) invoke(ctx context.Context, inv transport.Invoker, req any) (an
 	if err != nil {
 		return nil, err
 	}
-	resp, err := inv.Invoke(ctx, node.Addr, req)
-	if done != nil {
-		done(ctx, err)
-	}
-	return resp, err
+	info, _ := transport.AttemptFromContext(ctx)
+	info.Address = node.Addr
+	ctx = transport.WithAttempt(ctx, info)
+	return func() (response any, resultErr error) {
+		finished := false
+		defer func() {
+			if done != nil {
+				if !finished {
+					done(ctx, errorx.New(errorx.Internal, "CLIENT_PANIC", "invocation interrupted"))
+				} else {
+					done(ctx, resultErr)
+				}
+			}
+		}()
+		if c.isClosed() {
+			finished = true
+			return nil, errClientClosed
+		}
+		response, resultErr = inv.Invoke(ctx, node.Addr, req)
+		finished = true
+		return response, resultErr
+	}()
 }
 
-// Close stops the Watcher of a discovery target and waits for the
-// background goroutine to exit. Endpoints keep using the last known nodes.
+func (c *Client) isClosed() bool {
+	select {
+	case <-c.closed:
+		return true
+	default:
+		return false
+	}
+}
+
+// Close rejects new calls and retry attempts, stops the Watcher and waits for
+// the background goroutine to exit. Already running invocations obey their
+// contexts; the engine does not own protocol connections.
 // Close is idempotent; repeated calls return the result of the first one.
 func (c *Client) Close() error {
 	c.closeOnce.Do(func() {

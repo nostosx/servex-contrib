@@ -85,7 +85,7 @@ func TestClientMarksErrorsRemote(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			c := newTestClient(t, &capture{status: http.StatusServiceUnavailable, contentType: "application/json", body: tc.body}, "http://example.com")
-			_, err := httpx.Call[userReply](c, "GET", "/")(t.Context(), nil)
+			_, err := c.Endpoint("GET", "/", func() any { return new(userReply) })(t.Context(), nil)
 			e := errorx.From(err)
 			if !e.Remote() || !e.Retryable() || e.PropagatedRetryable() {
 				t.Errorf("err = %v: remote %v, retryable %v, propagated %v; want true, true, false",

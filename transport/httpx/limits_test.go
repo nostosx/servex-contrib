@@ -13,6 +13,8 @@ import (
 	"strings"
 	"testing"
 
+	httptransport "github.com/nostosx/servex/transport/http"
+
 	"github.com/nostosx/servex-contrib/transport/httpx"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
@@ -110,7 +112,7 @@ func TestMaxBodyBytesBoundaries(t *testing.T) {
 						if nilRequest {
 							s.Handle("POST /", ep, nil)
 						} else {
-							httpx.Route[limitedRequest](s, "POST /", ep)
+							httptransport.Route[limitedRequest](s, "POST /", ep)
 						}
 						r := httptest.NewRequest(http.MethodPost, "/", bytes.NewReader(format.body))
 						r.Header.Set("Content-Type", format.contentType)
@@ -146,7 +148,7 @@ func TestMaxBodyBytesMultipartEpilogue(t *testing.T) {
 			}
 			called := false
 			s := httpx.NewServer(httpx.WithMaxBodyBytes(limit))
-			httpx.Route[limitedRequest](s, "POST /", func(context.Context, any) (any, error) {
+			httptransport.Route[limitedRequest](s, "POST /", func(context.Context, any) (any, error) {
 				called = true
 				return nil, nil
 			})
@@ -196,7 +198,7 @@ func TestMaxBodyBytesRejectsDeclaredLengthBeforeBinding(t *testing.T) {
 
 func TestMaxBodyBytesBindingFailureDoesNotDrain(t *testing.T) {
 	s := httpx.NewServer(httpx.WithMaxBodyBytes(8))
-	httpx.Route[struct{ Count int }](s, "POST /", func(context.Context, any) (any, error) {
+	httptransport.Route[struct{ Count int }](s, "POST /", func(context.Context, any) (any, error) {
 		t.Error("endpoint called")
 		return nil, nil
 	})
@@ -253,7 +255,7 @@ func TestMaxBodyBytesDisabledAndRawHandlers(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			s := httpx.NewServer(tc.opts...)
-			httpx.Route[limitedRequest](s, "POST /bound", echo)
+			httptransport.Route[limitedRequest](s, "POST /bound", echo)
 			s.Handle("POST /nil", func(context.Context, any) (any, error) { return nil, nil }, nil)
 			r := httptest.NewRequest(http.MethodPost, "/bound", strings.NewReader(`{"name":"alice"}`))
 			if w := do(s, r); w.Code != http.StatusOK {
@@ -287,7 +289,7 @@ func TestMaxBodyBytesDisabledAndRawHandlers(t *testing.T) {
 
 func TestMaxBodyBytesClientErrorSemantics(t *testing.T) {
 	s := httpx.NewServer(httpx.WithMaxBodyBytes(2))
-	httpx.Route[limitedRequest](s, "POST /limited", echo)
+	httptransport.Route[limitedRequest](s, "POST /limited", echo)
 	s.Handle("GET /invalid", func(context.Context, any) (any, error) {
 		return nil, errorx.New(errorx.InvalidArgument, "BODY_TOO_LARGE", "business validation")
 	}, nil)
@@ -302,7 +304,7 @@ func TestMaxBodyBytesClientErrorSemantics(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	_, err = httpx.Call[limitedRequest](client, "POST", "/limited")(t.Context(), &limitedRequest{Name: "alice"})
+	_, err = client.Endpoint("POST", "/limited", func() any { return new(limitedRequest) })(t.Context(), &limitedRequest{Name: "alice"})
 	e, ok := errors.AsType[*errorx.Error](err)
 	if !ok || e.Code != errorx.InvalidArgument || e.Reason != "BODY_TOO_LARGE" || errorx.IsRetryable(err) {
 		t.Fatalf("limit client error = %v, want nonretryable InvalidArgument/BODY_TOO_LARGE", err)
@@ -321,7 +323,7 @@ func TestMaxBodyBytesClientErrorSemantics(t *testing.T) {
 			if w := do(s, httptest.NewRequest(http.MethodGet, tc.path, nil)); w.Code != tc.status {
 				t.Errorf("status=%d, want %d; body=%s", w.Code, tc.status, w.Body)
 			}
-			_, err := httpx.Call[limitedRequest](client, "GET", tc.path)(t.Context(), nil)
+			_, err := client.Endpoint("GET", tc.path, func() any { return new(limitedRequest) })(t.Context(), nil)
 			if errorx.CodeOf(err) != tc.code || errorx.IsRetryable(err) != tc.retryable {
 				t.Errorf("client error=%v retryable=%t", err, errorx.IsRetryable(err))
 			}
@@ -347,9 +349,9 @@ func TestMultipartTemporaryFilesRemovedAfterResponse(t *testing.T) {
 			s := httpx.NewServer(httpx.WithMaxBodyBytes(int64(len(body))))
 			var filename string
 			var form *multipart.Form
-			var opts []httpx.RouteOption
+			var opts []httptransport.RouteOption
 			if tc.encoder {
-				opts = append(opts, httpx.WithResponseEncoder(func(w http.ResponseWriter, r *http.Request, _ any) error {
+				opts = append(opts, httptransport.WithResponseEncoder(func(w http.ResponseWriter, r *http.Request, _ any) error {
 					form = r.MultipartForm
 					if _, err := os.Stat(filename); err != nil {
 						t.Errorf("temporary file removed before encoder: %v", err)
@@ -358,7 +360,7 @@ func TestMultipartTemporaryFilesRemovedAfterResponse(t *testing.T) {
 					return nil
 				}))
 			}
-			httpx.Route[limitedRequest](s, "POST /", func(ctx context.Context, req any) (any, error) {
+			httptransport.Route[limitedRequest](s, "POST /", func(ctx context.Context, req any) (any, error) {
 				file, err := req.(*limitedRequest).File.Open()
 				if err != nil {
 					t.Fatal(err)

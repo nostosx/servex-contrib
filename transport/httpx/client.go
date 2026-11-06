@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"mime"
 	"net/http"
 	"net/http/httptrace"
@@ -27,7 +28,10 @@ import (
 	"github.com/nostosx/servex/metadata"
 	"github.com/nostosx/servex/selector"
 	"github.com/nostosx/servex/transport"
+	httptransport "github.com/nostosx/servex/transport/http"
 )
+
+var _ httptransport.Client = (*Client)(nil)
 
 // Limits applied when turning an error response into an *errorx.Error.
 const (
@@ -40,11 +44,14 @@ type ClientOption func(*clientOptions)
 
 // clientOptions holds the configuration collected from ClientOptions.
 type clientOptions struct {
-	discoverer discovery.Discoverer
-	selector   selector.Selector
-	middleware []endpoint.Middleware
-	httpClient *http.Client
-	codec      encoding.Codec
+	callPolicy        sxclient.Policy
+	operationPolicies map[string]sxclient.Policy
+	attemptMiddleware []transport.AttemptMiddleware
+	discoverer        discovery.Discoverer
+	selector          selector.Selector
+	middleware        []endpoint.Middleware
+	httpClient        *http.Client
+	codec             encoding.Codec
 }
 
 // WithDiscoverer sets the Discoverer used to resolve "discovery:///<name>"
@@ -54,13 +61,32 @@ func WithDiscoverer(d discovery.Discoverer) ClientOption {
 }
 
 // WithSelector sets the Selector that picks a node for every call. The
-// default is random.New().
+// default is random.New(); a nil s keeps the default.
 func WithSelector(s selector.Selector) ClientOption {
 	return func(o *clientOptions) {
 		if s != nil {
 			o.selector = s
 		}
 	}
+}
+
+// WithCallPolicy configures the default unary logical-call and attempt budgets.
+func WithCallPolicy(policy sxclient.Policy) ClientOption {
+	return func(o *clientOptions) { o.callPolicy = policy }
+}
+
+// WithOperationPolicies selects policies by exact operation name. HTTP uses
+// "METHOD path"; gRPC uses the full method. Policies replace the default.
+func WithOperationPolicies(policies map[string]sxclient.Policy) ClientOption {
+	owned := maps.Clone(policies)
+	return func(o *clientOptions) { o.operationPolicies = maps.Clone(owned) }
+}
+
+// WithClientAttemptMiddleware wraps selected-node unary invocations. Streams
+// retain their independent lifecycle and are never automatically replayed.
+func WithClientAttemptMiddleware(m ...transport.AttemptMiddleware) ClientOption {
+	owned := append([]transport.AttemptMiddleware(nil), m...)
+	return func(o *clientOptions) { o.attemptMiddleware = append(o.attemptMiddleware, owned...) }
 }
 
 // WithClientMiddleware appends client-level middleware, which wraps every
@@ -129,6 +155,9 @@ func NewClient(ctx context.Context, target string, opts ...ClientOption) (*Clien
 		return nil, fmt.Errorf("httpx: unsupported target scheme in %q: want http, https or discovery", target)
 	}
 	topts := []sxclient.Option{
+		sxclient.WithPolicy(o.callPolicy),
+		sxclient.WithOperationPolicies(o.operationPolicies),
+		sxclient.WithAttemptMiddleware(o.attemptMiddleware...),
 		sxclient.WithScheme("http"),
 		sxclient.WithSelector(o.selector),
 		sxclient.WithMiddleware(o.middleware...),
@@ -159,7 +188,7 @@ func NewClient(ctx context.Context, target string, opts ...ClientOption) (*Clien
 // reply. Other statuses yield a remote *errorx.Error (see errorx.WithRemote),
 // decoded from the errorx JSON body when present and otherwise derived from
 // the status code; the body's retryable flag, when present, overrides the
-// code's default. Retry middleware of this client may retry such an error, but
+// code's default. The configured client call policy may retry such an error, but
 // a server returning it tells its own caller not to retry unless the handler
 // sets WithRetryable again. A request that
 // cannot be exchanged with the node yields errorx.Unavailable, unless the
@@ -178,14 +207,9 @@ func (c *Client) Endpoint(method, path string, newReply func() any, mw ...endpoi
 	return c.tc.Endpoint(method+" "+path, inv, mw...)
 }
 
-// Call builds an endpoint like Client.Endpoint whose replies are *Reply.
-func Call[Reply any](c *Client, method, path string, mw ...endpoint.Middleware) endpoint.Endpoint {
-	return c.Endpoint(method, path, func() any { return new(Reply) }, mw...)
-}
-
-// Close stops service discovery through the underlying sxclient.Client. It is
-// idempotent; existing endpoints remain callable. It does not close idle HTTP
-// connections or take ownership of a supplied http.Client.
+// Close rejects new calls and retry attempts and stops service discovery.
+// Already running exchanges obey their contexts. It is idempotent and does not
+// close idle connections or take ownership of an injected http.Client.
 func (c *Client) Close() error { return c.tc.Close() }
 
 // do performs a single HTTP exchange with the node at addr.

@@ -1,5 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,7 +8,7 @@ import { chromium, webkit } from "playwright";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, "../..");
-const core = path.resolve(process.env.SERVEX_CORE ?? path.join(root, "../servex"));
+const core = process.env.SERVEX_CORE ? path.resolve(process.env.SERVEX_CORE) : undefined;
 const work = await mkdtemp(path.join(tmpdir(), "servex-browser-"));
 const output = path.resolve(process.env.BROWSER_OUTPUT ?? path.join(here, "results"));
 const go = process.env.GO ?? "go";
@@ -31,18 +31,12 @@ await build({ entryPoints: [path.join(here, "browser.js")], outfile: path.join(w
 
 // Explicit source overrides stay in this disposable fixture module. Library
 // manifests, public versions and the caller's Go configuration remain intact.
-const moduleDirs = [core];
-for (const capability of await readdir(root, { withFileTypes: true })) {
-  if (!capability.isDirectory() || capability.name.startsWith(".")) continue;
-  const capabilityDir = path.join(root, capability.name);
-  try { await readFile(path.join(capabilityDir, "go.mod")); moduleDirs.push(capabilityDir); } catch (error) { if (error.code !== "ENOENT") throw error; }
-  for (const implementation of await readdir(path.join(root, capability.name), { withFileTypes: true })) {
-    if (!implementation.isDirectory()) continue;
-    const dir = path.join(root, capability.name, implementation.name);
-    try { await readFile(path.join(dir, "go.mod")); moduleDirs.push(dir); } catch (error) { if (error.code !== "ENOENT") throw error; }
-  }
-}
-let mod = "module servex-browser-fixture\n\ngo 1.27.3\n\n";
+const modulePaths = command(go, ["run", ".github/scripts/matrices/main.go", "-modules"], root).trim().split("\n");
+const moduleDirs = [...(core ? [core] : []), ...modulePaths.map(dir => path.join(root, dir))];
+const httpManifest = await readFile(path.join(root, "transport/httpx/go.mod"), "utf8");
+const coreVersion = /^\s*github\.com\/nostosx\/servex\s+(\S+)/m.exec(httpManifest)?.[1];
+if (!coreVersion) throw new Error("transport/httpx must require a published servex version");
+let mod = `module servex-browser-fixture\n\ngo 1.27.3\n\nrequire github.com/nostosx/servex ${coreVersion}\n\n`;
 for (const dir of moduleDirs) {
   const source = await readFile(path.join(dir, "go.mod"), "utf8");
   const modulePath = /^module\s+(\S+)/m.exec(source)[1];

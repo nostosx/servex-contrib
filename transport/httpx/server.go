@@ -12,26 +12,26 @@ import (
 	"net/url"
 	"reflect"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
 	jsoncodec "github.com/nostosx/servex-contrib/encoding/json"
 
-	sxlog "github.com/nostosx/servex/logger"
+	"github.com/nostosx/servex/observability/logger"
+	"github.com/nostosx/servex/observability/tracing"
 
 	"github.com/nostosx/servex/encoding"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/health"
 	"github.com/nostosx/servex/metadata"
-	"github.com/nostosx/servex/transport"
+	httptransport "github.com/nostosx/servex/transport/http"
 )
 
-// Compile-time interface checks.
 var (
-	_ transport.Server = (*Server)(nil)
-	_ http.Handler     = (*Server)(nil)
+	_ httptransport.Server         = (*Server)(nil)
+	_ httptransport.Router         = (*Server)(nil)
+	_ httptransport.EndpointRouter = (*Server)(nil)
 )
 
 // DefaultMaxBodyBytes is the request body limit for Handle and Route when
@@ -60,7 +60,7 @@ type serverOptions struct {
 	httpMiddleware    []func(http.Handler) http.Handler
 	codecs            []encoding.Codec
 	health            health.Checker
-	logger            sxlog.Logger
+	logger            logger.Logger
 	readTimeout       time.Duration
 	readHeaderTimeout time.Duration
 	writeTimeout      time.Duration
@@ -169,27 +169,15 @@ func WithHealth(c health.Checker) ServerOption {
 
 // WithLogger sets the logger for serve errors, failed readiness checks and
 // requests that fail with a 5xx status. Logging is disabled unless a logger is injected.
-func WithLogger(l sxlog.Logger) ServerOption {
+// Error records contain classification fields and available trace identifiers,
+// without error messages, metadata or causes. Native net/http diagnostics use a
+// fixed event because their text can contain request data and panic stacks.
+func WithLogger(l logger.Logger) ServerOption {
 	return func(o *serverOptions) {
 		if l != nil {
 			o.logger = l
 		}
 	}
-}
-
-// RouteOption configures a single route.
-type RouteOption func(*routeOptions)
-
-// routeOptions holds the configuration collected from RouteOptions.
-type routeOptions struct {
-	operation string
-	encoder   func(http.ResponseWriter, *http.Request, any) error
-}
-
-// WithOperation sets the operation name reported in metadata.Info for the
-// route. The default is the route pattern.
-func WithOperation(name string) RouteOption {
-	return func(o *routeOptions) { o.operation = name }
 }
 
 // Server is an HTTP server built on net/http. It implements
@@ -200,7 +188,7 @@ type Server struct {
 	addr              string
 	middleware        endpoint.Middleware
 	codecs            codecs
-	logger            sxlog.Logger
+	logger            logger.Logger
 	mux               *http.ServeMux
 	handler           http.Handler
 	errc              chan error
@@ -229,6 +217,10 @@ func NewServer(opts ...ServerOption) *Server {
 			opt(&o)
 		}
 	}
+	return newServer(o)
+}
+
+func newServer(o serverOptions) *Server {
 	s := &Server{
 		name:              o.name,
 		addr:              o.addr,
@@ -275,7 +267,7 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 	srv := &http.Server{
 		Handler:           s,
-		ErrorLog:          log.New(errorLogWriter{s.logger}, "", 0),
+		ErrorLog:          log.New(errorLogWriter{s}, "", 0),
 		ReadTimeout:       s.readTimeout,
 		ReadHeaderTimeout: s.readHeaderTimeout,
 		WriteTimeout:      s.writeTimeout,
@@ -294,7 +286,7 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) serve(srv *http.Server, ln net.Listener) {
 	defer close(s.errc)
 	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		s.log(context.Background(), sxlog.LevelError, "httpx: serve failed", "addr", ln.Addr().String(), "error", err)
+		s.logError(context.Background(), logger.LevelError, "httpx: serve failed", err, "addr", ln.Addr().String())
 		s.errc <- fmt.Errorf("httpx: serve: %w", err)
 	}
 }
@@ -360,6 +352,9 @@ func (s *Server) HandleHTTP(pattern string, h http.Handler) {
 // Query, form and path values are matched to fields by JSON name and may be
 // strings, integers, floats, bools, encoding.TextUnmarshaler values,
 // pointers to them or slices of them. A nil newReq passes a nil request.
+// WithRequestDecoder replaces this binding pipeline, including when newReq is
+// nil. The custom decoder receives transport metadata before endpoint middleware
+// runs. Body limits and multipart cleanup still apply.
 //
 // The context carries metadata.Info with Kind server, Protocol "http", the
 // operation name and the request header. Unless WithResponseEncoder is configured,
@@ -367,8 +362,38 @@ func (s *Server) HandleHTTP(pattern string, h http.Handler) {
 // from Accept, then the request Content-Type, defaulting to JSON. Errors are
 // converted with errorx.From and written as a JSON body with the matching status.
 // Like http.ServeMux, Handle panics on invalid or conflicting patterns.
-func (s *Server) Handle(pattern string, ep endpoint.Endpoint, newReq func() any, opts ...RouteOption) {
-	o := routeOptions{operation: pattern}
+//
+// Route options come from the core transport/http package; register typed
+// handlers with its Route and RouteFunc helpers. httptransport.WithOperation
+// sets the operation name reported in metadata.Info (default: the pattern).
+//
+// httptransport.WithRequestDecoder replaces Body, Query, Path and Form binding;
+// nil restores default binding. The decoder receives a fresh target and the
+// matched request with transport metadata in its context, before endpoint
+// middleware runs. It reads the size-limited Body without replacing it, honors
+// request cancellation and must not retain the request or target after
+// returning. Unread body bytes are checked against the limit before calling the
+// endpoint. Multipart files remain available through response encoding and are
+// removed when the route returns, including after decoder failure. Decoder
+// errors bypass endpoint middleware and the successful response encoder:
+// errorx errors and context cancellation/deadlines keep their classification,
+// body overflow yields 413/BODY_TOO_LARGE, and other errors become a safe
+// InvalidArgument/DECODE_REQUEST response without exposing their text.
+//
+// httptransport.WithResponseEncoder sets the successful response encoder. It
+// runs after endpoint middleware, including for a nil reply, with request
+// metadata in r.Context(); nil keeps the default codec and nil-reply behavior.
+// The encoder owns the status, headers and body. Use http.ResponseController
+// for optional writer operations such as flushing, deadlines and hijacking; the
+// writer also provides Unwrap() http.ResponseWriter, whose writes bypass
+// commitment tracking and must not be followed by an encoder error. The writer
+// and request must not be used after the encoder returns. An error before a
+// final response restores the original headers and produces the fixed
+// Internal/ENCODE_REPLY JSON error. After a final status, body write, supported
+// flush or hijack attempt, an error is logged without writing another response.
+// Informational statuses other than 101 do not commit the final response.
+func (s *Server) Handle(pattern string, ep endpoint.Endpoint, newReq func() any, opts ...httptransport.RouteOption) {
+	o := httptransport.RouteOptions{Operation: pattern}
 	for _, opt := range opts {
 		if opt != nil {
 			opt(&o)
@@ -376,26 +401,14 @@ func (s *Server) Handle(pattern string, ep endpoint.Endpoint, newReq func() any,
 	}
 	rt := &route{
 		s:         s,
-		operation: o.operation,
+		operation: o.Operation,
 		ep:        s.middleware(ep),
 		newReq:    newReq,
 		pathNames: pathNames(pattern),
-		encoder:   o.encoder,
+		decoder:   o.DecodeRequest,
+		encoder:   o.EncodeResponse,
 	}
 	s.mux.Handle(pattern, rt)
-}
-
-// Route registers ep for pattern like Handle, creating each request object
-// with new(Req).
-func Route[Req any](s *Server, pattern string, ep endpoint.Endpoint, opts ...RouteOption) {
-	s.Handle(pattern, ep, func() any { return new(Req) }, opts...)
-}
-
-// RouteFunc registers fn for pattern like Route, adapting it with
-// endpoint.Typed: fn receives the bound *Req and its Res is the reply.
-// Server middleware still sees the request as *Req and the reply as Res.
-func RouteFunc[Req, Res any](s *Server, pattern string, fn func(context.Context, *Req) (Res, error), opts ...RouteOption) {
-	Route[Req](s, pattern, endpoint.Typed(fn), opts...)
 }
 
 // route serves one registered endpoint.
@@ -405,6 +418,7 @@ type route struct {
 	ep        endpoint.Endpoint
 	newReq    func() any
 	pathNames []string
+	decoder   func(*http.Request, any) error
 	encoder   func(http.ResponseWriter, *http.Request, any) error
 	bindings  bindingCache
 }
@@ -426,11 +440,17 @@ func (rt *route) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			r.Body = http.MaxBytesReader(w, r.Body, s.maxBodyBytes)
 		}
 	}
+	ctx := metadata.NewContext(r.Context(), metadata.Info{
+		Kind:      metadata.KindServer,
+		Protocol:  "http",
+		Operation: rt.operation,
+		Header:    headerMD(r.Header),
+	})
 	var req any
 	if rt.newReq != nil {
 		req = rt.newReq()
 	}
-	if err := rt.bind(r, req); err != nil {
+	if err := rt.decodeRequest(ctx, r, req); err != nil {
 		s.writeError(w, r, rt.operation, err)
 		return
 	}
@@ -440,12 +460,6 @@ func (rt *route) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	ctx := metadata.NewContext(r.Context(), metadata.Info{
-		Kind:      metadata.KindServer,
-		Protocol:  "http",
-		Operation: rt.operation,
-		Header:    headerMD(r.Header),
-	})
 	reply, err := rt.ep(ctx, req)
 	if err != nil {
 		s.writeError(w, r, rt.operation, err)
@@ -584,8 +598,8 @@ func (s *Server) writeError(w http.ResponseWriter, r *http.Request, operation st
 		status = http.StatusRequestEntityTooLarge
 	}
 	if status >= http.StatusInternalServerError {
-		s.log(r.Context(), sxlog.LevelError, "httpx: request failed",
-			"operation", operation, "status", status, "error", err)
+		s.logError(r.Context(), logger.LevelError, "httpx: request failed", err,
+			"operation", operation, "status", status)
 	}
 	data, merr := jsoncodec.Codec.Marshal(errorBody{
 		Code:      e.Code.String(),
@@ -612,7 +626,7 @@ func (s *Server) mountHealth(c health.Checker) {
 	})
 	s.mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		if err := c.Check(r.Context()); err != nil {
-			s.log(r.Context(), sxlog.LevelWarn, "httpx: not ready", "error", err)
+			s.logError(r.Context(), logger.LevelWarn, "httpx: not ready", err)
 			writeText(w, http.StatusServiceUnavailable, "not ready\n")
 			return
 		}
@@ -647,17 +661,39 @@ func isNil(v any) bool {
 	return rv.Kind() == reflect.Pointer && rv.IsNil()
 }
 
-func (s *Server) log(ctx context.Context, level sxlog.Level, message string, fields ...any) {
-	if s.logger != nil {
-		s.logger.Log(ctx, level, message, fields...)
+// logError records only the shared payload-free error classification. A span
+// belongs to the supplied context; endpoint middleware child contexts are not
+// implicitly recovered after the endpoint returns.
+func (s *Server) logError(ctx context.Context, level logger.Level, message string, err error, fields ...any) {
+	if s.logger == nil || !s.logger.Enabled(ctx, level) {
+		return
 	}
+	classification := errorx.Classify(err)
+	fields = append(fields,
+		"code", classification.Code.String(),
+		"retryable", classification.Retryable,
+		"remote", classification.Remote,
+	)
+	if classification.Reason != "" {
+		fields = append(fields, "reason", classification.Reason)
+	}
+	if span := tracing.SpanFromContext(ctx); span != nil {
+		traceID, spanID := span.TraceID(), span.SpanID()
+		if traceID != "" && spanID != "" {
+			fields = append(fields, "trace_id", traceID, "span_id", spanID)
+		}
+	}
+	s.logger.Log(ctx, level, message, fields...)
 }
 
-type errorLogWriter struct{ logger sxlog.Logger }
+type errorLogWriter struct{ server *Server }
 
 func (w errorLogWriter) Write(p []byte) (int, error) {
-	if w.logger != nil {
-		w.logger.Log(context.Background(), sxlog.LevelError, strings.TrimSpace(string(p)))
+	// net/http diagnostics can contain client data, panic values and stacks.
+	// They have no typed error or request context, so retain only a fixed event.
+	if w.server != nil {
+		w.server.logError(context.Background(), logger.LevelError, "httpx: server diagnostic",
+			errorx.New(errorx.Unknown, "HTTP_SERVER_DIAGNOSTIC", ""))
 	}
 	return len(p), nil
 }

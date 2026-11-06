@@ -9,17 +9,17 @@ import (
 	"net/url"
 	"testing"
 
-	brokermemory "github.com/nostosx/servex-contrib/broker/memory"
-	cachememory "github.com/nostosx/servex-contrib/cache/memory"
-	database "github.com/nostosx/servex-contrib/database/sql"
 	discoverymemory "github.com/nostosx/servex-contrib/discovery/memory"
-	jobqueuememory "github.com/nostosx/servex-contrib/jobqueue/memory"
+	jobqueuememory "github.com/nostosx/servex-contrib/job/memory"
+	brokermemory "github.com/nostosx/servex-contrib/messaging/memory"
+	cachememory "github.com/nostosx/servex-contrib/storage/cache/memory"
+	database "github.com/nostosx/servex-contrib/storage/database/sql"
 	"github.com/nostosx/servex-contrib/transport/httpx"
 	"github.com/nostosx/servex/app"
 	"github.com/nostosx/servex/discovery"
 	"github.com/nostosx/servex/health"
-	"github.com/nostosx/servex/messaging/broker"
-	"github.com/nostosx/servex/messaging/jobqueue"
+	"github.com/nostosx/servex/job"
+	"github.com/nostosx/servex/messaging"
 	"github.com/nostosx/servex/metadata"
 	"github.com/nostosx/servex/observability/tracing"
 	"github.com/nostosx/servex/storage/cache"
@@ -38,14 +38,14 @@ var (
 	_ discovery.Registrar  = (*discoverymemory.Registry)(nil)
 	_ discovery.Discoverer = (*discoverymemory.Registry)(nil)
 	_ cache.Cache          = (*cachememory.Cache)(nil)
-	_ broker.Publisher     = (*brokermemory.Broker)(nil)
-	_ broker.Subscriber    = (*brokermemory.Broker)(nil)
-	_ jobqueue.Enqueuer    = (*jobqueuememory.Queue)(nil)
-	_ jobqueue.Runner      = (*jobqueuememory.Queue)(nil)
+	_ messaging.Publisher  = (*brokermemory.Broker)(nil)
+	_ messaging.Subscriber = (*brokermemory.Broker)(nil)
+	_ job.Enqueuer         = (*jobqueuememory.Queue)(nil)
+	_ job.Runner           = (*jobqueuememory.Queue)(nil)
 
 	// Both in-memory implementations opt in to start readiness.
-	_ broker.ReadySubscriber = (*brokermemory.Broker)(nil)
-	_ jobqueue.ReadyRunner   = (*jobqueuememory.Queue)(nil)
+	_ messaging.ReadySubscriber = (*brokermemory.Broker)(nil)
+	_ job.ReadyRunner           = (*jobqueuememory.Queue)(nil)
 )
 
 // The HTTP server is a transport.Server, an http.Handler, reports runtime
@@ -77,19 +77,19 @@ func TestOptionalHookMethods(t *testing.T) {
 	if _, ok := database.Hook("db", db, database.WithReadiness(false)).(checker); ok {
 		t.Error("database.Hook implements Check with readiness disabled")
 	}
-	consumer := broker.NewConsumer(brokermemory.New(), "t", "", nopEndpoint)
+	consumer := messaging.NewConsumer(brokermemory.New(), "t", "", nopHandler)
 	if _, ok := consumer.(errReporter); !ok {
-		t.Error("broker.NewConsumer does not implement Err")
+		t.Error("messaging.NewConsumer does not implement Err")
 	}
 	if _, ok := consumer.(checker); !ok {
-		t.Error("broker.NewConsumer does not implement Check")
+		t.Error("messaging.NewConsumer does not implement Check")
 	}
-	worker := jobqueue.NewWorker(jobqueuememory.New(), nil)
+	worker := job.NewWorker(jobqueuememory.New(), nil)
 	if _, ok := worker.(errReporter); !ok {
-		t.Error("jobqueue.NewWorker does not implement Err")
+		t.Error("job.NewWorker does not implement Err")
 	}
 	if _, ok := worker.(checker); !ok {
-		t.Error("jobqueue.NewWorker does not implement Check")
+		t.Error("job.NewWorker does not implement Check")
 	}
 	if _, ok := discovery.Registration(discoverymemory.New(), discovery.Instance{Name: "svc"}).(drainer); !ok {
 		t.Error("discovery.Registration does not implement Drain")
@@ -99,7 +99,7 @@ func TestOptionalHookMethods(t *testing.T) {
 	}
 }
 
-func nopEndpoint(context.Context, any) (any, error) { return nil, nil }
+func nopHandler(context.Context, *messaging.Message) error { return nil }
 
 // nopConnector is a driver.Connector that never connects; the test only
 // inspects method sets.

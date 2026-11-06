@@ -1,10 +1,14 @@
 # transport/grpcx
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 Runnable server and client programs: [servex-examples](https://github.com/nostosx/servex-examples).
 
 `github.com/nostosx/servex-contrib/transport/grpcx` implements the servex
 transport contracts on [gRPC-Go](https://github.com/grpc/grpc-go), mirroring
-the core `transport/httpx`.
+the sibling `transport/httpx`.
 
 - `Server` is a `transport.Server` (an `app.Hook` with a `grpc://` URL) and a
   `grpc.ServiceRegistrar`, so generated code registers directly:
@@ -28,11 +32,55 @@ the core `transport/httpx`.
   Application metadata under that key is dropped, and the client removes the
   key from `Metadata`.
 - Client errors are marked remote (`errorx.WithRemote`): this client's retry
-  middleware may retry them, but a server returning such an error, directly
+  Policy may retry them, but a server returning such an error, directly
   or wrapped, sends `PropagatedRetryable`, so its caller does not retry it
   again. Set `errorx.From(err).WithRetryable(true)` in the handler to let the
   caller retry. Statuses gRPC reports for connection failures are remote too;
   `Canceled` and `DeadlineExceeded` caused by the caller's own context are not.
+
+## File configuration
+
+`ServerConfig` is a data-only model for configuration decoding. Initialize it
+with `DefaultServerConfig()` before applying file/environment values, then call
+`Validate()` or `NewServerFromConfig(config, runtimeOptions...)`. Construction
+opens no listener; register services before `Start`.
+
+```go
+cfg := grpcx.DefaultServerConfig()
+if err := settings.Unmarshal("grpc", &cfg); err != nil { return err }
+server, err := grpcx.NewServerFromConfig(cfg,
+    grpcx.WithHealth(application),
+    grpcx.WithMiddleware(authenticate),
+)
+if err != nil { return err }
+```
+
+Here `settings` is a core config.Reader supplied by the application. Viper's
+duration decoder accepts strings such as `"5s"`:
+
+```toml
+[grpc]
+name = "grpc"
+address = ":9000"
+max_recv_msg_size = 4194304
+max_send_msg_size = 2147483647
+health_interval = "5s"
+```
+
+Defaults match name/address and health cadence of `NewServer`. Zero message
+limits select the gRPC defaults (4 MiB receive, 2147483647 bytes send), rather
+than disabling all messages. Negative or oversized limits, nonpositive health
+intervals, blank names and malformed/nonnumeric host:port addresses are rejected.
+Port zero is valid for ephemeral listeners. Health interval affects only the
+health service installed with `WithHealth`.
+
+Middleware, credentials, listeners and health checkers remain runtime options.
+Scalar overrides are validated before construction. Configured message limits
+are applied after `WithGRPCOptions`, so native SDK options cannot silently
+replace them. Use the low-level `NewServer(options...)` constructor when native
+SDK options should control these limits directly. File loading, reload and
+resource replacement belong to the application.
+
 
 ## Streaming middleware
 
@@ -45,25 +93,36 @@ flags as read-only. Counters count successful message operations on this side
 of the connection and exclude EOF and failed operations; message contents are
 never passed through the call-level middleware.
 
-The following assembly fragments reuse the existing middleware module. Import
-the corresponding `servex-contrib/middleware` packages in your application:
+The following assembly fragments use separate server and client packages.
+Aliases identify the execution boundary when both are assembled in one file:
 
 ```go
+import (
+    clientmw "github.com/nostosx/servex-contrib/middleware/client"
+    endpointmw "github.com/nostosx/servex-contrib/middleware/endpoint"
+    "github.com/nostosx/servex-contrib/transport/grpcx"
+)
+
 srv := grpcx.NewServer(grpcx.WithStreamMiddleware(
-    recovery.New(),
-    tracing.New(tracer, propagator),
-    logging.New(logger),
-    metrics.New(meter),
-    auth.New(verify),
+    endpointmw.Tracing(tracer, propagator),
+    endpointmw.Logging(logger),
+    endpointmw.Metrics(meter),
+    endpointmw.Recovery(),
+    endpointmw.Authentication(verify),
 ))
 
 client, err := grpcx.NewClient(ctx, target, grpcx.WithClientStreamMiddleware(
-    tracing.New(tracer, propagator),
-    logging.New(logger),
-    metrics.New(meter),
-    auth.Client(token),
+    clientmw.Tracing(tracer, propagator),
+    clientmw.Logging(logger),
+    clientmw.Metrics(meter),
+    clientmw.Authentication(token),
 ))
 ```
+
+The same scope packages apply to unary WithMiddleware/WithClientMiddleware.
+Unary WithClientAttemptMiddleware uses clientmw.AttemptLogging,
+clientmw.AttemptMetrics and clientmw.AttemptTracing from that same client package. Application
+factories remain under middleware/application and wrap the business handler.
 
 Unary middleware remains separate. Authentication runs when the stream starts;
 logging, request metrics and spans cover its full lifetime. To record message
@@ -72,7 +131,7 @@ returns. Per-message validation belongs in the handler or native gRPC stream
 interceptors. Health Watch bypasses the server stream chain, like unary probes.
 
 A stream must not be replayed. Do not add unary retry, request validation or
-per-attempt timeout middleware to this chain. A second call to `next` is rejected
+unary attempt budgets to this chain. A second call to `next` is rejected
 with non-retryable `FailedPrecondition` (`STREAM_REPLAYED`). Use the caller's
 context to bound the whole RPC. Middleware that rejects a stream must return
 an error; success without calling `next` is `STREAM_NOT_STARTED` on the client.
@@ -91,23 +150,10 @@ install recovery middleware for application logging and server handler panics.
 Stream options and middleware are available since v1.2.0; v1.1.0 does not
 contain them.
 
-## Install
-
-Requires Go 1.27.3. Uses published servex v1.4.0 and kitx v1.0.0.
-
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/transport/grpcx@v1.3.0
-```
-
-The example version corresponds to the tag `transport/grpcx/v1.3.0`;
-see [module versioning](../../README.md#versioning).
-
 ## Usage
 
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
+The complete programs below use the current source API. Use matching peer
+sources during development; install real module versions after publication.
 
 A server whose `grpc.health.v1` status follows the application readiness, and a
 client calling it. Real services register generated code the same way.
@@ -224,11 +270,3 @@ GOWORK=off go test -race -count=1 ./...
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
-
-## Release
-
-Version v1.3.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/transport/grpcx@v1.3.0
-```

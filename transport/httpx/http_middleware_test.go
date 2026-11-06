@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	httptransport "github.com/nostosx/servex/transport/http"
+
 	"github.com/nostosx/servex-contrib/transport/httpx"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/health"
@@ -35,7 +37,7 @@ func TestHTTPMiddlewareWrapsEveryRequest(t *testing.T) {
 		httpx.WithMiddleware(endpointMW),
 		httpx.WithHealth(health.CheckerFunc(func(context.Context) error { return nil })),
 	)
-	httpx.Route[userReq](s, "POST /v1/users", func(context.Context, any) (any, error) {
+	httptransport.Route[userReq](s, "POST /v1/users", func(context.Context, any) (any, error) {
 		order = append(order, "handler")
 		return nil, nil
 	})

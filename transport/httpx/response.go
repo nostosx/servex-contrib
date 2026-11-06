@@ -6,30 +6,10 @@ import (
 	"net"
 	"net/http"
 
-	sxlog "github.com/nostosx/servex/logger"
+	"github.com/nostosx/servex/observability/logger"
 
 	"github.com/nostosx/servex/errorx"
 )
-
-// WithResponseEncoder sets the successful response encoder for a route. It runs
-// after endpoint middleware, including for a nil reply, with request metadata
-// in r.Context(). A nil encoder keeps the default codec and nil-reply behavior.
-//
-// The encoder owns the status, headers and body. Use http.ResponseController
-// for optional writer operations such as flushing, deadlines and hijacking.
-// The writer also provides Unwrap() http.ResponseWriter. Writes through the
-// unwrapped writer bypass commitment tracking and must not be followed by an
-// encoder error. The writer and request must not be used after the encoder
-// returns.
-//
-// An error before a final response restores the original response headers and
-// produces the fixed Internal/ENCODE_REPLY JSON error. After a final status,
-// body write, supported flush or hijack attempt, an error is logged without
-// writing another response. Informational statuses other than 101 do not
-// commit the final response. Endpoint and binding errors bypass the encoder.
-func WithResponseEncoder(fn func(http.ResponseWriter, *http.Request, any) error) RouteOption {
-	return func(o *routeOptions) { o.encoder = fn }
-}
 
 // encodeResponse invokes the configured custom encoder without buffering its
 // output. The caller supplies the request with the endpoint's metadata context.
@@ -38,8 +18,8 @@ func (rt *route) encodeResponse(w http.ResponseWriter, r *http.Request, reply an
 	tracked := &responseWriter{ResponseWriter: w}
 	if err := rt.encoder(tracked.writer(), r, reply); err != nil {
 		if tracked.committed {
-			rt.s.log(r.Context(), sxlog.LevelError, "httpx: response encoding failed after commitment",
-				"operation", rt.operation, "error", err)
+			rt.s.logError(r.Context(), logger.LevelError, "httpx: response encoding failed after commitment", err,
+				"operation", rt.operation)
 			return
 		}
 		clear(w.Header())

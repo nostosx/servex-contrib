@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/url"
 	"slices"
 	"sync"
@@ -39,11 +40,14 @@ type ClientOption func(*clientOptions)
 
 // clientOptions holds the configuration collected from ClientOptions.
 type clientOptions struct {
-	discoverer       discovery.Discoverer
-	selector         selector.Selector
-	middleware       []endpoint.Middleware
-	streamMiddleware []endpoint.Middleware
-	dialOpts         []grpc.DialOption
+	callPolicy        sxclient.Policy
+	operationPolicies map[string]sxclient.Policy
+	attemptMiddleware []transport.AttemptMiddleware
+	discoverer        discovery.Discoverer
+	selector          selector.Selector
+	middleware        []endpoint.Middleware
+	streamMiddleware  []endpoint.Middleware
+	dialOpts          []grpc.DialOption
 }
 
 // WithDiscoverer sets the Discoverer used to resolve "discovery:///<name>"
@@ -56,6 +60,25 @@ func WithDiscoverer(d discovery.Discoverer) ClientOption {
 // default is random.New(); a nil s keeps the default.
 func WithSelector(s selector.Selector) ClientOption {
 	return func(o *clientOptions) { o.selector = s }
+}
+
+// WithCallPolicy configures the default unary logical-call and attempt budgets.
+func WithCallPolicy(policy sxclient.Policy) ClientOption {
+	return func(o *clientOptions) { o.callPolicy = policy }
+}
+
+// WithOperationPolicies selects policies by exact operation name. HTTP uses
+// "METHOD path"; gRPC uses the full method. Policies replace the default.
+func WithOperationPolicies(policies map[string]sxclient.Policy) ClientOption {
+	owned := maps.Clone(policies)
+	return func(o *clientOptions) { o.operationPolicies = maps.Clone(owned) }
+}
+
+// WithClientAttemptMiddleware wraps selected-node unary invocations. Streams
+// retain their independent lifecycle and are never automatically replayed.
+func WithClientAttemptMiddleware(m ...transport.AttemptMiddleware) ClientOption {
+	owned := append([]transport.AttemptMiddleware(nil), m...)
+	return func(o *clientOptions) { o.attemptMiddleware = append(o.attemptMiddleware, owned...) }
 }
 
 // WithClientMiddleware appends client middleware, which wraps every unary
@@ -149,6 +172,9 @@ func NewClient(ctx context.Context, target string, opts ...ClientOption) (*Clien
 		sel = random.New()
 	}
 	topts := []sxclient.Option{
+		sxclient.WithPolicy(o.callPolicy),
+		sxclient.WithOperationPolicies(o.operationPolicies),
+		sxclient.WithAttemptMiddleware(o.attemptMiddleware...),
 		sxclient.WithScheme(scheme),
 		sxclient.WithSelector(sel),
 		sxclient.WithNodeObserver(c.observe),
@@ -350,7 +376,7 @@ func (cn *conn) NewStream(ctx context.Context, desc *grpc.StreamDesc, method str
 	if len(c.streamMiddleware) != 0 {
 		return c.newMiddlewareStream(ctx, desc, method, opts)
 	}
-	ep := c.tc.Endpoint(method, transport.InvokerFunc(func(ctx context.Context, addr string, _ any) (any, error) {
+	ep := c.tc.StreamEndpoint(method, transport.InvokerFunc(func(ctx context.Context, addr string, _ any) (any, error) {
 		cc, release, err := c.acquire(addr)
 		if err != nil {
 			return nil, err

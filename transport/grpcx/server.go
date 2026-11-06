@@ -133,6 +133,10 @@ func NewServer(opts ...ServerOption) *Server {
 			opt(&o)
 		}
 	}
+	return newServer(o)
+}
+
+func newServer(o serverOptions) *Server {
 	s := &Server{
 		name:             o.name,
 		addr:             o.addr,

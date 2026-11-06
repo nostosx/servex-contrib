@@ -16,6 +16,7 @@ import (
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/health"
 	"github.com/nostosx/servex/metadata"
+	httptransport "github.com/nostosx/servex/transport/http"
 )
 
 // errUserNotFound is the business error returned by the user service.
@@ -46,20 +47,25 @@ func TestEndToEndThroughDiscovery(t *testing.T) {
 		httpx.WithHealth(health.CheckerFunc(func(ctx context.Context) error { return a.Check(ctx) })),
 		httpx.WithLogger(testLogger(slog.New(slog.DiscardHandler))),
 	)
-	httpx.Route[e2eGetUser](srv, "GET /v1/users/{id}", func(ctx context.Context, req any) (any, error) {
+	httptransport.Route[e2eGetUser](srv, "GET /v1/users/{id}", func(ctx context.Context, req any) (any, error) {
 		r := req.(*e2eGetUser)
 		if r.ID == 404 {
 			return nil, errUserNotFound.WithMetadata(map[string]string{"id": fmt.Sprint(r.ID)})
 		}
 		info, _ := metadata.FromContext(ctx)
 		return &e2eUser{ID: r.ID, Name: "user", Verbose: r.Verbose, RequestID: info.Header.Get("x-request-id")}, nil
-	}, httpx.WithOperation("users.Get"))
-	httpx.Route[e2eUser](srv, "POST /v1/users/{id}", func(_ context.Context, req any) (any, error) {
+	}, httptransport.WithOperation("users.Get"))
+	httptransport.Route[e2eUser](srv, "POST /v1/users/{id}", func(_ context.Context, req any) (any, error) {
 		return req, nil
 	})
 
+	var server httptransport.Server = srv
+	var router httptransport.Router = srv
+	router.HandleHTTP("GET /raw", http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
 	a = app.New(
-		app.WithHooks(srv, discovery.Registration(reg, discovery.Instance{Name: "user", Version: "v1"}, srv)),
+		app.WithHooks(server, discovery.Registration(reg, discovery.Instance{Name: "user", Version: "v1"}, server)),
 		app.WithLogger(testLogger(slog.New(slog.DiscardHandler))),
 	)
 	if err := a.Start(ctx); err != nil {
@@ -71,13 +77,21 @@ func TestEndToEndThroughDiscovery(t *testing.T) {
 		}
 	})
 
-	resp, err := http.Get(srv.URL().String() + "/readyz")
+	resp, err := http.Get(server.URL().String() + "/readyz")
 	if err != nil {
 		t.Fatalf("readyz: %v", err)
 	}
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("readyz = %d, want 200", resp.StatusCode)
+	}
+	resp, err = http.Get(server.URL().String() + "/raw")
+	if err != nil {
+		t.Fatalf("raw route: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusNoContent {
+		t.Errorf("raw route = %d, want 204", resp.StatusCode)
 	}
 
 	requestID := func(next endpoint.Endpoint) endpoint.Endpoint {
@@ -92,18 +106,19 @@ func TestEndToEndThroughDiscovery(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
-	defer client.Close()
+	var caller httptransport.Client = client
+	defer caller.Close()
 
-	getUser := httpx.Call[e2eUser](client, "GET", "/v1/users/{id}")
+	getUser := httptransport.Call[e2eGetUser, e2eUser](caller, "GET", "/v1/users/{id}")
 	reply, err := getUser(ctx, &e2eGetUser{ID: 7, Verbose: true})
 	if err != nil {
 		t.Fatalf("get user: %v", err)
 	}
-	if got := *reply.(*e2eUser); got != (e2eUser{ID: 7, Name: "user", Verbose: true, RequestID: "req-1"}) {
+	if got := *reply; got != (e2eUser{ID: 7, Name: "user", Verbose: true, RequestID: "req-1"}) {
 		t.Errorf("reply = %+v", got)
 	}
 
-	created, err := httpx.Call[e2eUser](client, "POST", "/v1/users/{id}")(ctx, &e2eUser{ID: 9, Name: "neo"})
+	created, err := client.Endpoint("POST", "/v1/users/{id}", func() any { return new(e2eUser) })(ctx, &e2eUser{ID: 9, Name: "neo"})
 	if err != nil {
 		t.Fatalf("post user: %v", err)
 	}

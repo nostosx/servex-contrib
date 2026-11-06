@@ -1,6 +1,10 @@
-# cors
+# transport/cors
 
-**v1.0.0 (2026-10-31).** Explicit HTTP browser-origin policy using community rs/cors
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
+Explicit HTTP browser-origin policy using community rs/cors
 v1.11.1 (MIT). Go 1.27.3. Independent SDK module; generic middleware remains
 SDK-free. Callbacks/options retain their upstream meanings.
 

@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	httptransport "github.com/nostosx/servex/transport/http"
+
 	"github.com/nostosx/servex-contrib/transport/httpx"
 )
 
@@ -33,7 +35,7 @@ func benchmarkHTTPHandler(servex, query bool) http.Handler {
 	}
 	if servex {
 		s := httpx.NewServer()
-		httpx.Route[benchmarkMessage](s, pattern, func(_ context.Context, req any) (any, error) { return req, nil })
+		httptransport.Route[benchmarkMessage](s, pattern, func(_ context.Context, req any) (any, error) { return req, nil })
 		return s
 	}
 	mux := http.NewServeMux()
@@ -181,7 +183,7 @@ func benchmarkHTTPRoundTrip(b *testing.B, mode string, size int, fake bool) func
 		b.Fatal(err)
 	}
 	b.Cleanup(func() { _ = c.Close() })
-	ep := httpx.Call[benchmarkMessage](c, http.MethodPost, "/echo")
+	ep := c.Endpoint(http.MethodPost, "/echo", func() any { return new(benchmarkMessage) })
 	return func() error {
 		resp, err := ep(b.Context(), payload)
 		if err != nil {
