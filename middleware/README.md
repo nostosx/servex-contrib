@@ -1,6 +1,14 @@
 # middleware
 
-Module version for this revision: **v1.6.0**.
+v1.7.0 additions: endpoint.Timeout bounds a cooperative handler's context
+without spawning a goroutine or retrying. tokenauth.StaticToken verifies one
+configured service credential with fixed-size constant-time comparison. Inbound
+token extraction rejects duplicate authorization values. Applications explicitly
+select these policies and their order in each service entry point; no shared
+default chain is installed. gRPC-specific public error projection belongs to
+transport/grpcx.WithPublicErrors.
+
+Module version for this revision: **v1.7.0**.
 
 Explicit AOP policies for published servex v1.7.0 contracts. Requires Go 1.27.3.
 See the [validation commands](../CONTRIBUTING.md#checks).

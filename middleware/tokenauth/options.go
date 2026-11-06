@@ -3,6 +3,8 @@ package tokenauth
 
 import (
 	"context"
+	"crypto/sha256"
+	"crypto/subtle"
 	"strings"
 
 	"github.com/nostosx/servex/errorx"
@@ -52,6 +54,9 @@ func NewOptions(options []Option) Options {
 
 func (o Options) Token(ctx context.Context) (string, error) {
 	info, _ := metadata.FromContext(ctx)
+	if len(info.Header.Values(o.Header)) > 1 {
+		return "", errorx.New(errorx.Unauthenticated, ReasonInvalidToken, "multiple authorization values")
+	}
 	value := strings.TrimSpace(info.Header.Get(o.Header))
 	if value == "" {
 		return "", errorx.New(errorx.Unauthenticated, ReasonMissingToken, "missing token")
@@ -68,4 +73,18 @@ func (o Options) Token(ctx context.Context) (string, error) {
 		return "", errorx.New(errorx.Unauthenticated, ReasonMissingToken, "missing token")
 	}
 	return token, nil
+}
+
+// StaticToken returns a verifier for one configured service credential. It
+// compares fixed-size digests in constant time and never includes tokens in errors.
+// Empty expected credentials always reject. Extraction remains Authentication's job.
+func StaticToken(expected string) func(context.Context, string) (struct{}, error) {
+	expectedHash := sha256.Sum256([]byte(expected))
+	return func(_ context.Context, actual string) (struct{}, error) {
+		actualHash := sha256.Sum256([]byte(actual))
+		if expected == "" || subtle.ConstantTimeCompare(expectedHash[:], actualHash[:]) != 1 {
+			return struct{}{}, errorx.New(errorx.Unauthenticated, ReasonInvalidToken, "invalid token")
+		}
+		return struct{}{}, nil
+	}
 }
