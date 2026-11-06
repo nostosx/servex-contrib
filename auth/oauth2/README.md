@@ -17,7 +17,7 @@ OAUTH_AUTH_URL, OAUTH_TOKEN_URL and OAUTH_REDIRECT_URL. Configure the provider's
 redirect URI to https://localhost:8443/callback and supply server.crt/server.key.
 This example verifies a login result; application account mapping and issuing a
 persistent logged-in Session belong after VerifyNonce succeeds. It uses the
-`auth/oidc` module version declared in go.mod. Both modules keep their existing paths.
+`auth/oidc` module version listed in the root CHANGELOG. Both modules keep their existing paths.
 
 ```go
 package main
