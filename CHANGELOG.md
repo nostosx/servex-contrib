@@ -50,6 +50,8 @@ Release date: 2026-11-07. Requires Go 1.27.3 and auth/oidc v1.0.2.
   Apple and trusted generic OIDC login adapters. Verify signed ID tokens or
   authenticated profiles; bind state to the client and provider. Bound HTTP
   responses and reject credential-bearing backend redirects.
+- Load discovered UserInfo with subject matching against the signed ID token;
+  select supported post/basic client authentication without uncertain retries.
 - Map integration subpackages to their nearest containing module, retaining
   independent nested-module CI and service gates. Redis and login follow in
   separate dependency layers.

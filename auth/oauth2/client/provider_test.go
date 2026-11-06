@@ -38,20 +38,27 @@ type providerFixture struct {
 	changes   map[string]any
 	profile   string
 	emails    string
+	userInfo  string
+	methods   []string
+	basic     bool
 	redirect  bool
 	calls     int
 	key       *rsa.PrivateKey
 	server    *httptest.Server
 }
 
-func newProviderFixture(t *testing.T, kind ProviderKind) (*providerFixture, *Provider) {
+func newProviderFixture(t *testing.T, kind ProviderKind, options ...func(*providerFixture)) (*providerFixture, *Provider) {
 	t.Helper()
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatal(err)
 	}
 	f := &providerFixture{key: key, profile: `{"id":42,"login":"octocat","email":"untrusted@example.com"}`,
+		userInfo: `{"sub":"stable-subject","name":"Profile User","email":"user@example.com","email_verified":true}`, methods: []string{"client_secret_post"},
 		emails: `[{"email":"bad@example.com","verified":false,"primary":true},{"email":"other@example.com","verified":true},{"email":"primary@example.com","verified":true,"primary":true}]`}
+	for _, option := range options {
+		option(f)
+	}
 	f.server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		defer f.mu.Unlock()
@@ -59,7 +66,8 @@ func newProviderFixture(t *testing.T, kind ProviderKind) (*providerFixture, *Pro
 		switch {
 		case strings.HasSuffix(r.URL.Path, "/.well-known/openid-configuration"):
 			_ = json.NewEncoder(w).Encode(map[string]any{"issuer": f.issuer,
-				"authorization_endpoint": f.server.URL + "/authorize", "token_endpoint": f.server.URL + "/token", "jwks_uri": f.server.URL + "/keys"})
+				"authorization_endpoint": f.server.URL + "/authorize", "token_endpoint": f.server.URL + "/token", "jwks_uri": f.server.URL + "/keys",
+				"userinfo_endpoint": f.server.URL + "/userinfo", "token_endpoint_auth_methods_supported": f.methods})
 		case r.URL.Path == "/keys":
 			_ = json.NewEncoder(w).Encode(jose.JSONWebKeySet{Keys: []jose.JSONWebKey{{Key: &f.key.PublicKey, KeyID: "fixture", Algorithm: "RS256", Use: "sig"}}})
 		case r.URL.Path == "/token" || strings.HasSuffix(r.URL.Path, "/access_token") || r.URL.Path == "/api/oauth2/token":
@@ -68,7 +76,11 @@ func newProviderFixture(t *testing.T, kind ProviderKind) (*providerFixture, *Pro
 				t.Error(err)
 			}
 			digest := sha256.Sum256([]byte(r.Form.Get("code_verifier")))
-			if r.Form.Get("client_id") != "client" || r.Form.Get("client_secret") != "secret" || base64.RawURLEncoding.EncodeToString(digest[:]) != f.challenge {
+			id, secret := r.Form.Get("client_id"), r.Form.Get("client_secret")
+			if f.basic {
+				id, secret, _ = r.BasicAuth()
+			}
+			if id != "client" || secret != "secret" || base64.RawURLEncoding.EncodeToString(digest[:]) != f.challenge {
 				t.Error("missing client authentication or invalid PKCE")
 			}
 			claims := map[string]any{"iss": f.issuer, "sub": "stable-subject", "aud": "client", "nonce": f.nonce,
@@ -101,6 +113,11 @@ func newProviderFixture(t *testing.T, kind ProviderKind) (*providerFixture, *Pro
 				t.Error("missing authenticated email request")
 			}
 			_, _ = io.WriteString(w, f.emails)
+		case r.URL.Path == "/userinfo":
+			if r.Header.Get("Authorization") != "Bearer access" {
+				t.Error("missing authenticated UserInfo request")
+			}
+			_, _ = io.WriteString(w, f.userInfo)
 		default:
 			t.Errorf("unexpected backend path %s", r.URL.Path)
 			http.NotFound(w, r)
@@ -123,6 +140,37 @@ func newProviderFixture(t *testing.T, kind ProviderKind) (*providerFixture, *Pro
 		t.Fatal(err)
 	}
 	return f, provider
+}
+
+func TestProviderUserInfoAndClientAuthentication(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		userInfo  string
+		methods   []string
+		wantError bool
+	}{
+		{name: "basic authentication", methods: []string{"client_secret_basic"}},
+		{name: "default basic authentication"},
+		{name: "wrong UserInfo subject", methods: []string{"client_secret_basic"}, userInfo: `{"sub":"someone-else"}`, wantError: true},
+		{name: "missing UserInfo subject", userInfo: `{"email":"user@example.com"}`, wantError: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			f, provider := newProviderFixture(t, OIDC, func(f *providerFixture) { f.methods, f.basic = tt.methods, true })
+			if tt.userInfo != "" {
+				f.mu.Lock()
+				f.userInfo = tt.userInfo
+				f.mu.Unlock()
+			}
+			identity, err := provider.Complete(t.Context(), "browser", f.begin(t, provider), "code")
+			if (err != nil) != tt.wantError {
+				t.Fatalf("identity=%+v error=%v", identity, err)
+			}
+			if err == nil && identity.Name != "Profile User" {
+				t.Fatalf("UserInfo profile not loaded: %+v", identity)
+			}
+		})
+	}
 }
 
 func (f *providerFixture) begin(t *testing.T, provider *Provider) string {

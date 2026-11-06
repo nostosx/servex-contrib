@@ -36,6 +36,8 @@ All adapters send S256 PKCE. Enforcement depends on the provider; Apple and
 providers without PKCE enforcement rely on confidential-client authentication,
 nonce and state. OIDC checks signature, issuer, audience, expiry, subject,
 authorized party and nonce. If at_hash is present it must match the access token.
+When discovery exposes UserInfo, the adapter loads that authenticated profile
+and requires its subject to match the signed ID token before merging fields.
 Email and profile fields may be absent. EmailVerified is a provider assertion
 about mailbox verification, not legal identity verification.
 
@@ -96,6 +98,11 @@ to ten-second timeouts, reject redirects and limit bodies to 1 MiB. HTTPClient i
 copied; its Transport is borrowed. Keep the construction context alive for the
 verifier's key refresh. Do not log SDK error bodies, secrets, state or tokens.
 Return generic login errors to browsers.
+Discovery selects client_secret_post or client_secret_basic explicitly, using
+the OIDC basic-auth default when methods are omitted. Unsupported methods fail
+construction; an uncertain code exchange is never automatically retried with
+another authentication style. The generic adapter defaults to RS256 ID tokens;
+use the lower-level client plus auth/oidc options for other signing algorithms.
 
 Multiple providers can share StateStore. Attempts bind provider/issuer, client ID,
 redirect URI, protocol endpoints and browser/session. State is consumed before

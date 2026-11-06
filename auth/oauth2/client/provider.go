@@ -72,6 +72,7 @@ type Provider struct {
 	flow     *Client
 	verifier *oidc.Verifier
 	http     *http.Client
+	userInfo string
 }
 
 // NewProvider discovers OIDC endpoints or selects official OAuth2 endpoints.
@@ -114,13 +115,21 @@ func NewProvider(ctx context.Context, config ProviderConfig, store StateStore) (
 		}
 		endpoint = discovered.Endpoint()
 		var metadata struct {
-			JWKS string `json:"jwks_uri"`
+			JWKS        string   `json:"jwks_uri"`
+			UserInfo    string   `json:"userinfo_endpoint"`
+			AuthMethods []string `json:"token_endpoint_auth_methods_supported"`
 		}
 		if err := discovered.Claims(&metadata); err != nil {
 			return nil, fmt.Errorf("oauth2: provider metadata: %w", err)
 		}
 		if err := validateURL(metadata.JWKS, config.AllowInsecureLoopback); err != nil {
 			return nil, err
+		}
+		if metadata.UserInfo != "" {
+			if err := validateURL(metadata.UserInfo, config.AllowInsecureLoopback); err != nil {
+				return nil, err
+			}
+			p.userInfo = metadata.UserInfo
 		}
 		options := []oidc.Option{oidc.WithHTTPClient(httpClient)}
 		if config.AllowInsecureLoopback {
@@ -132,7 +141,15 @@ func NewProvider(ctx context.Context, config ProviderConfig, store StateStore) (
 		}
 		// All built-in OIDC adapters are confidential backend clients. Sending
 		// credentials explicitly avoids the SDK retrying an uncertain exchange.
-		endpoint.AuthStyle = sdk.AuthStyleInParams
+		switch {
+		case slices.Contains(metadata.AuthMethods, "client_secret_post"):
+			endpoint.AuthStyle = sdk.AuthStyleInParams
+		case len(metadata.AuthMethods) == 0 || slices.Contains(metadata.AuthMethods, "client_secret_basic"):
+			// OIDC Discovery defaults to client_secret_basic when omitted.
+			endpoint.AuthStyle = sdk.AuthStyleInHeader
+		default:
+			return nil, errors.New("oauth2: provider requires an unsupported client authentication method")
+		}
 	}
 	if len(config.Scopes) != 0 {
 		scopes = slices.Clone(config.Scopes)
@@ -255,17 +272,37 @@ func (p *Provider) Complete(ctx context.Context, binding, state, code string) (I
 			return Identity{}, fmt.Errorf("oauth2: access token hash: %w", err)
 		}
 	}
-	var claims struct {
-		Name          string          `json:"name"`
-		Email         string          `json:"email"`
-		EmailVerified json.RawMessage `json:"email_verified"`
-	}
+	var claims identityClaims
 	if err := token.Claims(&claims); err != nil {
 		return Identity{}, fmt.Errorf("oauth2: identity claims: %w", err)
+	}
+	if p.userInfo != "" {
+		var profile struct {
+			identityClaims
+			Subject string `json:"sub"`
+		}
+		if err := p.getJSON(ctx, p.userInfo, result.Token, &profile); err != nil {
+			return Identity{}, err
+		}
+		if profile.Subject != token.Subject {
+			return Identity{}, errors.New("oauth2: UserInfo subject does not match ID token")
+		}
+		if profile.Name != "" {
+			claims.Name = profile.Name
+		}
+		if profile.Email != "" {
+			claims.Email, claims.EmailVerified = profile.Email, profile.EmailVerified
+		}
 	}
 	verified := string(claims.EmailVerified) == "true" || p.kind == Apple && string(claims.EmailVerified) == `"true"`
 	return Identity{Provider: p.kind, Issuer: p.issuer, Subject: token.Subject, Name: claims.Name,
 		Email: claims.Email, EmailVerified: claims.Email != "" && verified}, nil
+}
+
+type identityClaims struct {
+	Name          string          `json:"name"`
+	Email         string          `json:"email"`
+	EmailVerified json.RawMessage `json:"email_verified"`
 }
 
 func (p *Provider) binding(browser string) string {
