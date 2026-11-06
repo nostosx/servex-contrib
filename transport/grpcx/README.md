@@ -1,6 +1,6 @@
 # transport/grpcx
 
-Module version for this revision: **v1.4.0**.
+Module version for this revision: **v1.5.0**.
 
 Use Go 1.27.3; core integration requires published servex v1.7.0. See the
 [validation commands](../../CONTRIBUTING.md#checks).
@@ -271,3 +271,17 @@ GOWORK=off go test -race -count=1 ./...
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
+
+
+## v1.5.0: authenticated health probes
+
+WithHealthMiddleware explicitly applies the configured unary chain to health
+Check and the stream chain to health Watch. Default behavior continues to bypass
+both chains. Applications select auth/recovery/logging policies and their order
+at their own entry points. Avoid whole-stream deadlines on long-lived health
+Watch RPCs unless intentional.
+
+WithPublicErrors is a separate opt-in handler-error policy. It preserves native
+gRPC status codes and application error codes while replacing messages with
+canonical reasons and removing status details. Unknown handler errors become
+Internal. Middleware observes the original error before this wire projection.

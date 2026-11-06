@@ -132,3 +132,25 @@ func fromStatus(ctx context.Context, err error) error {
 	}
 	return e
 }
+
+// statusError applies the application's explicitly selected public error policy.
+func (s *Server) statusError(ctx context.Context, err error) error {
+	if err == nil {
+		return nil
+	}
+	if !s.publicErrors {
+		return statusError(err)
+	}
+	if ctx.Err() != nil {
+		err = ctx.Err()
+	}
+	code := toStatus(err).Code()
+	if code == codes.Unknown {
+		code = codes.Internal
+	}
+	reason := errorx.Code(code).String()
+	if code == codes.Internal {
+		reason = "INTERNAL"
+	}
+	return status.Error(code, reason)
+}

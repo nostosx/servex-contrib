@@ -44,6 +44,8 @@ type serverOptions struct {
 	health           health.Checker
 	healthInterval   time.Duration
 	listener         net.Listener
+	healthMiddleware bool
+	publicErrors     bool
 }
 
 // WithName sets the hook name of the server, which identifies it in app logs
@@ -97,6 +99,20 @@ func WithHealth(c health.Checker) ServerOption {
 	return func(o *serverOptions) { o.health = c }
 }
 
+// WithHealthMiddleware applies the explicitly configured unary and streaming
+// chains to health Check and Watch as well. By default probes bypass those chains.
+// Applications can use this to require credentials for health RPCs too.
+func WithHealthMiddleware() ServerOption {
+	return func(o *serverOptions) { o.healthMiddleware = true }
+}
+
+// WithPublicErrors projects handler failures to canonical codes and reasons, omitting handler
+// messages, causes and status details. It is opt-in; observation middleware still
+// sees the original errors, and native gRPC status codes are retained.
+func WithPublicErrors() ServerOption {
+	return func(o *serverOptions) { o.publicErrors = true }
+}
+
 // Server is a gRPC server. It implements transport.Server and
 // grpc.ServiceRegistrar, so generated code registers services directly with
 // pb.RegisterXxxServer(srv, impl), and reports fatal serve errors through
@@ -112,6 +128,8 @@ type Server struct {
 	addr             string
 	unaryEndpoint    endpoint.Endpoint
 	streamMiddleware endpoint.Middleware
+	healthMiddleware bool
+	publicErrors     bool
 	srv              *grpc.Server
 	errc             chan error
 	stopping         chan struct{} // closed when Stop begins
@@ -141,6 +159,8 @@ func newServer(o serverOptions) *Server {
 		name:             o.name,
 		addr:             o.addr,
 		streamMiddleware: endpoint.Chain(o.streamMiddleware...),
+		healthMiddleware: o.healthMiddleware,
+		publicErrors:     o.publicErrors,
 		errc:             make(chan error, 1),
 		stopping:         make(chan struct{}),
 		listener:         o.listener,
@@ -268,10 +288,10 @@ func (s *Server) unaryInterceptor(ctx context.Context, req any, info *grpc.Unary
 		Operation: info.FullMethod,
 		Header:    incomingMD(ctx),
 	})
-	if _, ok := info.Server.(*healthServer); ok {
+	if _, ok := info.Server.(*healthServer); ok && !s.healthMiddleware {
 		// Health probes bypass the middleware, like the HTTP probes of httpx.
 		resp, err := handler(ctx, req)
-		return resp, statusError(err)
+		return resp, s.statusError(ctx, err)
 	}
 	ctx = context.WithValue(ctx, handlerKey{}, handler)
 	var resp any
@@ -282,7 +302,7 @@ func (s *Server) unaryInterceptor(ctx context.Context, req any, info *grpc.Unary
 		resp, err = s.unaryEndpoint(ctx, req)
 	}
 	if err != nil {
-		return nil, statusError(err)
+		return nil, s.statusError(ctx, err)
 	}
 	return resp, nil
 }
@@ -306,8 +326,8 @@ func (s *Server) streamInterceptor(srv any, ss grpc.ServerStream, info *grpc.Str
 		Operation: info.FullMethod,
 		Header:    incomingMD(ss.Context()),
 	})
-	if _, ok := srv.(*healthServer); ok {
-		return statusError(handler(srv, &serverStream{ServerStream: ss, ctx: ctx}))
+	if _, ok := srv.(*healthServer); ok && !s.healthMiddleware {
+		return s.statusError(ctx, handler(srv, &serverStream{ServerStream: ss, ctx: ctx}))
 	}
 	var called atomic.Bool
 	streamInfo := &StreamInfo{ClientStreams: info.IsClientStream, ServerStreams: info.IsServerStream}
@@ -317,7 +337,7 @@ func (s *Server) streamInterceptor(srv any, ss grpc.ServerStream, info *grpc.Str
 		}
 		return nil, handler(srv, &serverStream{ServerStream: ss, ctx: ctx, info: streamInfo})
 	})(ctx, streamInfo)
-	return statusError(err)
+	return s.statusError(ctx, err)
 }
 
 // serverStream overrides the context of a grpc.ServerStream.

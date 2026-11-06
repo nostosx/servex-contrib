@@ -3,6 +3,7 @@ package grpcx_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"sync/atomic"
 	"testing"
@@ -392,4 +393,46 @@ func TestServerStreamingRecoveryAndHealthBypass(t *testing.T) {
 			t.Fatalf("health = %v, %v", response, err)
 		}
 	})
+}
+
+func TestHealthMiddlewareOptIn(t *testing.T) {
+	for _, enabled := range []bool{false, true} {
+		t.Run(fmt.Sprint(enabled), func(t *testing.T) {
+			n := newNetwork()
+			deny := func(endpoint.Endpoint) endpoint.Endpoint {
+				return func(context.Context, any) (any, error) {
+					return nil, errorx.New(errorx.Unauthenticated, "TOKEN", "denied")
+				}
+			}
+			options := []grpcx.ServerOption{
+				grpcx.WithMiddleware(deny), grpcx.WithStreamMiddleware(deny),
+				grpcx.WithHealth(health.CheckerFunc(func(context.Context) error { return nil })),
+			}
+			if enabled {
+				options = append(options, grpcx.WithHealthMiddleware())
+			}
+			startServer(t, n, "127.0.0.1:9405", options...)
+			client := newClient(t, n, "grpc://127.0.0.1:9405")
+			healthClient := grpc_health_v1.NewHealthClient(client.Conn())
+			_, err := healthClient.Check(t.Context(), &grpc_health_v1.HealthCheckRequest{})
+			if enabled && errorx.CodeOf(err) != errorx.Unauthenticated {
+				t.Fatal("unary health bypassed authentication", err)
+			}
+			if !enabled && err != nil {
+				t.Fatal(err)
+			}
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			stream, err := healthClient.Watch(ctx, &grpc_health_v1.HealthCheckRequest{})
+			if err == nil {
+				_, err = stream.Recv()
+			}
+			if enabled && errorx.CodeOf(err) != errorx.Unauthenticated {
+				t.Fatal("stream health bypassed authentication", err)
+			}
+			if !enabled && err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
 }
