@@ -1,11 +1,11 @@
-# auth/oauth2server
+# auth/oauth2/server
 
-Module version for this revision: **v1.0.0**.
+Module version for this revision: **v1.1.0**.
 
 OAuth2 authorization-server and OIDC provider adapter using Ory Fosite v0.49.0.
-Use Go 1.27.3. The module is independent of the existing OAuth2 relying-party
-client and OIDC verifier modules; it imports neither another contrib module nor
-an application's account model. Fosite implements protocol validation, PKCE,
+Use Go 1.27.3. This package shares the auth/oauth2 module with the client package;
+applications import either package explicitly. The server imports no application
+account model. Fosite implements protocol validation, PKCE,
 token generation, ID-token signing and protocol responses.
 
 ## Responsibilities
@@ -77,9 +77,9 @@ an atomic conditional update inside the SDK's transaction.
 ## Validation
 
 ```sh
-task check lint vulncheck MODULES=auth/oauth2server
+task check lint vulncheck MODULES=auth/oauth2
 SERVEX_IT_POSTGRES_DSN='postgres://.../owned_disposable_db' \
-  task test INTEGRATION=true MODULES=auth/oauth2server
+  task test INTEGRATION=true MODULES=auth/oauth2
 ```
 
 Unit tests exercise the actual Fosite code/refresh flows, invalid PKCE,

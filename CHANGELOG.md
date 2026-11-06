@@ -13,21 +13,37 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
-- **Breaking, auth/oauth2 v1.1.0:** consolidate client and server into
-  `auth/oauth2/client` and `auth/oauth2/server`; move shared state from
-  `auth/oauth2redis` to nested module `auth/oauth2/redis` v1.0.0. Update imports,
-  package qualifiers and module requirements together. Old tags remain immutable.
-  Existing pending client states fail closed and require a fresh login; server
-  tables and credential formats are retained.
-- auth/oauth2: add Google, GitHub, Microsoft (explicit tenant), GitLab, Discord,
-  LinkedIn, Apple and trusted generic OIDC login adapters. Verify signed ID tokens
-  or authenticated provider profiles; bind state to the client and provider.
-  Bound HTTP responses and reject credential-bearing backend redirects.
+- config/viper: add typed one-time `Load` with fresh application defaults and
+  automatic `Validate() error` dispatch, isolated `Values` override sources and
+  `file.WithOptional()` for missing default files. Services retain their own
+  config types, flag bindings and business constraints.
+- storage/database/gorm: add `Database.AutoMigrate` and borrowed-pool
+  `AutoMigrate(ctx, db, models...)`. PostgreSQL model reconciliation runs in one
+  transaction under a shared advisory lock; errors and cancellation propagate,
+  caller-owned pools remain open and constructors do not change schema.
+
+- **Breaking, auth/oauth2/redis v1.0.0:** relocate oauth2redis to the OAuth2
+  capability directory; import auth/oauth2/redis with package name redis.
 - auth/login v1.2.0: compose provider identities with application resolvers and
   browser sessions; support bounded Apple form_post callbacks. Account mapping
   stays application-owned; document exact callback CSRF and cookie policy.
-- Tooling: map integration subpackages to their nearest containing module,
-  retaining independent nested-module CI and service gates.
+
+## auth/oauth2/v1.1.0
+
+Release date: 2026-11-07. Requires Go 1.27.3 and auth/oidc v1.0.2.
+
+- **Breaking:** consolidate client and server into `auth/oauth2/client` and
+  `auth/oauth2/server` in the same module. Upgrade import paths, package qualifiers
+  and module requirements together. Old oauth2server tags remain immutable.
+  Existing pending client states fail closed and require a fresh login; server
+  tables and credential formats are retained.
+- Add Google, GitHub, Microsoft (explicit tenant), GitLab, Discord, LinkedIn,
+  Apple and trusted generic OIDC login adapters. Verify signed ID tokens or
+  authenticated profiles; bind state to the client and provider. Bound HTTP
+  responses and reject credential-bearing backend redirects.
+- Map integration subpackages to their nearest containing module, retaining
+  independent nested-module CI and service gates. Redis and login follow in
+  separate dependency layers.
 
 ## auth/oidc/v1.0.2
 

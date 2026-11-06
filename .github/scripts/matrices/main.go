@@ -70,7 +70,25 @@ func inventory(root string) (map[string]bool, map[string]bool, error) {
 		if entry.Name() == "go.mod" {
 			modules[filepath.ToSlash(rel)] = true
 		} else {
-			integrations[filepath.ToSlash(rel)] = true
+			// Integration packages belong to the nearest containing module,
+			// including packages below a nested module boundary.
+			directory := filepath.Dir(path)
+			for {
+				if _, err := os.Stat(filepath.Join(directory, "go.mod")); err == nil {
+					module, err := filepath.Rel(root, directory)
+					if err != nil {
+						return err
+					}
+					integrations[filepath.ToSlash(module)] = true
+					break
+				} else if !errors.Is(err, os.ErrNotExist) {
+					return err
+				}
+				if directory == root || directory == filepath.Dir(directory) {
+					return fmt.Errorf("integration package has no module: %s", path)
+				}
+				directory = filepath.Dir(directory)
+			}
 		}
 		return nil
 	})
@@ -115,12 +133,16 @@ func check(root string) error {
 
 func main() {
 	modulesOnly := flag.Bool("modules", false, "print module directories without checking CI")
+	integrationsOnly := flag.Bool("integrations", false, "print modules containing integration tests without checking CI")
 	flag.Parse()
-	if *modulesOnly {
-		modules, _, err := inventory(".")
+	if *modulesOnly || *integrationsOnly {
+		modules, integrations, err := inventory(".")
 		if err != nil {
 			fmt.Fprintln(os.Stderr, err)
 			os.Exit(1)
+		}
+		if *integrationsOnly {
+			modules = integrations
 		}
 		for _, path := range slices.Sorted(maps.Keys(modules)) {
 			fmt.Println(path)

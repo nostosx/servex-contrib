@@ -13,13 +13,20 @@ the public proxy. Relocated directories define new contrib module paths, while
 old tags retain their original snapshots. A local contrib-source pass is not
 evidence that a selected module version can already be installed.
 
-Capability modules keep their published paths: `auth/*`, `auth/oauth2redis`,
+Capability modules generally keep their published paths: `auth/*`,
 `session`, `session/redis`, `ratelimit/*` and `validation/*` continue their
 existing version lines. Only directories renamed to match core package names
 (see the CHANGELOG path table) start new module identities at v1.0.0. When a
 renamed module is first published, retain old tags as immutable
 historical snapshots. This batch does not publish old-path forwarding packages
 or duplicate deprecation snapshots; the migration table names the new paths.
+
+The OAuth2 consolidation is an explicit exception: clients move to the
+`auth/oauth2/client` package and the former oauth2server module becomes
+`auth/oauth2/server` in the parent OAuth2 module's v1.1.0 release. The Redis
+adapter moves from oauth2redis to the nested `auth/oauth2/redis` module v1.0.0.
+Publish the parent before Redis, then publish dependent auth/login. Retain all
+old tags and include import migration instructions in the release notes.
 
 Verify core and utility versions through the public Go proxy. Source validation
 with temporary modfiles is useful during development; release acceptance must

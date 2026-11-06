@@ -1,6 +1,6 @@
-// Package oauth2server adapts Fosite's authorization-code/OIDC provider.
+// Package server adapts Fosite's authorization-code/OIDC provider.
 // Applications own authentication, consent, client policy and durable storage.
-package oauth2server
+package server
 
 import (
 	"context"
@@ -54,22 +54,22 @@ type Server struct {
 func New(config Config, store Store) (*Server, error) {
 	u, err := url.Parse(config.Issuer)
 	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || strings.HasSuffix(config.Issuer, "/") {
-		return nil, errors.New("oauth2server: issuer must be an absolute URL without trailing slash, query or fragment")
+		return nil, errors.New("oauth2 server: issuer must be an absolute URL without trailing slash, query or fragment")
 	}
 	local := u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1"
 	localHTTP := config.AllowInsecureLoopback && u.Scheme == "http" && local
 	if u.Scheme != "https" && !localHTTP {
-		return nil, errors.New("oauth2server: HTTPS issuer required")
+		return nil, errors.New("oauth2 server: HTTPS issuer required")
 	}
 	if store == nil || config.Key == nil || config.Key.N == nil || config.Key.N.BitLen() < 2048 || config.KeyID == "" || len(config.OAuth.GlobalSecret) < 32 {
-		return nil, errors.New("oauth2server: store, RSA key (2048+ bits), key ID and 32-byte global secret required")
+		return nil, errors.New("oauth2 server: store, RSA key (2048+ bits), key ID and 32-byte global secret required")
 	}
 	if err := config.Key.Validate(); err != nil {
 		return nil, err
 	}
 	cfg := config.OAuth
 	if cfg.AccessTokenLifespan < 0 || cfg.RefreshTokenLifespan < 0 || cfg.AuthorizeCodeLifespan < 0 || cfg.IDTokenLifespan < 0 {
-		return nil, errors.New("oauth2server: credential lifetimes must be finite")
+		return nil, errors.New("oauth2 server: credential lifetimes must be finite")
 	}
 	cfg.IDTokenIssuer, cfg.TokenURL = config.Issuer, config.Issuer+"/oauth2/token"
 	cfg.EnforcePKCE, cfg.EnablePKCEPlainChallengeMethod = true, false
@@ -100,7 +100,7 @@ func New(config Config, store Store) (*Server, error) {
 	keys := []jose.JSONWebKey{key.Public()}
 	for _, previous := range config.PublicKeys {
 		if previous.KeyID == "" || !previous.Valid() || !previous.IsPublic() {
-			return nil, errors.New("oauth2server: rotation keys must be valid public JWKs with key IDs")
+			return nil, errors.New("oauth2 server: rotation keys must be valid public JWKs with key IDs")
 		}
 		if previous.KeyID != config.KeyID {
 			keys = append(keys, previous)

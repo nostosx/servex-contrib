@@ -170,11 +170,14 @@ tasks:
           done
           if [ {{.INTEGRATION | shellQuote}} = true ]; then
             found=0
+            integration_modules=$(GOFLAGS='' {{.GO | shellQuote}} run .github/scripts/matrices/main.go -integrations)
             for module in $modules; do
-              if ls "$module/"*_integration_test.go >/dev/null 2>&1; then
-                found=1
-                bash .github/scripts/integration.sh "$module"
-              fi
+              case " $(printf '%s' "$integration_modules" | tr '\n' ' ') " in
+                *" $module "*)
+                  found=1
+                  bash .github/scripts/integration.sh "$module"
+                  ;;
+              esac
             done
             test "$found" = 1 || { echo 'No integration modules selected'; exit 1; }
             exit 0

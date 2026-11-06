@@ -1,120 +1,140 @@
 # auth/oauth2
 
-Module version for this revision: **v1.0.1**.
+OAuth2 client and server implementations live in one capability module,
+**v1.1.0**, Go 1.27.3, MIT. Dependencies: Go OAuth2 SDK, go-oidc through auth/oidc,
+and Ory Fosite.
 
-Use Go 1.27.3; core integration requires published servex v1.7.0. See the
-[validation commands](../../CONTRIBUTING.md#checks).
+```text
+auth/oauth2/             module github.com/nostosx/servex-contrib/auth/oauth2
+  client/               PKCE/state, refresh, third-party identity adapters
+  server/               OAuth2/OIDC server and PostgreSQL credential storage
+  redis/                independent nested module for atomic shared client state
+```
 
-Authorization-code/PKCE orchestration with the Go project's
-official golang.org/x/oauth2 v0.37.0. Go 1.27.3; MIT. Production imports only the
-standard library and the official OAuth2 module. Existing auth/oidc remains the
-ID-token verifier; neither tokens nor user permissions are silently trusted.
+Server and client are packages in the same module. Redis keeps an independent
+module/version boundary so other consumers do not require Redis dependencies.
+There is no root facade or automatic assembly.
 
-## Complete HTTPS login example
+## Login providers
 
-The application configures OIDC_ISSUER, OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET,
-OAUTH_AUTH_URL, OAUTH_TOKEN_URL and OAUTH_REDIRECT_URL. Configure the provider's
-redirect URI to https://localhost:8443/callback and supply server.crt/server.key.
-This example verifies a login result; application account mapping and issuing a
-persistent logged-in Session belong after VerifyNonce succeeds. It uses the
-`auth/oidc` module version listed in the root CHANGELOG. Both modules keep their existing paths.
+`client.NewProvider` handles code exchange and identity verification. `Begin`
+returns a redirect URL; `Complete` returns `Identity`, never browser tokens or
+application permissions.
+
+| Kind | Verification | Default scopes | Requirements |
+| --- | --- | --- | --- |
+| `Google` | Discovery, signed ID token, nonce | openid profile email | Google OAuth web client; normalizes Google's two documented issuer forms |
+| `GitHub` | Authenticated /user and /user/emails APIs | read:user user:email | GitHub.com OAuth App; stable numeric ID; verified emails only, preferring primary |
+| `Microsoft` | Tenant discovery, signed ID token, nonce | openid profile email | Explicit tenant UUID; common/organizations tenant templates rejected |
+| `GitLab` | Discovery, signed ID token, nonce | openid profile email | GitLab.com or trusted self-hosted Issuer |
+| `Discord` | Authenticated /users/@me API | identify email | Stable user ID, provider verified-email flag |
+| `LinkedIn` | Discovery, signed ID token, nonce | openid profile email | Enable Sign in with LinkedIn using OpenID Connect product |
+| `Apple` | Discovery, signed ID token, nonce | openid email | Services ID, current client-secret JWT, POST callback, Secure SameSite=None binding/session |
+| `OIDC` | Trusted issuer discovery, signed ID token, nonce | openid profile email | Explicit issuer, e.g. Keycloak/Auth0/Okta/ZITADEL; actual provider acceptance still required |
+
+All adapters send S256 PKCE. Enforcement depends on the provider; Apple and
+providers without PKCE enforcement rely on confidential-client authentication,
+nonce and state. OIDC checks signature, issuer, audience, expiry, subject,
+authorized party and nonce. If at_hash is present it must match the access token.
+Email and profile fields may be absent. EmailVerified is a provider assertion
+about mailbox verification, not legal identity verification.
+
+Scopes can override defaults. OIDC requires openid. Without GitHub user:email,
+no email lookup occurs. An identity API failure fails login. The first 100
+GitHub email records are considered; a primary outside that page is not guaranteed
+selection. GitHub Enterprise, Microsoft cross-tenant policy, WeChat/QQ/Weibo and
+SAML are not built-in adapters.
+
+Official references:
+[Google](https://developers.google.com/identity/openid-connect/openid-connect),
+[GitHub](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps),
+[Microsoft](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc),
+[GitLab](https://docs.gitlab.com/integration/openid_connect_provider/),
+[Discord](https://docs.discord.com/developers/topics/oauth2),
+[LinkedIn](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2),
+[Apple](https://developer.apple.com/documentation/signinwithapplerestapi).
+
+## Composition
+
+Import `github.com/nostosx/servex-contrib/auth/oauth2/client`:
 
 ```go
-package main
-
-import (
-    "context"
-    "crypto/rand"
-    "log"
-    "net/http"
-    "os"
-    "time"
-
-    sdk "golang.org/x/oauth2"
-
-    "github.com/nostosx/servex-contrib/auth/oauth2"
-    "github.com/nostosx/servex-contrib/auth/oidc"
-)
-
-func run() error {
-    httpClient := &http.Client{Timeout:5*time.Second}
-    id := os.Getenv("OAUTH_CLIENT_ID")
-    verifier, err := oidc.New(context.Background(), os.Getenv("OIDC_ISSUER"), id,
-        oidc.WithHTTPClient(httpClient))
-    if err != nil { return err }
-    pending, err := oauth2.NewMemoryStore(10000)
-    if err != nil { return err }
-    flow, err := oauth2.New(oauth2.Config{OAuth:sdk.Config{
-        ClientID:id, ClientSecret:os.Getenv("OAUTH_CLIENT_SECRET"),
-        RedirectURL:os.Getenv("OAUTH_REDIRECT_URL"), Scopes:[]string{"openid"},
-        Endpoint:sdk.Endpoint{AuthURL:os.Getenv("OAUTH_AUTH_URL"),TokenURL:os.Getenv("OAUTH_TOKEN_URL")},
-    }}, pending)
-    if err != nil { return err }
-    mux := http.NewServeMux()
-    mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
-        binding := rand.Text()
-        authorization, err := flow.Begin(r.Context(), binding)
-        if err != nil { http.Error(w,"login unavailable",503); return }
-        http.SetCookie(w,&http.Cookie{Name:"__Host-oauth-bind",Value:binding,Path:"/",
-            Secure:true,HttpOnly:true,SameSite:http.SameSiteLaxMode,MaxAge:300})
-        http.Redirect(w,r,authorization.URL,http.StatusFound)
-    })
-    mux.HandleFunc("GET /callback", func(w http.ResponseWriter, r *http.Request) {
-        cookie, err := r.Cookie("__Host-oauth-bind")
-        if err != nil { http.Error(w,"login failed",401); return }
-        ctx := context.WithValue(r.Context(), sdk.HTTPClient, httpClient)
-        result, err := flow.Complete(ctx,cookie.Value,r.URL.Query().Get("state"),r.URL.Query().Get("code"))
-        http.SetCookie(w,&http.Cookie{Name:"__Host-oauth-bind",Path:"/",Secure:true,HttpOnly:true,MaxAge:-1})
-        if err != nil { http.Error(w,"login failed",401); return }
-        raw, _ := result.Token.Extra("id_token").(string)
-        token, err := verifier.VerifyNonce(r.Context(),raw,result.Nonce)
-        if err != nil { http.Error(w,"login failed",401); return }
-        w.Header().Set("X-Authenticated-Subject",token.Subject)
-        w.WriteHeader(http.StatusNoContent)
-    })
-    server := &http.Server{Addr:"127.0.0.1:8443",ReadHeaderTimeout:5*time.Second,
-        Handler:http.NewCrossOriginProtection().Handler(mux)}
-    return server.ListenAndServeTLS("server.crt","server.key")
-}
-
-func main() { if err := run(); err != nil { log.Fatal(err) } }
+states, err := client.NewMemoryStore(10000) // Single process only.
+if err != nil { return err }
+provider, err := client.NewProvider(ctx, client.ProviderConfig{
+    Kind: client.Google,
+    ClientID: clientID, ClientSecret: clientSecret,
+    RedirectURL: "https://accounts.example.com/login/google/callback",
+}, states)
+if err != nil { return err }
+authorization, err := provider.Begin(ctx, browserBinding)
+if err != nil { return err }
+// Persist the random browser/session binding before redirecting to authorization.URL.
+// On callback, restore that binding and read state/code from the query or Apple form.
+identity, err := provider.Complete(ctx, browserBinding, state, code)
+if err != nil { return err }
+// Resolve (identity.Issuer, identity.Subject) in the application account store.
+// Rotate/persist the application session only after its account policy succeeds.
 ```
 
-When binding to servex Session instead of this example's transient cookie,
-persist the binding before redirecting. Rotate the logged-in Session token after
-successful identity verification. Never put provider access/refresh tokens in
-plain cookies or logs. The example handles query-based callbacks; providers using
-form_post require an explicitly designed cookie/CSRF callback policy.
+[`auth/login`](../login) composes Provider with browser sessions and an application
+Resolve callback. Give each provider its own manager, SessionKey and exact callback
+route. Account creation/linking/unlinking, tenant policy and audit belong to the
+account service. Never auto-link accounts based on matching email.
 
-## State, tokens and replicas
+Apple uses application/x-www-form-urlencoded POST. Select Secure SameSite=None
+session cookies and exclude only the exact callback from generic cross-origin
+POST/CSRF rejection. State, nonce and original session binding remain mandatory.
+Do not trust callback user/name fields as signed identity. Generate the expiring
+client-secret JWT with a vetted JWT signer, keep the private key outside config,
+and rebuild/rotate the provider before secret expiry. This adapter does not issue
+Apple developer credentials.
 
-Begin stores a random state's SHA-256 key, PKCE verifier, nonce, expiry and hashed
-browser binding server-side. Complete atomically consumes state before exchange,
-checks binding/expiry and uses S256 PKCE. State TTL defaults to five minutes and
-is restricted to one second through ten minutes. Failed/uncertain exchanges
-require a fresh login, not replay. Do not log provider response bodies from SDK
-errors; they can contain sensitive data. Return generic login errors to browsers.
+Provider settings are trusted administrator input. HTTPS is required;
+AllowInsecureLoopback allows HTTP loopback fixtures only. Backend requests default
+to ten-second timeouts, reject redirects and limit bodies to 1 MiB. HTTPClient is
+copied; its Transport is borrowed. Keep the construction context alive for the
+verifier's key refresh. Do not log SDK error bodies, secrets, state or tokens.
+Return generic login errors to browsers.
 
-StateStore is an atomic insert/consume contract. MemoryStore is bounded, lazily
-expires entries and loses pending logins on restart. It is suitable for one process;
-multiple replicas require an application-supplied shared StateStore. This module
-does not claim that its memory state survives restarts or works across replicas.
+Multiple providers can share StateStore. Attempts bind provider/issuer, client ID,
+redirect URI, protocol endpoints and browser/session. State is consumed before
+exchange; failed/uncertain exchanges need a fresh login. TTL defaults to five
+minutes (one second to ten minutes). MemoryStore is bounded and loses pending
+logins on restart; replicas need [redis](redis) or another atomic shared store.
 
-TokenSource refreshes using SDK semantics; its context must outlive refreshes.
-Persist refreshed tokens explicitly when needed. ClientCredentials accepts the
-SDK's clientcredentials.Config for machine-to-machine tokens. HTTPS is required;
-AllowInsecureLoopback permits only HTTP localhost or loopback IP literals in the
-authorization-code client's local-development configuration. Endpoints are trusted
-application configuration; set a finite-timeout, restricted HTTP client through
-oauth2.HTTPClient for token exchange and refresh.
+## Protocol client and server
 
-From the repository root, validate matching sources:
+`client.New` permits explicit OAuth endpoints. Its Result is not an authenticated
+identity: validate an ID token or call the provider identity API before login.
+TokenSource/ClientCredentials use official SDK behavior. Select a finite-timeout
+HTTP client through oauth2.HTTPClient for these lower-level calls and explicitly
+persist refreshed tokens.
+
+[server](server) provides authorization-code/PKCE, client credentials, refresh
+rotation/reuse detection, revocation/introspection, discovery/JWKS, signed ID
+tokens, UserInfo and explicit PostgreSQL migrations. Application clients, consent
+and account/session revocation policies remain application-owned.
+
+## Migration and validation
+
+| Old import/module | New import/module |
+| --- | --- |
+| auth/oauth2 client root package | auth/oauth2/client |
+| auth/oauth2server | auth/oauth2/server (parent module auth/oauth2) |
+| auth/oauth2redis | auth/oauth2/redis (nested module) |
+
+Package names are client, server and redis. Upgrade qualifiers and requirements
+together. Old tags remain immutable; no forwarding packages are published.
+Pending old client states lack client binding and fail closed: begin a new login.
+Server SQL tables, credential format and schema advisory-lock identity are retained.
 
 ```sh
-task check lint vulncheck MODULES=auth/oauth2
+task check lint vulncheck MODULES='auth/oauth2 auth/oauth2/redis auth/login auth/oidc'
+SERVEX_IT_POSTGRES_DSN='...' task test INTEGRATION=true MODULES=auth/oauth2
+SERVEX_IT_REDIS_ADDR='...' task test INTEGRATION=true MODULES=auth/oauth2/redis
 ```
 
-Local HTTP token
-fixtures verify real code exchange and the PKCE challenge, browser binding,
-single consumption, expiry, capacity and cancellation. No live identity provider
-or account provisioning is part of ordinary acceptance.
+Protocol fixtures verify exchange, PKCE, user APIs, signed token claims, replay,
+provider/client mixup, browser binding, bounded reads and redirect rejection.
+They do not prove live Google/GitHub/Apple login, app approval or console settings.

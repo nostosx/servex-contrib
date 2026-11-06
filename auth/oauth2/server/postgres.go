@@ -1,4 +1,4 @@
-package oauth2server
+package server
 
 import (
 	"bytes"
@@ -79,7 +79,7 @@ func (s *PostgresStore) executor(ctx context.Context) sqlExecutor {
 }
 func (s *PostgresStore) BeginTX(ctx context.Context) (context.Context, error) {
 	if ctx.Value(transactionKey{s}) != nil {
-		return nil, errors.New("oauth2server: nested transaction")
+		return nil, errors.New("oauth2 server: nested transaction")
 	}
 	tx, err := s.DB.BeginTx(ctx, nil)
 	if err != nil {
@@ -90,14 +90,14 @@ func (s *PostgresStore) BeginTX(ctx context.Context) (context.Context, error) {
 func (s *PostgresStore) Commit(ctx context.Context) error {
 	tx, ok := ctx.Value(transactionKey{s}).(*sql.Tx)
 	if !ok {
-		return errors.New("oauth2server: no transaction")
+		return errors.New("oauth2 server: no transaction")
 	}
 	return tx.Commit()
 }
 func (s *PostgresStore) Rollback(ctx context.Context) error {
 	tx, ok := ctx.Value(transactionKey{s}).(*sql.Tx)
 	if !ok {
-		return errors.New("oauth2server: no transaction")
+		return errors.New("oauth2 server: no transaction")
 	}
 	err := tx.Rollback()
 	if errors.Is(err, sql.ErrTxDone) {
@@ -115,7 +115,7 @@ type storedRequest struct {
 
 func (s *PostgresStore) create(ctx context.Context, kind, key string, request fosite.Requester) error {
 	if _, ok := request.GetSession().(*openid.DefaultSession); !ok {
-		return errors.New("oauth2server: openid.DefaultSession required")
+		return errors.New("oauth2 server: openid.DefaultSession required")
 	}
 	copy := fosite.NewRequest()
 	copy.Merge(request)
@@ -136,7 +136,7 @@ func (s *PostgresStore) create(ctx context.Context, kind, key string, request fo
 	}
 	expires := request.GetSession().GetExpiresAt(tokenType)
 	if expires.IsZero() {
-		return errors.New("oauth2server: bounded credential expiry required")
+		return errors.New("oauth2 server: bounded credential expiry required")
 	}
 	_, err = s.executor(ctx).ExecContext(ctx, `INSERT INTO oauth2_sessions(kind,key,request_id,client_id,subject,expires_at,data) VALUES($1,$2,$3,$4,$5,$6,$7)`, kind, digest(key), request.GetID(), clientID, request.GetSession().GetSubject(), expires, data)
 	return err

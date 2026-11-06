@@ -42,7 +42,9 @@ task test INTEGRATION=true MODULES=discovery/kubernetes
 			root := t.TempDir()
 			for _, name := range []string{
 				"alpha/go.mod", "alpha/a_integration_test.go",
+				"alpha/server/s_integration_test.go",
 				"alpha/nested/go.mod", "alpha/nested/n_integration_test.go",
+				"alpha/nested/adapter/a_integration_test.go",
 				"discovery/kubernetes/go.mod", "discovery/kubernetes/k_integration_test.go",
 				"observability/logger/slog/go.mod",
 				"tests/browser/node_modules/dependency/go.mod", "vendor/dependency/fake_integration_test.go",

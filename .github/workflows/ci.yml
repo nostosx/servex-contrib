@@ -41,7 +41,6 @@ jobs:
           - auth/oidc
           - auth/oauth2
           - auth/oauth2redis
-          - auth/oauth2server
           - auth/password
           - messaging/kafka
           - messaging/memory
@@ -199,7 +198,7 @@ jobs:
           - backend: postgres-extensions
             modules: storage/database/postgres storage/vector/pgvector storage/search/postgres job/pgmq scheduler/pgcron
           - backend: postgres
-            modules: storage/database/gorm storage/database/goose auth/oauth2server
+            modules: storage/database/gorm storage/database/goose auth/oauth2
           - backend: s3
             modules: storage/s3
           - backend: kafka

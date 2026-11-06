@@ -1,6 +1,6 @@
-// Package oauth2 coordinates authorization-code login using Go's OAuth2 SDK,
+// Package client coordinates authorization-code login using Go's OAuth2 SDK,
 // PKCE, one-time state and an application-supplied browser/session binding.
-package oauth2
+package client
 
 import (
 	"context"
@@ -27,6 +27,7 @@ type Attempt struct {
 	Verifier  string
 	Nonce     string
 	Binding   [32]byte
+	Client    [32]byte
 	ExpiresAt time.Time
 }
 
@@ -48,9 +49,10 @@ type Config struct {
 // Client is immutable. Configure a finite-timeout HTTP client in the operation
 // context with oauth2.HTTPClient. SDK config, scopes and endpoints are snapshotted.
 type Client struct {
-	config sdk.Config
-	store  StateStore
-	ttl    time.Duration
+	config   sdk.Config
+	store    StateStore
+	ttl      time.Duration
+	identity [32]byte
 }
 
 func New(config Config, store StateStore) (*Client, error) {
@@ -70,7 +72,8 @@ func New(config Config, store StateStore) (*Client, error) {
 	}
 	copyConfig := config.OAuth
 	copyConfig.Scopes = slices.Clone(copyConfig.Scopes)
-	return &Client{config: copyConfig, store: store, ttl: config.StateTTL}, nil
+	identity := sha256.Sum256([]byte(strings.Join([]string{copyConfig.ClientID, copyConfig.RedirectURL, copyConfig.Endpoint.AuthURL, copyConfig.Endpoint.TokenURL}, "\x00")))
+	return &Client{config: copyConfig, store: store, ttl: config.StateTTL, identity: identity}, nil
 }
 
 // Authorization contains the public redirect URL only. The verifier and nonce
@@ -90,7 +93,7 @@ func (c *Client) Begin(ctx context.Context, binding string) (Authorization, erro
 	}
 	state := rand.Text()
 	attempt := Attempt{Verifier: sdk.GenerateVerifier(), Nonce: rand.Text(),
-		Binding: sha256.Sum256([]byte(binding)), ExpiresAt: time.Now().Add(c.ttl)}
+		Binding: sha256.Sum256([]byte(binding)), Client: c.identity, ExpiresAt: time.Now().Add(c.ttl)}
 	if err := c.store.Save(ctx, stateKey(state), attempt); err != nil {
 		return Authorization{}, fmt.Errorf("oauth2: save state: %w", err)
 	}
@@ -120,7 +123,7 @@ func (c *Client) Complete(ctx context.Context, binding, state, code string) (Res
 		return Result{}, fmt.Errorf("oauth2: consume state: %w", err)
 	}
 	actual := sha256.Sum256([]byte(binding))
-	if subtle.ConstantTimeCompare(actual[:], attempt.Binding[:]) != 1 {
+	if subtle.ConstantTimeCompare(actual[:], attempt.Binding[:]) != 1 || subtle.ConstantTimeCompare(c.identity[:], attempt.Client[:]) != 1 {
 		return Result{}, ErrInvalidState
 	}
 	if !time.Now().Before(attempt.ExpiresAt) || attempt.Verifier == "" || attempt.Nonce == "" {

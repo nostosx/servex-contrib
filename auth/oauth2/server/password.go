@@ -1,4 +1,4 @@
-package oauth2server
+package server
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type PasswordHasher struct {
 
 func NewPasswordHasher(passwords Passwords, parallelism int) (*PasswordHasher, error) {
 	if passwords == nil || parallelism < 1 {
-		return nil, errors.New("oauth2server: password adapter and positive concurrency required")
+		return nil, errors.New("oauth2 server: password adapter and positive concurrency required")
 	}
 	return &PasswordHasher{passwords: passwords, slots: make(chan struct{}, parallelism)}, nil
 }
@@ -30,7 +30,7 @@ func (h *PasswordHasher) acquire(ctx context.Context) error {
 	case h.slots <- struct{}{}:
 		return nil
 	default:
-		return errors.New("oauth2server: client authentication busy")
+		return errors.New("oauth2 server: client authentication busy")
 	}
 }
 func (h *PasswordHasher) Hash(ctx context.Context, data []byte) ([]byte, error) {
@@ -44,7 +44,7 @@ func (h *PasswordHasher) Hash(ctx context.Context, data []byte) ([]byte, error) 
 func (h *PasswordHasher) Compare(ctx context.Context, hash, data []byte) error {
 	// Prevent callers from using the KDF as an unbounded input/memory sink.
 	if len(data) > 256 || len(hash) > 1024 {
-		return errors.New("oauth2server: invalid client credential")
+		return errors.New("oauth2 server: invalid client credential")
 	}
 	if err := h.acquire(ctx); err != nil {
 		return err
@@ -55,7 +55,7 @@ func (h *PasswordHasher) Compare(ctx context.Context, hash, data []byte) error {
 		return err
 	}
 	if !valid {
-		return errors.New("oauth2server: invalid client credential")
+		return errors.New("oauth2 server: invalid client credential")
 	}
 	return nil
 }

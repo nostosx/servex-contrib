@@ -1,4 +1,4 @@
-package oauth2server
+package server
 
 import (
 	"crypto/rsa"
@@ -17,7 +17,7 @@ func LoadRSAKey(path string) (*rsa.PrivateKey, error) {
 	defer clear(data)
 	block, _ := pem.Decode(data)
 	if block == nil {
-		return nil, errors.New("oauth2server: PEM private key required")
+		return nil, errors.New("oauth2 server: PEM private key required")
 	}
 	if key, err := x509.ParsePKCS1PrivateKey(block.Bytes); err == nil {
 		return key, nil
@@ -28,7 +28,7 @@ func LoadRSAKey(path string) (*rsa.PrivateKey, error) {
 	}
 	rsaKey, ok := key.(*rsa.PrivateKey)
 	if !ok {
-		return nil, errors.New("oauth2server: RSA private key required")
+		return nil, errors.New("oauth2 server: RSA private key required")
 	}
 	return rsaKey, nil
 }

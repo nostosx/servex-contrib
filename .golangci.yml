@@ -28,7 +28,7 @@ linters:
             - "!$test"
           allow:
             - $gostd
-            - github.com/nostosx/servex-contrib/auth/oauth2$
+            - github.com/nostosx/servex-contrib/auth/oauth2/client$
             - github.com/nostosx/servex-contrib/auth/oidc$
             - github.com/nostosx/servex-contrib/middleware/endpoint$
             - github.com/nostosx/servex-contrib/session$
@@ -40,7 +40,7 @@ linters:
             - "!$test"
           allow:
             - $gostd
-            - github.com/nostosx/servex-contrib/auth/oauth2$
+            - github.com/nostosx/servex-contrib/auth/oauth2/client$
             - github.com/redis/go-redis/v9$
         lifecycle-dependencies:
           list-mode: strict
@@ -63,13 +63,14 @@ linters:
         oauth2-dependencies:
           list-mode: strict
           files:
-            - "**/servex-contrib/auth/oauth2/**"
-            - "!**/servex-contrib/auth/oauth2redis/**"
+            - "**/servex-contrib/auth/oauth2/client/**"
             - "!$test"
           allow:
             - $gostd
             - golang.org/x/oauth2$
             - golang.org/x/oauth2/
+            - github.com/nostosx/servex-contrib/auth/oidc$
+            - github.com/coreos/go-oidc/v3/oidc$
         password-dependencies:
           list-mode: strict
           files:
