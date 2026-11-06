@@ -3,8 +3,10 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -46,14 +48,14 @@ func compare(label string, expected map[string]bool, actual []string) error {
 	return nil
 }
 
-func check(root string) error {
+func inventory(root string) (map[string]bool, map[string]bool, error) {
 	modules, integrations := map[string]bool{}, map[string]bool{}
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if entry.IsDir() {
-			if entry.Name() == ".git" {
+			if entry.Name() == ".git" || entry.Name() == "node_modules" || entry.Name() == "vendor" {
 				return filepath.SkipDir
 			}
 			return nil
@@ -72,6 +74,11 @@ func check(root string) error {
 		}
 		return nil
 	})
+	return modules, integrations, err
+}
+
+func check(root string) error {
+	modules, integrations, err := inventory(root)
 	if err != nil {
 		return err
 	}
@@ -99,7 +106,8 @@ func check(root string) error {
 	for _, match := range regexp.MustCompile(`(?m)^\s+modules: (.+)$`).FindAllStringSubmatch(integrationSection, -1) {
 		listed = append(listed, strings.Fields(match[1])...)
 	}
-	if !strings.Contains(workflow, "task test INTEGRATION=true MODULES=discovery/kubernetes") {
+	if !strings.Contains(workflow, "task test INTEGRATION=true MODULES=discovery/kubernetes") &&
+		!strings.Contains(workflow, "bash .github/scripts/check-source.sh test INTEGRATION=true MODULES=discovery/kubernetes") {
 		return errors.New("missing kind integration invocation")
 	}
 	listed = append(listed, "discovery/kubernetes")
@@ -107,6 +115,19 @@ func check(root string) error {
 }
 
 func main() {
+	modulesOnly := flag.Bool("modules", false, "print module directories without checking CI")
+	flag.Parse()
+	if *modulesOnly {
+		modules, _, err := inventory(".")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		for _, path := range slices.Sorted(maps.Keys(modules)) {
+			fmt.Println(path)
+		}
+		return
+	}
 	if err := check("."); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

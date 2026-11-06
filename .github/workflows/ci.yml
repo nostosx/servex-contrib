@@ -23,11 +23,13 @@ defaults:
   run:
     shell: bash
 
-# Every module and integration resolves published dependencies without overrides.
+# Source checks use this checkout's contrib peers through external temporary
+# modfiles. The core still resolves published servex v1.7.0; no sibling is cloned.
+# release-validation.yml separately verifies actual published dependencies.
 # Preserve the checkout name because depguard uses the servex-contrib directory.
 jobs:
   unit:
-    name: Check (${{ matrix.module }})
+    name: Source check (${{ matrix.module }})
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -41,23 +43,24 @@ jobs:
           - auth/oauth2
           - auth/oauth2redis
           - auth/password
-          - broker/kafka
-          - broker/memory
-          - broker/nats
-          - broker/rabbitmq
-          - cache/redis
-          - cache/memory
-          - cache/loader
+          - messaging/kafka
+          - messaging/memory
+          - messaging/nats
+          - messaging/rabbitmq
+          - storage/cache/redis
+          - storage/cache/memory
+          - storage/cache/loader
           - config/consul
           - config/etcd
           - config/nacos
           - config/viper
           - coordination/etcd
-          - database/gorm
-          - database/goose
-          - database/mongodb
-          - database/sql
+          - storage/database/gorm
+          - storage/database/goose
+          - storage/database/mongodb
+          - storage/database/sql
           - di/do
+          - di/fx
           - discovery/consul
           - discovery/memory
           - discovery/etcd
@@ -66,14 +69,14 @@ jobs:
           - encoding/proto
           - encoding/json
           - encoding/yaml
-          - jobqueue/asynq
-          - jobqueue/memory
-          - logger/slog
-          - logger/zap
+          - job/asynq
+          - job/memory
+          - observability/logger/slog
+          - observability/logger/zap
           - lifecycle
-          - metrics/otel
-          - metrics/noop
-          - metrics/prometheus
+          - observability/metrics/otel
+          - observability/metrics/noop
+          - observability/metrics/prometheus
           - middleware
           - ratelimit/rate
           - ratelimit/redis
@@ -82,8 +85,8 @@ jobs:
           - session
           - session/redis
           - storage/s3
-          - tracing/otel
-          - tracing/noop
+          - observability/tracing/otel
+          - observability/tracing/noop
           - transport/client
           - transport/connectx
           - transport/cors
@@ -93,16 +96,16 @@ jobs:
           - transport/httpx
           - validation/playground
           - validation/protovalidate
-          - database/postgres
-          - vector/pgvector
-          - search/postgres
-          - jobqueue/pgmq
+          - storage/database/postgres
+          - storage/vector/pgvector
+          - storage/search/postgres
+          - job/pgmq
           - scheduler/pgcron
           # END MODULES
     defaults:
       run:
         shell: bash
-        working-directory: servex-contrib/${{ matrix.module }}
+        working-directory: servex-contrib
     steps:
       - uses: actions/checkout@v7
         with:
@@ -118,14 +121,14 @@ jobs:
           cache-dependency-path: |
             servex-contrib/${{ matrix.module }}/go.mod
             servex-contrib/${{ matrix.module }}/go.sum
-      - name: Check module (no external services)
+      - name: Check module sources (no external services)
         working-directory: servex-contrib
         env:
           CHECK_MODULE: ${{ matrix.module }}
-        run: task check MODULES="$CHECK_MODULE"
+        run: bash .github/scripts/check-source.sh check MODULES="$CHECK_MODULE"
 
   lint:
-    name: Lint (Go 1.27.3)
+    name: Source lint (Go 1.27.3)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -149,12 +152,14 @@ jobs:
           install-mode: goinstall
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           install-only: true
-      - name: Lint all modules
+      - name: Lint all module sources
         working-directory: servex-contrib
-        run: task lint
+        run: |
+          modules="$(go run .github/scripts/matrices/main.go -modules)"
+          bash .github/scripts/check-source.sh lint MODULES="$modules"
 
   vulncheck:
-    name: Reachable vulnerabilities
+    name: Source reachable vulnerabilities
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -175,12 +180,14 @@ jobs:
             servex-contrib/**/go.sum
       - name: Install scanner outside the modules
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
-      - name: Scan all modules (normal and integration builds)
+      - name: Scan all module sources (normal and integration builds)
         working-directory: servex-contrib
-        run: task vulncheck
+        run: |
+          modules="$(go run .github/scripts/matrices/main.go -modules)"
+          bash .github/scripts/check-source.sh vulncheck MODULES="$modules"
 
   integration:
-    name: Integration (${{ matrix.backend }})
+    name: Source integration (${{ matrix.backend }})
     # MongoDB 8 refuses Linux 6.19+ (SERVER-121912); Ubuntu 22.04 uses kernel 6.8.
     runs-on: ${{ matrix.backend == 'mongodb' && 'ubuntu-22.04' || 'ubuntu-latest' }}
     timeout-minutes: 30
@@ -190,21 +197,21 @@ jobs:
         include:
           # BEGIN INTEGRATIONS
           - backend: postgres-extensions
-            modules: database/postgres vector/pgvector search/postgres jobqueue/pgmq scheduler/pgcron
+            modules: storage/database/postgres storage/vector/pgvector storage/search/postgres job/pgmq scheduler/pgcron
           - backend: postgres
-            modules: database/gorm database/goose
+            modules: storage/database/gorm storage/database/goose
           - backend: s3
             modules: storage/s3
           - backend: kafka
-            modules: broker/kafka
+            modules: messaging/kafka
           - backend: nats
-            modules: broker/nats
+            modules: messaging/nats
           - backend: rabbitmq
-            modules: broker/rabbitmq
+            modules: messaging/rabbitmq
           - backend: redis
-            modules: cache/redis jobqueue/asynq ratelimit/redis session/redis auth/oauth2redis
+            modules: storage/cache/redis job/asynq ratelimit/redis session/redis auth/oauth2redis
           - backend: mongodb
-            modules: database/mongodb
+            modules: storage/database/mongodb
           - backend: consul
             modules: config/consul discovery/consul
           - backend: etcd
@@ -232,11 +239,11 @@ jobs:
         env:
           BACKEND: ${{ matrix.backend }}
         run: bash .github/scripts/start-service.sh "$BACKEND"
-      - name: Run integration tests and reject skipped or absent tests
+      - name: Run source integration tests and reject skipped or absent tests
         working-directory: servex-contrib
         env:
           MODULES: ${{ matrix.modules }}
-        run: task test INTEGRATION=true
+        run: bash .github/scripts/check-source.sh test INTEGRATION=true MODULES="$MODULES"
       - name: Service logs
         if: failure()
         env:
@@ -255,7 +262,7 @@ jobs:
           fi
 
   postgres-capabilities:
-    name: PostgreSQL capabilities (${{ matrix.profile }})
+    name: Source PostgreSQL capabilities (${{ matrix.profile }})
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
@@ -286,9 +293,9 @@ jobs:
           set -a
           source "$RUNNER_TEMP/servex-postgres.env"
           set +a
-          modules=database/postgres
-          if [ "$PROFILE" = general ]; then modules="$modules vector/pgvector"; fi
-          task test INTEGRATION=true MODULES="$modules"
+          modules=storage/database/postgres
+          if [ "$PROFILE" = general ]; then modules="$modules storage/vector/pgvector"; fi
+          bash .github/scripts/check-source.sh test INTEGRATION=true MODULES="$modules"
       - name: Remove owned fixture resources
         if: always()
         working-directory: servex-contrib
@@ -297,7 +304,7 @@ jobs:
           if [ -f "$fixture_env" ]; then bash tests/postgres/fixture.sh down "$fixture_env"; fi
 
   integration-kubernetes:
-    name: Integration (kind)
+    name: Source integration (kind)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -327,5 +334,5 @@ jobs:
         working-directory: servex-contrib
         run: |
           export SERVEX_IT_KUBECONFIG="$HOME/.kube/config"
-          task test INTEGRATION=true MODULES=discovery/kubernetes
+          bash .github/scripts/check-source.sh test INTEGRATION=true MODULES=discovery/kubernetes
       # kind-action deletes the cluster in its post step, including on failure.

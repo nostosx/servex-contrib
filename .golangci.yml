@@ -30,7 +30,7 @@ linters:
             - $gostd
             - github.com/nostosx/servex-contrib/auth/oauth2$
             - github.com/nostosx/servex-contrib/auth/oidc$
-            - github.com/nostosx/servex-contrib/middleware/auth$
+            - github.com/nostosx/servex-contrib/middleware/endpoint$
             - github.com/nostosx/servex-contrib/session$
             - golang.org/x/oauth2$
         oauth2-redis-dependencies:
@@ -50,10 +50,21 @@ linters:
           allow:
             - $gostd
             - github.com/nostosx/servex/app$
+        fx-dependencies:
+          list-mode: strict
+          files:
+            - "**/servex-contrib/di/fx/**"
+            - "!$test"
+          allow:
+            - $gostd
+            - github.com/nostosx/servex/
+            - go.uber.org/fx$
+            - go.uber.org/fx/fxevent$
         oauth2-dependencies:
           list-mode: strict
           files:
             - "**/servex-contrib/auth/oauth2/**"
+            - "!**/servex-contrib/auth/oauth2redis/**"
             - "!$test"
           allow:
             - $gostd
@@ -78,7 +89,7 @@ linters:
         goose-dependencies:
           list-mode: strict
           files:
-            - "**/servex-contrib/database/goose/**"
+            - "**/servex-contrib/storage/database/goose/**"
             - "!$test"
           allow:
             - $gostd
@@ -129,7 +140,7 @@ linters:
         gorm-dependencies:
           list-mode: strict
           files:
-            - "**/servex-contrib/database/gorm/**"
+            - "**/servex-contrib/storage/database/gorm/**"
             - "!$test"
           allow:
             - $gostd
@@ -139,7 +150,7 @@ linters:
             - github.com/jackc/pgx/v5$
             - github.com/jackc/pgx/v5/stdlib$
             - github.com/nostosx/servex/
-            - github.com/nostosx/servex-contrib/database/sql$
+            - github.com/nostosx/servex-contrib/storage/database/sql$
         jwt-dependencies:
           list-mode: strict
           files:
@@ -191,11 +202,11 @@ linters:
         loader-dependencies:
           list-mode: strict
           files:
-            - "**/servex-contrib/cache/loader/**"
+            - "**/servex-contrib/storage/cache/loader/**"
           allow:
             - $gostd
             - github.com/nostosx/servex/
-            - github.com/nostosx/servex-contrib/cache/loader$
+            - github.com/nostosx/servex-contrib/storage/cache/loader$
             - github.com/nostosx/kitx/singleflight$
         # Selectors use only standard library, core and kitx packages.
         selector-dependencies:
@@ -212,13 +223,21 @@ linters:
           list-mode: strict
           files:
             - "**/servex-contrib/middleware/**"
+            - "!**/servex-contrib/auth/jwt/**"
+            - "!**/servex-contrib/auth/oidc/**"
+            - "!**/servex-contrib/auth/oauth2/**"
+            - "!**/servex-contrib/auth/password/**"
+            - "!**/servex-contrib/validation/playground/**"
+            - "!**/servex-contrib/validation/protovalidate/**"
+            - "!**/servex-contrib/ratelimit/rate/**"
+            - "!**/servex-contrib/ratelimit/redis/**"
           allow:
             - $gostd
             - github.com/nostosx/servex/
             - github.com/nostosx/servex-contrib/middleware/
             - github.com/nostosx/kitx/backoff$
-            - github.com/nostosx/servex-contrib/metrics/noop$
-            - github.com/nostosx/servex-contrib/tracing/noop$
+            - github.com/nostosx/servex-contrib/observability/metrics/noop$
+            - github.com/nostosx/servex-contrib/observability/tracing/noop$
     nolintlint:
       require-explanation: true
       require-specific: true

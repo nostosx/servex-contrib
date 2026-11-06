@@ -13,6 +13,302 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## 2026-11-06: servex v1.7.0 integration
+
+Release date: 2026-11-06. Requires Go 1.27.3. Core-dependent modules use
+published servex v1.7.0. Modules are published in dependency order; each row
+identifies its own module tag. New module paths start at v1.0.0. Existing APIs
+that remain unchanged receive patch releases; new or breaking APIs use a minor
+release. Old path tags remain immutable and have no forwarding packages.
+
+### Module versions
+
+| Module | Version | Change |
+|---|---|---|
+| `auth/jwt` | v1.0.1 | patch |
+| `auth/login` | v1.1.0 | minor |
+| `auth/oauth2` | v1.0.1 | patch |
+| `auth/oauth2redis` | v1.0.1 | patch |
+| `auth/oidc` | v1.0.1 | patch |
+| `auth/password` | v1.0.1 | patch |
+| `config/consul` | v1.2.1 | patch |
+| `config/etcd` | v1.2.1 | patch |
+| `config/nacos` | v1.2.1 | patch |
+| `config/viper` | v1.0.2 | patch |
+| `coordination/etcd` | v1.0.1 | patch |
+| `di/do` | v1.3.0 | minor |
+| `di/fx` | v1.0.0 | initial |
+| `discovery/consul` | v1.2.1 | patch |
+| `discovery/etcd` | v1.2.1 | patch |
+| `discovery/kubernetes` | v1.2.1 | patch |
+| `discovery/memory` | v1.0.1 | patch |
+| `discovery/nacos` | v1.2.1 | patch |
+| `encoding/json` | v1.0.1 | patch |
+| `encoding/proto` | v1.1.1 | patch |
+| `encoding/yaml` | v1.2.1 | patch |
+| `job/asynq` | v1.0.0 | initial |
+| `job/memory` | v1.0.0 | initial |
+| `job/pgmq` | v1.0.0 | initial |
+| `lifecycle` | v1.0.1 | patch |
+| `messaging/kafka` | v1.0.0 | initial |
+| `messaging/memory` | v1.0.0 | initial |
+| `messaging/nats` | v1.0.0 | initial |
+| `messaging/rabbitmq` | v1.0.0 | initial |
+| `middleware` | v1.6.0 | minor |
+| `observability/logger/slog` | v1.0.0 | initial |
+| `observability/logger/zap` | v1.0.0 | initial |
+| `observability/metrics/noop` | v1.0.0 | initial |
+| `observability/metrics/otel` | v1.0.0 | initial |
+| `observability/metrics/prometheus` | v1.0.0 | initial |
+| `observability/tracing/noop` | v1.0.0 | initial |
+| `observability/tracing/otel` | v1.0.0 | initial |
+| `ratelimit/rate` | v1.0.1 | patch |
+| `ratelimit/redis` | v1.0.1 | patch |
+| `scheduler/cron` | v1.0.1 | patch |
+| `scheduler/pgcron` | v1.0.1 | patch |
+| `selector` | v1.2.1 | patch |
+| `session` | v1.0.1 | patch |
+| `session/redis` | v1.0.1 | patch |
+| `storage/cache/loader` | v1.0.0 | initial |
+| `storage/cache/memory` | v1.0.0 | initial |
+| `storage/cache/redis` | v1.0.0 | initial |
+| `storage/database/goose` | v1.0.0 | initial |
+| `storage/database/gorm` | v1.0.0 | initial |
+| `storage/database/mongodb` | v1.0.0 | initial |
+| `storage/database/postgres` | v1.0.0 | initial |
+| `storage/database/sql` | v1.0.0 | initial |
+| `storage/s3` | v1.0.1 | patch |
+| `storage/search/postgres` | v1.0.0 | initial |
+| `storage/vector/pgvector` | v1.0.0 | initial |
+| `transport/client` | v1.1.0 | minor |
+| `transport/connectx` | v1.0.1 | patch |
+| `transport/cors` | v1.0.1 | patch |
+| `transport/grpcx` | v1.4.0 | minor |
+| `transport/httpx` | v1.2.0 | minor |
+| `transport/ssex` | v1.0.1 | patch |
+| `transport/websocketx` | v1.0.1 | patch |
+| `validation/playground` | v1.0.1 | patch |
+| `validation/protovalidate` | v1.0.1 | patch |
+
+### Changes and migrations
+
+- Core-dependent modules now require published servex v1.7.0. Source checks
+  resolve core from the public proxy; the temporary requirement for a matching
+  local core checkout is removed. Contrib peers remain source-mapped until their
+  own releases.
+
+- **Breaking**: remove the unused KeyError constants from the five middleware
+  boundaries. Default observation emits classified fields without raw error text;
+  application-owned diagnostic fields use their own explicit names.
+
+- storage/database/mongodb and messaging/nats: update klauspost/compress to
+  v1.20.3, including the fix for GO-2026-6865 reached by MongoDB's compression
+  path. Refresh affected x/sys and x/text dependencies in configuration/encoding
+  modules to address scanner findings.
+
+- **Breaking**: transport/httpx no longer duplicates core HTTP registration
+  helpers. Replace `httpx.Route`, `httpx.RouteFunc`, `httpx.RouteOption`,
+  `httpx.WithOperation`, `httpx.WithRequestDecoder` and
+  `httpx.WithResponseEncoder` with the same-named functions of
+  `github.com/nostosx/servex/transport/http`. Replace `httpx.Call[Reply](c, m, p)`
+  with `c.Endpoint(m, p, func() any { return new(Reply) })`, or with the typed
+  core `http.Call[Request, Reply]`. httpx-specific decoding/encoding behavior is
+  documented on Server.Handle.
+
+- **Breaking**: messaging and job backends implement the typed core
+  contracts: kafka, nats, rabbitmq and memory Subscribe/SubscribeReady receive a
+  `messaging.Handler`; asynq, pgmq and memory Run/RunReady receive
+  `map[string]job.Handler`. Requires servex v1.7.0.
+- **Breaking**: middleware removes the `admission` package and the per-boundary
+  `IsServerFault`/`DefaultLogLevel` forwarders. Use `endpoint.Bulkhead` or
+  `client.Bulkhead` directly, `errorx.IsServerFault` and `observe.Level`.
+  application.Bulkhead now names its parameter type `*bulkhead.Limiter`.
+- middleware tests use application.Decorate with KindCommand/KindQuery metadata;
+  servex removes application/cqrs.
+
+- middleware: remove internal directories and the observation factory forwarding
+  layer. Endpoint, Application, Client, Messaging and Job implement their own
+  execution wrappers. Shared recording/options, token extraction and validation
+  use named observe/tokenauth/validation packages; bulkhead owns shared capacity
+  in the same module. Preserve boundary factory names, option compatibility and signal behavior.
+  Consolidate observation tests and move benchmarks to root test files.
+
+- middleware: add endpoint.Recommended and client.Recommended, which return a
+  chain in canonical order from a `map[Policy]endpoint.Middleware`, plus Order and
+  Check to expose and verify that order. Hand-built chains silently changed
+  meaning when two policies were swapped: Recovery outside Logging hides a
+  recovered panic from the completion log, Budget outside admission spends the
+  caller's deadline while waiting, and a bulkhead inside client.CircuitBreaker
+  lets local overload open the breaker because IsCircuitBreakerFailure counts
+  ResourceExhausted as a backend failure. An unknown policy panics during
+  assembly.
+- **Breaking**: middleware/client.Authentication now fails closed. A token source
+  that returns an empty token yields Unauthenticated/TOKEN_UNAVAILABLE instead of
+  calling the next endpoint without credentials. Pass WithAllowAnonymous to keep
+  the previous pass-through behaviour.
+- middleware: Bulkhead and Authentication factories panic during assembly on a nil
+  limiter, verifier or token source, matching the application-boundary factories.
+  The endpoint and client bulkheads previously dereferenced the nil dependency on
+  the first request.
+- middleware: make the release function returned by bulkhead.Limiter.Acquire
+  idempotent. A second release withdrew a slot held by another caller, silently
+  exceeding the configured concurrency limit.
+- middleware: add package tests for the job and messaging boundaries, which
+  previously had none. They cover admission panics, Timeout, Recovery, Identity
+  and the Deduplicate preconditions.
+- transport/httpx: honor core transport/http.WithRequestDecoder on registered
+  routes, using the published core HTTP contract. Custom decoding replaces Body/Query/Path/Form
+  binding before endpoint middleware, with transport metadata, body limits and
+  multipart cleanup preserved. Nil restores default binding. Classified/context
+  errors retain their codes; other errors return safe 400/DECODE_REQUEST JSON.
+  Requires published servex v1.7.0.
+
+- Add component-owned, file-decodable defaults and validation for slog/Zap,
+  GORM/database/sql, HTTP/gRPC servers and Redis cache construction. Applications
+  compose the aggregate and decode it with config/viper; runtime dependencies
+  remain constructor inputs/options. No core configuration aggregate is added.
+- **Breaking**: rename GORM PostgresConfig, DefaultPostgresConfig and
+  ErrInvalidPostgresConfig to DatabaseConfig, DefaultDatabaseConfig and
+  ErrInvalidDatabaseConfig. Defaults no longer accept a DSN; set/decode DSN on
+  the returned value. Move native GORM settings to WithGORMConfig.
+- **Breaking**: logger slog/zap New now accepts Config and returns (*Logger, error).
+  Use Wrap(native) for the previous native-backend entry point. Config-created
+  loggers own their opened files and expose Close; borrowed outputs remain owned
+  by their callers. Caller/source locations exclude the adapter frame.
+- Add SQL OpenFromConfig and HTTP/gRPC NewServerFromConfig while preserving their
+  existing low-level construction APIs. Redis Open owns a configured client;
+  New continues to borrow one. Redis Hook checks readiness and cleans owned
+  startup failures; Stop callers can cancel waiting while shared cleanup proceeds.
+- **Breaking**: organize middleware public packages by execution boundary:
+  endpoint, application, client, messaging and job each expose one ordinary Go
+  package. Logging, metrics, tracing and execution policies live in files within
+  their owning package; the previous per-policy ordinary subpackages are removed.
+  Import middleware/endpoint once for Authentication, Recovery, Logging and other
+  inbound policies; use middleware/application.Authorization[Request, Result],
+  Transaction, Idempotency and the matching typed observation factories.
+  Outbound authentication is middleware/client.Authentication; per-attempt signals
+  use AttemptLogging, AttemptMetrics and AttemptTracing. LoggingOption and
+  MetricsOption keep configuration unambiguous within each package.
+  Native message/job factories retain separate Publish/Consume/Settlement and
+  Enqueue/Execution/Event functions and their own execution contracts.
+  middleware/bulkhead retains shared capacity; execution factories live in the
+  appropriate boundary packages. Shared signal recording lives in middleware/observe.
+  SDK adapters remain independent nested modules at the paths listed below.
+- Capability SDK modules keep their published paths. An earlier unreleased
+  revision moved them under middleware/endpoint/{auth,validate,ratelimit} and
+  transport/httpx/{login,session}; that relocation is withdrawn, so
+  `auth/jwt`, `auth/oidc`, `auth/oauth2`, `auth/oauth2redis`, `auth/password`,
+  `auth/login`, `session`, `session/redis`, `validation/playground`,
+  `validation/protovalidate`, `ratelimit/rate` and `ratelimit/redis` continue
+  their existing version lines. Login now depends on transport-neutral auth and
+  session modules instead of living inside the HTTP transport tree.
+
+- **Breaking**: remove middleware/profile, including Config, Profile and preset
+  assembly helpers. Compose individual middleware explicitly with transport
+  options, endpoint.Chain, application.Decorate and native message/job chains.
+  Recovery, retry, timeout and policy ordering are chosen by the application.
+- transport/httpx: expose EndpointFilter for explicitly supplied Endpoint
+  middleware around native HTTP handlers. It installs no default chain.
+- **Breaking**: remove bundled middleware/attempt and message/job observation
+  factories. Select logging, metrics and tracing independently through Attempt,
+  Publish, Consume, Enqueue and Execution factories. Settlement and Event factories are independent
+  per-signal backend callbacks; acknowledgement and queue semantics are unchanged.
+- **Breaking**: remove Command/Query aliases from logging, metrics and tracing;
+  use typed Logging, Metrics and Tracing in middleware/application, with the
+  kind supplied by application.Metadata.Kind.
+- **Breaking**: remove middleware/retry and middleware/timeout. Configure logical
+  and attempt budgets, safe retry predicates and backoff in transport/client.Policy.
+  Server/Application budget and native message/job timeout policies remain explicit.
+- Add di/fx as the default recommended application assembly bridge. Use native
+  Fx registration/resolution in app.go; servex retains lifecycle/readiness/drain
+  ownership. The samber/do bridge remains optional, and core selects no container.
+
+- lifecycle: release all constructed resources in reverse order when startup
+  panics or exits its goroutine, preserving the original interruption and
+  allowing subsequent Stop calls to complete.
+- Build tooling: preserve tidy/modernizer diff diagnostics on failed checks;
+  normalize checksum ordering and retire superseded module/session check scripts.
+
+- **Breaking**: group implementations by responsibility and update module paths.
+  Core-dependent manifests require servex v1.7.0. Old published tags
+  retain their release-time source and module paths; relocated paths need new
+  directory-prefixed module tags before public installation.
+
+  | Previous directory/module suffix | Current suffix |
+  |---|---|
+  | `broker/<backend>` | `messaging/<backend>` |
+  | `jobqueue/<backend>` | `job/<backend>` |
+  | `logger/<backend>` | `observability/logger/<backend>` |
+  | `metrics/<backend>` | `observability/metrics/<backend>` |
+  | `tracing/<backend>` | `observability/tracing/<backend>` |
+  | `cache/<backend>` | `storage/cache/<backend>` |
+  | `database/<backend>` | `storage/database/<backend>` |
+  | `vector/<backend>` | `storage/vector/<backend>` |
+  | `search/<backend>` | `storage/search/<backend>` |
+
+- **Breaking**: di/do drops its adapter for the removed core di.Container,
+  constructor-registration helpers and custom resolution API. Use native
+  samber/do registration/resolution and retain the explicit Hook/Shutdown bridge.
+- Keep module discovery, CI coverage and temporary peer-source checks recursive
+  so nested responsibility groups are validated without committed local replacements.
+
+- **Breaking**: transport/client and transport/httpx now reject calls and retry
+  attempts after Close with non-retryable FailedPrecondition/CLIENT_CLOSED,
+  matching grpcx. Running HTTP exchanges retain their contexts and injected
+  HTTP client/transport ownership remains with the caller.
+- transport/httpx: accept core RouteOption through Server.Handle and implement
+  EndpointRouter. Core registration and typed client helpers reuse the existing
+  binding, codecs, middleware, retries and remote error handling.
+
+- transport/httpx: implement the matching core transport/http Server and Client
+  contracts. Exercise route mounting, lifecycle/discovery and Endpoint calls
+  through these interfaces in the existing end-to-end regression.
+
+- middleware, observability/tracing/otel, transport/httpx: share payload-free errorx
+  classification, correlate logs with spans, bound default metric code labels
+  and capture duration before each recorder writes its signals. Preserve independent
+  execution-boundary semantics and original business errors.
+- **Breaking**: default completion logs omit raw error strings; recovery needs
+  WithPanicDetails for panic values/stacks. HTTP diagnostic strings become a
+  fixed classified event. OTel exception text/status omit Message/Metadata/Cause.
+- Migrate middleware and HTTP contract fixtures plus required memory message/job
+  backends to current core application/messaging/job paths. Contrib now targets
+  servex v1.7.0; consumers require their own migration. Validate unpublished peers
+  through external temporary development modfiles.
+
+- **Breaking**: logging consumers and adapters now use the matching core
+  `observability/logger` contract. Logger/Level behavior is unchanged; contrib
+  observation modules move under observability as listed above. Update consumer
+  dependencies together before publication.
+
+- transport/client, transport/httpx and transport/grpcx: separate logical-call
+  governance from selected-node attempt policies, with operation-specific total/
+  attempt budgets and explicit safe retries. Streams bypass unary replay policy.
+- middleware: add independent client-attempt, publish/consume and enqueue/execute
+  observation factories; add cooperative budgets, bulkheads, durable keyed execution, query
+  caching and fail-closed audit. No universal invocation contract is introduced.
+- messaging memory/RabbitMQ/Kafka/NATS: preserve producer Message.ID and expose
+  native settlement observers without changing ACK/retry ownership. Distinguish
+  backend delivery information from process-local attempts.
+- job memory/asynq/pgmq: expose runtime event observers. Asynq reports only
+  attempt completion; PGMQ emits completion after its actual settlement transaction.
+- storage/database/sql: add explicit PostgreSQL idempotency schema and row-lock execution
+  with atomic business/result commit and explicit Transactor.Join composition.
+
+- middleware: share typed application AOP across ordinary methods and CQRS,
+  with individual logging/metrics/tracing factories,
+  typed validation, explicit authorization and transaction decorators. Command/query
+  intent comes from the core metadata without duplicate observation aliases.
+- storage/database/sql: add a borrowed-pool Transactor implementing the transaction
+  runner contract, context-bound DBTX selection, explicit nested-scope rejection
+  and no fallback to the pool for completed transactions.
+- These APIs use published servex v1.7.0. Matching contrib peer changes remain
+  unreleased; use external development modfiles until their dependency layers are published.
+
+- **Breaking**: PGMQ Config adds an Observer field. Use keyed Config literals
+  instead of positional literals when upgrading. Existing keyed configuration
+  and default queue behavior remain supported.
+
 ## database/postgres/v1.0.0
 
 Release date: 2026-10-31. Requires Servex v1.5.0.

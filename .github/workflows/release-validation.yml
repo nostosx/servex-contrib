@@ -167,8 +167,8 @@ jobs:
           set -a
           source "$RUNNER_TEMP/servex-postgres.env"
           set +a
-          modules=database/postgres
-          if [ "$PROFILE" = general ] && [[ "$RELEASE_MODULES" == *'"vector/pgvector"'* ]]; then modules="$modules vector/pgvector"; fi
+          modules=storage/database/postgres
+          if [ "$PROFILE" = general ] && [[ "$RELEASE_MODULES" == *'"storage/vector/pgvector"'* ]]; then modules="$modules storage/vector/pgvector"; fi
           task test INTEGRATION=true MODULES="$modules"
       - name: Remove owned fixture resources
         if: always()

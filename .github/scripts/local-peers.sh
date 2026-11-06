@@ -23,16 +23,16 @@ real_vuln="$(resolve_tool "${GOVULNCHECK:-govulncheck}" || true)"
 temporary="$(mktemp -d)"
 trap 'rm -rf -- "$temporary"' EXIT
 declare -a manifests=()
-for file in "$root"/*/go.mod "$root"/*/*/go.mod; do
-  if [ -f "$file" ]; then manifests+=("$file"); fi
-done
+module_dirs="$(cd "$root"; GOFLAGS='' GOWORK=off "$real_go" run ".github/scripts/matrices/main.go" -modules)"
+while IFS= read -r directory; do
+  manifests+=("$root/$directory/go.mod")
+done <<< "$module_dirs"
 test "${#manifests[@]}" -gt 0
 # Replaced modules need no public checksum in a source-only modfile. Preserve
 # published sums in the repository; omit only replaced paths in temporary sums.
 printf '%s\n' github.com/nostosx/servex > "$temporary/local-modules"
 for file in "${manifests[@]}"; do
-  peer_dir="${file%/go.mod}"
-  printf 'github.com/nostosx/servex-contrib/%s\n' "${peer_dir#"$root"/}" >> "$temporary/local-modules"
+  awk '$1 == "module" {print $2; exit}' "$file" >> "$temporary/local-modules"
 done
 copy_sum() {
   awk 'NR==FNR {local[$0]=1; next} !($1 in local)' "$temporary/local-modules" "$1" > "$2"
@@ -46,8 +46,8 @@ for file in "${manifests[@]}"; do
   replacements=("-replace=github.com/nostosx/servex=$core")
   for peer in "${manifests[@]}"; do
     peer_dir="${peer%/go.mod}"
-    peer_name="${peer_dir#"$root"/}"
-    replacements+=("-replace=github.com/nostosx/servex-contrib/$peer_name=$peer_dir")
+    peer_name="$(awk '$1 == "module" {print $2; exit}' "$peer")"
+    replacements+=("-replace=$peer_name=$peer_dir")
   done
   (cd "$module_dir"; "$real_go" mod edit -modfile="$temporary/mods/$relative/go.mod" "${replacements[@]}")
 done

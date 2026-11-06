@@ -12,12 +12,29 @@ for argument in "$@"; do
 done
 if [ -z "$modules" ]; then printf 'Explicit MODULES selection required\n' >&2; exit 1; fi
 go_binary="$(command -v "${GO:-go}")"
+case "$go_binary" in */mise/shims/*) go_binary="$(mise which "${go_binary##*/}")" ;; esac
+module_dirs="$(GOFLAGS='' GOWORK=off "$go_binary" run ".github/scripts/matrices/main.go" -modules)"
+replacements=()
+: > "$temporary/local-modules"
+while IFS= read -r directory; do
+  module_path="$(awk '$1 == "module" {print $2; exit}' "$directory/go.mod")"
+  replacements+=("-replace=$module_path=$root/$directory")
+  printf '%s\n' "$module_path" >> "$temporary/local-modules"
+done <<< "$module_dirs"
 export SERVEX_SOURCE_GO="$go_binary" GOWORK=off
 mkdir "$temporary/bin"
 cat > "$temporary/bin/go" <<'GO_WRAPPER'
 #!/usr/bin/env bash
 set -euo pipefail
-if [ "${GO111MODULE:-}" = off ]; then export GOFLAGS="${GOFLAGS//"$SERVEX_SOURCE_FLAG"/}"; fi
+if [ "${GO111MODULE:-}" = off ]; then
+  # go/packages may copy GOFLAGS into explicit arguments for its stdlib probe.
+  export GOFLAGS=''
+  filtered=()
+  for argument in "$@"; do
+    case "$argument" in -modfile=*) ;; *) filtered+=("$argument") ;; esac
+  done
+  set -- "${filtered[@]}"
+fi
 exec "$SERVEX_SOURCE_GO" "$@"
 GO_WRAPPER
 chmod +x "$temporary/bin/go"
@@ -30,14 +47,12 @@ for module in $modules; do
   export SERVEX_SOURCE_FLAG="'-modfile=$SERVEX_SOURCE_MODFILE'"
   cp "$module/go.mod" "$SERVEX_SOURCE_MODFILE"
   rm -f "$temporary/source.sum"
-  if [ -f "$module/go.sum" ]; then cp "$module/go.sum" "$temporary/source.sum"; fi
-  replacements=()
-  for manifest in */go.mod */*/go.mod; do
-    if [ -f "$manifest" ]; then
-      directory="${manifest%/go.mod}"
-      replacements+=("-replace=github.com/nostosx/servex-contrib/$directory=$root/$directory")
-    fi
-  done
+  if [ -f "$module/go.sum" ]; then
+    # Replaced peers need no public checksum. Keep canonical sums and the
+    # published core's checksums intact; only the temporary copy is filtered.
+    awk 'NR==FNR {local[$0]=1; next} !($1 in local)' \
+      "$temporary/local-modules" "$module/go.sum" > "$temporary/source.sum"
+  fi
   (cd "$module"; "$go_binary" mod edit -modfile="$SERVEX_SOURCE_MODFILE" "${replacements[@]}")
   export GOFLAGS="$original_flags $SERVEX_SOURCE_FLAG"
   task --silent "${arguments[@]}" MODULES="$module"

@@ -10,10 +10,13 @@ import (
 func TestCheck(t *testing.T) {
 	const workflow = `# BEGIN MODULES
   - alpha
+  - alpha/nested
   - discovery/kubernetes
+  - observability/logger/slog
 # END MODULES
 # BEGIN INTEGRATIONS
   modules: alpha
+  modules: alpha/nested
 # END INTEGRATIONS
 task test INTEGRATION=true MODULES=discovery/kubernetes
 `
@@ -23,10 +26,13 @@ task test INTEGRATION=true MODULES=discovery/kubernetes
 		new  string
 	}{
 		{name: "complete"},
+		{name: "source_complete", old: "task test INTEGRATION=true MODULES=discovery/kubernetes", new: "bash .github/scripts/check-source.sh test INTEGRATION=true MODULES=discovery/kubernetes"},
 		{name: "missing_module", old: "  - alpha\n"},
+		{name: "missing_nested_module", old: "  - alpha/nested\n"},
 		{name: "duplicate_module", old: "  - alpha\n", new: "  - alpha\n  - alpha\n"},
 		{name: "unknown_module", old: "  - alpha\n", new: "  - other\n"},
 		{name: "missing_integration", old: "  modules: alpha\n"},
+		{name: "missing_nested_integration", old: "  modules: alpha/nested\n"},
 		{name: "duplicate_integration", old: "  modules: alpha\n", new: "  modules: alpha alpha\n"},
 		{name: "missing_marker", old: "# END MODULES"},
 		{name: "missing_kind", old: "task test INTEGRATION=true MODULES=discovery/kubernetes"},
@@ -34,7 +40,14 @@ task test INTEGRATION=true MODULES=discovery/kubernetes
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 			root := t.TempDir()
-			for _, name := range []string{"alpha/go.mod", "alpha/a_integration_test.go", "discovery/kubernetes/go.mod", "discovery/kubernetes/k_integration_test.go", ".github/workflows/ci.yml"} {
+			for _, name := range []string{
+				"alpha/go.mod", "alpha/a_integration_test.go",
+				"alpha/nested/go.mod", "alpha/nested/n_integration_test.go",
+				"discovery/kubernetes/go.mod", "discovery/kubernetes/k_integration_test.go",
+				"observability/logger/slog/go.mod",
+				"tests/browser/node_modules/dependency/go.mod", "vendor/dependency/fake_integration_test.go",
+				".github/workflows/ci.yml",
+			} {
 				path := filepath.Join(root, name)
 				if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 					t.Fatal(err)
@@ -51,7 +64,7 @@ task test INTEGRATION=true MODULES=discovery/kubernetes
 				}
 			}
 			err := check(root)
-			if (err == nil) != (tt.name == "complete") {
+			if (err == nil) != (tt.name == "complete" || tt.name == "source_complete") {
 				t.Fatalf("check=%v", err)
 			}
 		})

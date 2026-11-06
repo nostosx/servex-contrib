@@ -4,12 +4,12 @@ set -euo pipefail
 root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 module="${1:?usage: integration.sh module-directory}"
 case "$module" in
-  broker/kafka) required=SERVEX_IT_KAFKA_BROKERS ;;
-  broker/nats) required=SERVEX_IT_NATS_URL ;;
-  broker/rabbitmq) required=SERVEX_IT_RABBITMQ_URL ;;
-  cache/redis|jobqueue/asynq|ratelimit/redis|session/redis|auth/oauth2redis) required=SERVEX_IT_REDIS_ADDR ;;
-  database/mongodb) required=SERVEX_IT_MONGODB_URI ;;
-  database/gorm|database/goose|database/postgres|vector/pgvector|search/postgres|jobqueue/pgmq|scheduler/pgcron) required=SERVEX_IT_POSTGRES_DSN ;;
+  messaging/kafka) required=SERVEX_IT_KAFKA_BROKERS ;;
+  messaging/nats) required=SERVEX_IT_NATS_URL ;;
+  messaging/rabbitmq) required=SERVEX_IT_RABBITMQ_URL ;;
+  storage/cache/redis|job/asynq|ratelimit/redis|session/redis|auth/oauth2redis) required=SERVEX_IT_REDIS_ADDR ;;
+  storage/database/mongodb) required=SERVEX_IT_MONGODB_URI ;;
+  storage/database/gorm|storage/database/goose|storage/database/postgres|storage/vector/pgvector|storage/search/postgres|job/pgmq|scheduler/pgcron) required=SERVEX_IT_POSTGRES_DSN ;;
   storage/s3) required=SERVEX_IT_S3_ENDPOINT ;;
   config/consul|discovery/consul) required=SERVEX_IT_CONSUL_ADDR ;;
   config/etcd|discovery/etcd|coordination/etcd) required=SERVEX_IT_ETCD_ENDPOINTS ;;

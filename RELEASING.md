@@ -1,25 +1,39 @@
 # Releasing servex-contrib
 
 Each module is versioned independently, starting at v1.0.0. This includes
-auth/oidc, di/do and ratelimit/redis.
+auth/oidc, di/do, di/fx and ratelimit/redis.
 The CI workflow does not create tags or publish releases. Publication is a
 separate maintainer decision.
 
 ## Dependency order
 
-The 2026-10-28 modules with a core dependency use published servex v1.3.0;
-auth/oidc has no core requirement. Other modules keep their recorded dependency
-versions. Where required, kitx remains v1.0.0. Those released snapshots require
-no local replacements. The 2026-10-29 extraction requires published servex
-v1.4.0 and the matching independently versioned contrib releases.
-Before adopting a newer core or utility release, verify that version through
-the public Go proxy, update requirements, tidy and rerun the module gates.
+Core-dependent modules require published servex v1.7.0, including its HTTP
+request decoder and native message/job handlers. Verify this core version from
+the public proxy. The responsibility layout migration remains unreleased:
+relocated directories define new contrib module paths, while old tags retain
+their original snapshots. A local contrib-source pass is not evidence that
+those new module versions can already be installed.
+
+Capability modules keep their published paths: `auth/*`, `auth/oauth2redis`,
+`session`, `session/redis`, `ratelimit/*` and `validation/*` continue their
+existing version lines. Only directories renamed to match core package names
+(see the CHANGELOG path table) start new module identities at v1.0.0. When a
+renamed module is first published, retain old tags as immutable
+historical snapshots. This batch does not publish old-path forwarding packages
+or duplicate deprecation snapshots; the migration table names the new paths.
+
+Verify core and utility versions through the public Go proxy. Source validation
+with temporary modfiles is useful during development; release acceptance must
+resolve the actual selected module versions without overrides.
 Contrib dependencies must form a directed graph. After the core, publish
-foundational modules such as cache/loader, transport/client, codecs, selectors
-and no-op telemetry before their dependent adapters. Refresh real dependency
+foundational modules such as codecs, selectors, storage/cache/loader,
+transport/client, database helpers and no-op telemetry before their dependent adapters. Refresh real dependency
 versions and checksums, then verify each dependent module against the public
 proxy without overrides. Backend composition tests may add module requirements;
 include them when computing publication order.
+The new di/fx module has only the published core and Fx dependencies; validate
+its standalone installation independently. Default Fx documentation does not
+make a new module path available before its own tag is published.
 Update servex-examples only after the modules it imports are available.
 
 ## Module gates
@@ -38,20 +52,20 @@ foundational release; it never substitutes source replacements for public versio
 1. Choose the module version independently of the Go 1.27.3 toolchain.
    Review the selected module's notes and release date in
    [CHANGELOG.md](CHANGELOG.md). Move its entries from `Unreleased` into the
-   matching dated module/version section.
+   matching dated batch's module/version table.
 2. Run the module's checks with the published core dependency and
    `GOWORK=off`, without sibling replacement directives. From the repository
    root, for example:
 
    ```sh
-   MODULES='cache/redis' task check lint vulncheck
+   MODULES='storage/cache/redis' task check lint vulncheck
    ```
 
 3. For modules with service-backed tests, provision dedicated disposable
    services, export the required addresses, and run the matching acceptance:
 
    ```sh
-   SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='cache/redis' task test INTEGRATION=true
+   SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 MODULES='storage/cache/redis' task test INTEGRATION=true
    ```
 
    Require actual integration execution; skipped tests or compilation-only
@@ -63,8 +77,8 @@ foundational release; it never substitutes source replacements for public versio
 ## Tags and published artifacts
 
 Nested module tags include the complete directory prefix. For example,
-`cache/redis/v1.0.0` publishes
-`github.com/nostosx/servex-contrib/cache/redis@v1.0.0`;
+`storage/cache/redis/v1.0.0` publishes
+`github.com/nostosx/servex-contrib/storage/cache/redis@v1.0.0`;
 `middleware/v1.0.0` publishes the middleware module. A root `v1.0.0` tag
 does not publish the nested modules. Follow Go's major-version module-path
 rules for v2 and later.
@@ -78,8 +92,3 @@ a published dependency graph is installable.
 
 Do not move a published tag to fix a release. Publish a corrected version,
 document the impact and use a module retraction when appropriate.
-
-For middleware v1.1.0, verify servex v1.1.0 through the public proxy before
-publishing `middleware/v1.1.0`. Keep the existing middleware and core v1.0.0
-tags unchanged. Verify the new middleware version from an independent consumer
-after publication.

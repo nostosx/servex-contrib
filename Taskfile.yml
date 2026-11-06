@@ -8,12 +8,7 @@ vars:
   GOVULNCHECK: '{{.GOVULNCHECK | default "govulncheck"}}'
   ALL_MODULES:
     sh: |
-      for file in */go.mod */*/go.mod; do
-        if [ -f "$file" ]; then
-          module_file=$(printf '%s' "$file" | tr '\\' '/')
-          printf '%s\n' "${module_file%/go.mod}"
-        fi
-      done | sort | tr -d '\r'
+      GOFLAGS='' GOWORK=off {{.GO | shellQuote}} run ".github/scripts/matrices/main.go" -modules
   # An explicitly empty MODULES value must fail rather than select every module.
   MODULES: '{{if hasKey . "MODULES"}}{{.MODULES}}{{else}}{{.ALL_MODULES}}{{end}}'
 
@@ -39,7 +34,7 @@ tasks:
           modules={{.MODULES | shellQuote}}
           for module in $modules; do
             printf '\n==> %s: %s\n' "$module" fmt
-            (cd "$module"; {{.GOFMT | shellQuote}} -w .)
+            (cd "$module"; find . -type d ! -path . -exec test -f '{}/go.mod' \; -prune -o -type f -name '*.go' -exec {{.GOFMT | shellQuote}} -w {} +)
           done
 
   fmt-check:
@@ -53,7 +48,14 @@ tasks:
           modules={{.MODULES | shellQuote}}
           for module in $modules; do
             printf '\n==> %s: %s\n' "$module" fmt-check
-            (cd "$module"; out=$({{.GOFMT | shellQuote}} -l .); if [ -n "$out" ]; then printf 'gofmt needed:\n%s\n' "$out"; exit 1; fi)
+            (cd "$module"
+              out=$(find . -type d ! -path . -exec test -f '{}/go.mod' \; -prune -o -type f -name '*.go' -exec {{.GOFMT | shellQuote}} -l {} +) || {
+                check_status=$?
+                printf '%s\n' "$out"
+                exit "$check_status"
+              }
+              if [ -n "$out" ]; then printf 'gofmt needed:\n%s\n' "$out"; exit 1; fi
+            )
           done
 
   fix:
@@ -80,7 +82,14 @@ tasks:
           modules={{.MODULES | shellQuote}}
           for module in $modules; do
             printf '\n==> %s: %s\n' "$module" modernize-check
-            (cd "$module"; for tags in '' integration; do out=$({{.GO | shellQuote}} fix -tags "$tags" -diff ./...); if [ -n "$out" ]; then printf '%s\n' "$out"; exit 1; fi; done)
+            (cd "$module"; for tags in '' integration; do
+              out=$({{.GO | shellQuote}} fix -tags "$tags" -diff ./...) || {
+                check_status=$?
+                printf '%s\n' "$out"
+                exit "$check_status"
+              }
+              if [ -n "$out" ]; then printf '%s\n' "$out"; exit 1; fi
+            done)
           done
 
   tidy:
@@ -107,7 +116,14 @@ tasks:
           modules={{.MODULES | shellQuote}}
           for module in $modules; do
             printf '\n==> %s: %s\n' "$module" tidy-check
-            (cd "$module"; out=$({{.GO | shellQuote}} mod tidy -diff); if [ -n "$out" ]; then printf '%s\n' "$out"; exit 1; fi)
+            (cd "$module"
+              out=$({{.GO | shellQuote}} mod tidy -diff) || {
+                check_status=$?
+                printf '%s\n' "$out"
+                exit "$check_status"
+              }
+              if [ -n "$out" ]; then printf '%s\n' "$out"; exit 1; fi
+            )
           done
 
   vet:
@@ -176,7 +192,7 @@ tasks:
             printf '\n==> %s: test\n' "$module"
             (cd "$module"
               if [ {{.COVER | shellQuote}} = true ]; then
-                set -- "$@" -coverprofile=coverage.out -covermode=atomic
+                set -- "$@" -coverpkg=./... -coverprofile=coverage.out -covermode=atomic
               fi
               {{.GO | shellQuote}} test "$@" ./...
               if [ {{.COVER | shellQuote}} = true ]; then
@@ -237,10 +253,10 @@ tasks:
           modules={{.MODULES | shellQuote}}
           for module in $modules; do
             printf '\n==> %s: %s\n' "$module" deps-check
-            (cd "$module"; if [ "$module" = middleware ] || [ "$module" = selector ] || [ "$module" = cache/loader ] || [ "$module" = transport/client ]; then
+            (cd "$module"; if [ "$module" = middleware ] || [ "$module" = selector ] || [ "$module" = storage/cache/loader ] || [ "$module" = transport/client ]; then
               own=$({{.GO | shellQuote}} list -m);
               deps=$({{.GO | shellQuote}} list -m -f '{{"{{.Path}}"}}' all);
-              foreign=$(printf '%s\n' "$deps" | awk -v own="$own" -v module="$module" 'NF && $0 != own && $0 != "github.com/nostosx/servex" && $0 != "github.com/nostosx/kitx" && !(module == "middleware" && ($0 == "github.com/nostosx/servex-contrib/metrics/noop" || $0 == "github.com/nostosx/servex-contrib/tracing/noop"))' );
+              foreign=$(printf '%s\n' "$deps" | awk -v own="$own" -v module="$module" 'NF && $0 != own && $0 != "github.com/nostosx/servex" && $0 != "github.com/nostosx/kitx" && !(module == "middleware" && ($0 == "github.com/nostosx/servex-contrib/observability/metrics/noop" || $0 == "github.com/nostosx/servex-contrib/observability/tracing/noop"))' );
               if [ -n "$foreign" ]; then printf 'unexpected dependencies:\n%s\n' "$foreign"; exit 1; fi;
             fi)
           done
