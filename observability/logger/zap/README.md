@@ -1,6 +1,6 @@
 # observability/logger/zap
 
-Module version for this revision: **v1.0.0**.
+Module version for this revision: **v1.1.0**.
 
 Implements the published servex v1.7.0 Logger contract with go.uber.org/zap.
 Configuration and construction belong to this contrib module; the application
@@ -75,3 +75,18 @@ task check lint vulncheck MODULES=observability/logger/zap
 Run from the repository root. Tests exercise actual JSON/text records, level and
 caller fields, validation before output creation, file append/close, retained
 Sync errors, borrowed resources, native wrapping and concurrent calls.
+
+
+## v1.1.0: readable output and rotating files
+
+Format readable emits a single escaped line with component and bracketed fields.
+Labels optionally maps structured keys to presentation labels; it never renames
+JSON fields. It uses second-precision timestamp and caller keys. Existing json
+and text formats keep their encoder semantics.
+
+File is an additional JSON output, configured with path, max_size (MiB),
+max_backups, max_age (days), and compress. Empty path disables it. Zero size uses
+lumberjack's 100 MiB default; zero backup/age values disable those retention
+limits. Configuration validation precedes output acquisition. Close flushes the
+main output and closes owned primary/rotating files once; WithWriter remains
+borrowed. File rotation reuses lumberjack v2.2.1, previously owned by the consumer.

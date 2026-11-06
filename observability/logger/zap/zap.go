@@ -3,6 +3,7 @@ package zap
 
 import (
 	"context"
+	"io"
 	"os"
 	"sync"
 
@@ -17,6 +18,7 @@ import (
 type Logger struct {
 	log      *upstream.Logger
 	output   *os.File
+	owned    []io.Closer
 	managed  bool
 	once     sync.Once
 	closeErr error

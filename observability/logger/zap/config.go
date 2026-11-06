@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 
 	upstream "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 // ErrInvalidConfig identifies invalid file-decodable logger settings.
@@ -19,10 +21,23 @@ var ErrInvalidConfig = errors.New("zap: invalid logger configuration")
 // Output selects stdout, stderr, or an append-only file. Runtime writers and
 // native Zap cores are supplied through WithWriter and Wrap respectively.
 type Config struct {
-	Level     string `json:"level"`
-	Format    string `json:"format"`
-	Output    string `json:"output"`
-	AddSource bool   `json:"add_source"`
+	Level     string            `json:"level"`
+	Format    string            `json:"format"`
+	Output    string            `json:"output"`
+	AddSource bool              `json:"add_source"`
+	File      FileConfig        `json:"file"`
+	Labels    map[string]string `json:"labels"`
+}
+
+// FileConfig selects an additional rotating JSON output. Empty Path disables it.
+// MaxSize is in MiB; zero uses lumberjack's 100 MiB default. Zero MaxBackups or
+// MaxAge keeps all backups or disables age expiry respectively.
+type FileConfig struct {
+	Path       string `json:"path"`
+	MaxSize    int    `json:"max_size"`
+	MaxBackups int    `json:"max_backups"`
+	MaxAge     int    `json:"max_age"`
+	Compress   bool   `json:"compress"`
 }
 
 // DefaultConfig selects info-level JSON records on stderr without source locations.
@@ -51,11 +66,14 @@ func (c Config) Validate() error {
 	if _, err := c.level(); err != nil {
 		return err
 	}
-	if c.Format != "json" && c.Format != "text" {
+	if c.Format != "json" && c.Format != "text" && c.Format != "readable" {
 		return fmt.Errorf("%w: format", ErrInvalidConfig)
 	}
 	if strings.ContainsRune(c.Output, 0) {
 		return fmt.Errorf("%w: output", ErrInvalidConfig)
+	}
+	if strings.ContainsRune(c.File.Path, 0) || c.File.MaxSize < 0 || c.File.MaxBackups < 0 || c.File.MaxAge < 0 {
+		return fmt.Errorf("%w: file", ErrInvalidConfig)
 	}
 	return nil
 }
@@ -109,6 +127,10 @@ func New(config Config, opts ...Option) (*Logger, error) {
 	if o.hasWriter && nilWriter(o.writer) {
 		return nil, fmt.Errorf("%w: writer", ErrInvalidConfig)
 	}
+	if !o.hasWriter && config.Output != "stdout" && config.Output != "stderr" &&
+		config.File.Path != "" && filepath.Clean(config.File.Path) == filepath.Clean(config.Output) {
+		return nil, fmt.Errorf("%w: duplicate file output", ErrInvalidConfig)
+	}
 	var output *os.File
 	var writer zapcore.WriteSyncer
 	if o.hasWriter {
@@ -131,23 +153,61 @@ func New(config Config, opts ...Option) (*Logger, error) {
 			writer = output
 		}
 	}
+	owned := []io.Closer{}
+	if output != nil {
+		owned = append(owned, output)
+	}
 	encoderConfig := upstream.NewProductionEncoderConfig()
 	encoderConfig.TimeKey = "time"
 	encoderConfig.CallerKey = "source"
 	encoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	if config.Format == "readable" {
+		encoderConfig.TimeKey = "timestamp"
+		encoderConfig.CallerKey = "caller"
+		encoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05")
+		encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	}
 	var encoder zapcore.Encoder
-	if config.Format == "json" {
+	switch config.Format {
+	case "json":
 		encoder = zapcore.NewJSONEncoder(encoderConfig)
-	} else {
+	case "readable":
+		textConfig := encoderConfig
+		textConfig.EncodeDuration = zapcore.StringDurationEncoder
+		encoder = newTextEncoder(textConfig, config.Labels)
+	default:
 		encoder = zapcore.NewConsoleEncoder(encoderConfig)
 	}
 	level, _ := config.level()
+	cores := []zapcore.Core{zapcore.NewCore(encoder, zapcore.Lock(writer), level)}
+	if config.File.Path != "" {
+		if err := os.MkdirAll(filepath.Dir(config.File.Path), 0o750); err != nil {
+			if output != nil {
+				err = errors.Join(err, output.Close())
+			}
+			return nil, fmt.Errorf("zap: create file directory: %w", err)
+		}
+		file, err := os.OpenFile(config.File.Path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
+		if err == nil {
+			err = file.Close()
+		}
+		if err != nil {
+			if output != nil {
+				err = errors.Join(err, output.Close())
+			}
+			return nil, fmt.Errorf("zap: open rotating output: %w", err)
+		}
+		rolling := &lumberjack.Logger{Filename: config.File.Path, MaxSize: config.File.MaxSize,
+			MaxBackups: config.File.MaxBackups, MaxAge: config.File.MaxAge, Compress: config.File.Compress}
+		owned = append(owned, rolling)
+		cores = append(cores, zapcore.NewCore(zapcore.NewJSONEncoder(encoderConfig), zapcore.AddSync(rolling), level))
+	}
 	nativeOptions := []upstream.Option{}
 	if config.AddSource {
 		nativeOptions = append(nativeOptions, upstream.AddCaller(), upstream.AddCallerSkip(1))
 	}
-	backend := upstream.New(zapcore.NewCore(encoder, zapcore.Lock(writer), level), nativeOptions...)
-	return &Logger{log: backend, output: output, managed: true}, nil
+	backend := upstream.New(zapcore.NewTee(cores...), nativeOptions...)
+	return &Logger{log: backend, output: output, owned: owned, managed: true}, nil
 }
 
 // Close flushes a New-created logger and closes its owned file once. Wrapped
@@ -159,8 +219,8 @@ func (l *Logger) Close() error {
 			return
 		}
 		l.closeErr = l.log.Sync()
-		if l.output != nil {
-			l.closeErr = errors.Join(l.closeErr, l.output.Close())
+		for _, output := range l.owned {
+			l.closeErr = errors.Join(l.closeErr, output.Close())
 		}
 	})
 	return l.closeErr
