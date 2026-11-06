@@ -2,5 +2,9 @@ github.com/golang-jwt/jwt/v5 v5.3.1 h1:kYf81DTWFe7t+1VvL7eS+jKFVWaUnK9cB1qbwn63Y
 github.com/golang-jwt/jwt/v5 v5.3.1/go.mod h1:fxCRLWMO43lRc8nhHWY6LGqRcf+1gQWArsqaEUEa5bE=
 github.com/nostosx/servex v1.7.0 h1:1R56qmZlNxmSi/YWoSKYzLgpNeraku1opoX9XZuqUKs=
 github.com/nostosx/servex v1.7.0/go.mod h1:tOSGFq4M6GVGGsm7SHTNd8SGCr0Kd3YsJ+9abwAA/Cw=
-github.com/nostosx/servex-contrib/middleware v1.5.0 h1:90/bif6vNNDP5lz7sYUL5jD7TZoPwEgMivkvs1vvCps=
-github.com/nostosx/servex-contrib/middleware v1.5.0/go.mod h1:FbMDCYC08FKeeTfCt/rGQYz9LxPrs2AL3Xw5dJO0ZuY=
+github.com/nostosx/servex-contrib/middleware v1.6.0 h1:DF7fkR0ItFT8E7KS2CvCdTUE6te0aPjAjMV5p/+HS1k=
+github.com/nostosx/servex-contrib/middleware v1.6.0/go.mod h1:2Mz7W93t+KfmyjSoJKGP3TDHc0WyeMcbbsJ0OrsRvn4=
+github.com/nostosx/servex-contrib/observability/metrics/noop v1.0.0 h1:hQuwESLTN+oKWQTIYjYIx0beo/xXBPXAgVhGIP8/qWg=
+github.com/nostosx/servex-contrib/observability/metrics/noop v1.0.0/go.mod h1:53wdV373T/YhA3+f5iyCjoP5ZffQlqyrnaluNa2M3uY=
+github.com/nostosx/servex-contrib/observability/tracing/noop v1.0.0 h1:Q47EASO5zq2M5lkVOZC88Ws556rWJEeKJV/4osw/aZo=
+github.com/nostosx/servex-contrib/observability/tracing/noop v1.0.0/go.mod h1:0osJq9AJiTLEHzMIkq+NjJBibIF+e8q8C61X/I+7sRM=
