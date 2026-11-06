@@ -1,6 +1,10 @@
-# s3
+# storage/s3
 
-**v1.0.0 (2026-10-31).** General object storage using the official AWS SDK for Go v2:
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
+General object storage using the official AWS SDK for Go v2:
 service/s3 v1.114.6, aws v1.47.5. Go 1.27.3; MIT. This is independent of
 agentx-contrib/s3, which loads RAG documents rather than providing object CRUD.
 
