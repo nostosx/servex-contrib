@@ -1,5 +1,9 @@
 # config/etcd
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/config/etcd` provides a servex
 `config.Source` and `config.Watchable` backed by
 [etcd](https://github.com/etcd-io/etcd) v3.
@@ -12,23 +16,10 @@
   change is missed; all events of one transaction produce one notification.
 - The client is owned by the caller and never closed by the Source.
 
-## Install
-
-Requires Go 1.27.3. Uses published servex v1.4.0.
-
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/config/etcd@v1.2.0
-```
-
-The example version corresponds to the tag `config/etcd/v1.2.0`;
-see [module versioning](../../README.md#versioning).
-
 ## Usage
 
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
+The complete programs below use the current source API. Use matching peer
+sources during development; install real module versions after publication.
 
 Start a dedicated etcd v3 server at `127.0.0.1:2379` and seed the example's
 prefix with JSON objects using `etcdctl`:
@@ -119,13 +110,5 @@ SERVEX_IT_ETCD_ENDPOINTS=127.0.0.1:2379 GOWORK=off go test -race -count=1 -tags 
 
 Licensed under the [MIT License](../../LICENSE).
 
-Configuration-engine examples use config/viper v1.0.0 and servex v1.4.0.
+Configuration-engine examples use config/viper v1.0.0 and servex v1.7.0.
 Earlier releases keep their historical API.
-
-## Release
-
-Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/config/etcd@v1.2.0
-```

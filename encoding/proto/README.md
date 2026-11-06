@@ -1,30 +1,21 @@
 # encoding/proto
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/encoding/proto` provides `Codec`, a servex
 `encoding.Codec` named `proto` that marshals Protocol Buffers messages with
 [google.golang.org/protobuf/proto](https://pkg.go.dev/google.golang.org/protobuf/proto).
 Values must implement `proto.Message`; anything else yields an
 `errorx.InvalidArgument` error. The codec is safe for concurrent use.
 
-## Install
-
-Requires Go 1.27.3. Uses published servex v1.4.0.
-
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/encoding/proto@v1.1.0 github.com/nostosx/servex@v1.4.0
-```
-
-The example version corresponds to the tag `encoding/proto/v1.1.0`;
-see [module versioning](../../README.md#versioning).
-
 ## Usage
 
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
+The complete programs below use the current source API. Use matching peer
+sources during development; install real module versions after publication.
 
-Register the codec with the core `httpx` server and client. The server picks
+Register the codec with the contrib `httpx` server and client. The server picks
 it for requests and responses whose media type is `application/x-protobuf`
 or `application/proto`; JSON stays available. This example configures the
 server and client and runs a direct codec round trip. It does not start the
@@ -40,13 +31,14 @@ import (
 
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
+	servexhttp "github.com/nostosx/servex/transport/http"
 	"github.com/nostosx/servex-contrib/encoding/proto"
 	"github.com/nostosx/servex-contrib/transport/httpx"
 )
 
 func main() {
 	srv := httpx.NewServer(httpx.WithAddress(":8000"), httpx.WithCodecs(proto.Codec))
-	httpx.RouteFunc(srv, "POST /v1/echo", func(_ context.Context, req *wrapperspb.StringValue) (*wrapperspb.StringValue, error) {
+	servexhttp.RouteFunc(srv, "POST /v1/echo", func(_ context.Context, req *wrapperspb.StringValue) (*wrapperspb.StringValue, error) {
 		return req, nil
 	})
 
@@ -56,7 +48,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer client.Close()
-	_ = httpx.Call[wrapperspb.StringValue](client, "POST", "/v1/echo")
+	_ = servexhttp.Call[wrapperspb.StringValue, wrapperspb.StringValue](client, "POST", "/v1/echo")
 
 	// The codec can also be used directly.
 	data, err := proto.Codec.Marshal(wrapperspb.String("hello"))
@@ -82,11 +74,3 @@ There are no integration tests.
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
-
-## Release
-
-Version v1.1.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/encoding/proto@v1.1.0
-```

@@ -3,6 +3,9 @@ package lifecycle
 import (
 	"context"
 	"errors"
+	"runtime"
+	"slices"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
@@ -32,6 +35,70 @@ func TestAssemblyFailureAndOwnership(t *testing.T) {
 	borrowed, _ := New("borrowed", 42, Operations[int]{})
 	if err := borrowed.Stop(t.Context()); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestInterruptedStartupReleasesAllResources(t *testing.T) {
+	wantPanic := errors.New("startup panic")
+	for _, tt := range []struct {
+		name      string
+		abort     func()
+		wantPanic any
+	}{
+		{name: "panic", abort: func() { panic(wantPanic) }, wantPanic: wantPanic},
+		{name: "goexit", abort: runtime.Goexit},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				scope, err := NewScope(time.Second)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var closed []string
+				for _, name := range []string{"one", "two", "three"} {
+					resource, err := New(name, name, Operations[string]{
+						Check: func(context.Context, string) error {
+							if name == "two" {
+								tt.abort()
+							}
+							return nil
+						},
+						Close: func(_ context.Context, value string) error {
+							closed = append(closed, value)
+							return nil
+						},
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := scope.Add(resource); err != nil {
+						t.Fatal(err)
+					}
+				}
+				var recovered any
+				returned := false
+				done := make(chan struct{})
+				go func() {
+					defer close(done)
+					defer func() { recovered = recover() }()
+					_ = scope.Start(t.Context())
+					returned = true
+				}()
+				<-done
+				if returned || recovered != tt.wantPanic {
+					t.Fatalf("startup interruption changed: returned=%v panic=%v", returned, recovered)
+				}
+				if !slices.Equal(closed, []string{"three", "two", "one"}) {
+					t.Fatalf("constructed resources not released in reverse: %v", closed)
+				}
+				if err := scope.Check(t.Context()); !errors.Is(err, ErrNotReady) {
+					t.Fatalf("interrupted scope reported ready: %v", err)
+				}
+				if err := scope.Stop(t.Context()); err != nil {
+					t.Fatalf("repeated cleanup failed: %v", err)
+				}
+			})
+		})
 	}
 }
 
@@ -83,9 +150,13 @@ func TestCanceledStartupReleasesCreatedResourcesAndFinish(t *testing.T) {
 }
 
 func TestStopWaitsForStartupBeforeClosing(t *testing.T) {
+	ctx, cancelOperation := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancelOperation()
 	scope, _ := NewScope(time.Second)
 	entered := make(chan struct{})
 	finishStart := make(chan struct{})
+	releaseStart := sync.OnceFunc(func() { close(finishStart) })
+	defer releaseStart()
 	closed := make(chan string, 2)
 	var secondStarts atomic.Int32
 	first := app.NewHook("one", func(context.Context) error { close(entered); <-finishStart; return nil }, func(context.Context) error { closed <- "one"; return nil })
@@ -97,8 +168,13 @@ func TestStopWaitsForStartupBeforeClosing(t *testing.T) {
 		t.Fatal(err)
 	}
 	startResult := make(chan error, 1)
-	go func() { startResult <- scope.Start(t.Context()) }()
-	<-entered
+	startupDone := make(chan struct{})
+	go func() {
+		defer close(startupDone)
+		startResult <- scope.Start(ctx)
+	}()
+	t.Cleanup(func() { releaseStart(); awaitLifecycle(t, startupDone) })
+	awaitLifecycle(t, entered)
 	canceled, cancel := context.WithCancel(t.Context())
 	cancel()
 	if err := scope.Stop(canceled); !errors.Is(err, context.Canceled) {
@@ -109,20 +185,20 @@ func TestStopWaitsForStartupBeforeClosing(t *testing.T) {
 		t.Fatal("closed during startup", name)
 	default:
 	}
-	close(finishStart)
-	if err := <-startResult; !errors.Is(err, context.Canceled) {
+	releaseStart()
+	if err := awaitLifecycle(t, startResult); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
-	if err := scope.Stop(t.Context()); err != nil {
+	if err := scope.Stop(ctx); err != nil {
 		t.Fatal(err)
 	}
 	if secondStarts.Load() != 0 {
 		t.Fatal("started another resource after stop requested")
 	}
-	if got := <-closed; got != "two" {
+	if got := awaitLifecycle(t, closed); got != "two" {
 		t.Fatal(got)
 	}
-	if got := <-closed; got != "one" {
+	if got := awaitLifecycle(t, closed); got != "one" {
 		t.Fatal(got)
 	}
 }
@@ -186,9 +262,13 @@ func TestStopDeadlineAndLaterJoinPreserveDependencyOrder(t *testing.T) {
 }
 
 func TestCheckAdmittedBeforeStopCanOverlapButNeverReturnReady(t *testing.T) {
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
 	scope, _ := NewScope(time.Second)
 	checking := make(chan struct{})
 	finishCheck := make(chan struct{})
+	releaseCheck := sync.OnceFunc(func() { close(finishCheck) })
+	defer releaseCheck()
 	var probes atomic.Int32
 	resource, _ := New("db", 0, Operations[int]{Check: func(context.Context, int) error {
 		if probes.Add(1) > 1 {
@@ -200,18 +280,35 @@ func TestCheckAdmittedBeforeStopCanOverlapButNeverReturnReady(t *testing.T) {
 	if err := scope.Add(resource); err != nil {
 		t.Fatal(err)
 	}
-	if err := scope.Start(t.Context()); err != nil {
+	if err := scope.Start(ctx); err != nil {
 		t.Fatal(err)
 	}
 	result := make(chan error, 1)
-	go func() { result <- scope.Check(t.Context()) }()
-	<-checking
-	if err := scope.Stop(t.Context()); err != nil {
+	checkDone := make(chan struct{})
+	go func() {
+		defer close(checkDone)
+		result <- scope.Check(ctx)
+	}()
+	t.Cleanup(func() { releaseCheck(); awaitLifecycle(t, checkDone) })
+	awaitLifecycle(t, checking)
+	if err := scope.Stop(ctx); err != nil {
 		t.Fatal(err)
 	}
-	close(finishCheck)
-	if err := <-result; !errors.Is(err, ErrStopped) && !errors.Is(err, ErrNotReady) {
+	releaseCheck()
+	if err := awaitLifecycle(t, result); !errors.Is(err, ErrStopped) && !errors.Is(err, ErrNotReady) {
 		t.Fatal("reported ready after close", err)
+	}
+}
+
+func awaitLifecycle[T any](t *testing.T, result <-chan T) T {
+	t.Helper()
+	select {
+	case value := <-result:
+		return value
+	case <-time.After(5 * time.Second):
+		t.Fatal("lifecycle handshake did not finish")
+		var zero T
+		return zero
 	}
 }
 

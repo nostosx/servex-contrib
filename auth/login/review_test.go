@@ -22,9 +22,9 @@ import (
 	sdk "golang.org/x/oauth2"
 
 	"github.com/nostosx/servex-contrib/auth/oauth2"
-	"github.com/nostosx/servex-contrib/auth/oauth2redis"
+	oauth2redis "github.com/nostosx/servex-contrib/auth/oauth2redis"
 	"github.com/nostosx/servex-contrib/auth/oidc"
-	"github.com/nostosx/servex-contrib/middleware/auth"
+	"github.com/nostosx/servex-contrib/middleware/endpoint"
 	"github.com/nostosx/servex-contrib/session"
 	sessionredis "github.com/nostosx/servex-contrib/session/redis"
 )
@@ -145,7 +145,7 @@ func newReviewLogin(t *testing.T) *reviewLogin {
 		mux.HandleFunc("GET /callback", manager.Callback)
 		mux.HandleFunc("POST /logout", manager.Logout)
 		mux.Handle("GET /private", manager.Require(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			principal, _ := auth.FromContext[reviewPrincipal](r.Context())
+			principal, _ := endpoint.PrincipalFromContext[reviewPrincipal](r.Context())
 			_, _ = io.WriteString(w, principal.ID)
 		})))
 		fixture.handlers[index] = manager.Middleware(mux)

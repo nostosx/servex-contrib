@@ -3,9 +3,9 @@ module github.com/nostosx/servex-contrib/config/etcd
 go 1.27.3
 
 require (
-	github.com/nostosx/servex v1.4.0
-	github.com/nostosx/servex-contrib/config/viper v1.0.0
-	github.com/nostosx/servex-contrib/encoding/json v1.0.0
+	github.com/nostosx/servex v1.7.0
+	github.com/nostosx/servex-contrib/config/viper v1.0.2
+	github.com/nostosx/servex-contrib/encoding/json v1.0.1
 	go.etcd.io/etcd/client/v3 v3.7.2
 	go.etcd.io/etcd/server/v3 v3.7.2
 )
@@ -67,8 +67,8 @@ require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/crypto v0.57.0 // indirect
 	golang.org/x/net v0.60.0 // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.42.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.15.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect

@@ -322,8 +322,8 @@ func TestDiscoveryUpdatesFilteredByScheme(t *testing.T) {
 		// After Close, updates are no longer applied.
 		register(t, reg, "d", "http://10.0.0.4:80")
 		synctest.Wait()
-		if _, err := call(); !errors.Is(err, selector.ErrNoAvailable) {
-			t.Fatalf("err after Close = %v, want ErrNoAvailable", err)
+		if _, err := call(); errorx.CodeOf(err) != errorx.FailedPrecondition || errorx.IsRetryable(err) {
+			t.Fatalf("err after Close = %v, want non-retryable FailedPrecondition", err)
 		}
 	})
 }

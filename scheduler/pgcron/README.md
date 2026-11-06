@@ -1,4 +1,8 @@
-# pg_cron schedule management (v1.0.0)
+# scheduler/pgcron
+
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
 
 Explicit SQL schedule management using a caller-owned *sql.DB. No constructor
 I/O, extension installation, Go callback execution, or pool ownership.
@@ -29,7 +33,7 @@ execution before enabling it. The acceptance suite checks named update,
 persistence, prefix isolation and idempotent removal. It does not claim Go
 callbacks run inside PostgreSQL or exactly-once business effects.
 
-See [PostgreSQL integration](../../POSTGRESQL.md) for unreleased dependency
+See [PostgreSQL integration](../../storage/database/postgres/README.md#integration-fixtures) for unreleased dependency
 setup and the disposable real-server fixture.
 
 Qualified prefix:name is limited to 63 bytes; prefix leaves at least one byte for a name. Oversized names fail before SQL, avoiding PostgreSQL name truncation.

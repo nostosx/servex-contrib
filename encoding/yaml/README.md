@@ -1,5 +1,9 @@
 # encoding/yaml
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/encoding/yaml` provides `Codec`, a servex
 `encoding.Codec` named `yaml` backed by
 [go.yaml.in/yaml/v3](https://github.com/yaml/go-yaml).
@@ -9,19 +13,6 @@ Mappings decoded into dynamically typed values (`any`, `map[string]any`,
 `fmt.Sprint` and timestamps become RFC 3339 strings. Decoded trees therefore
 merge with those of other configuration sources. The codec is safe for
 concurrent use.
-
-## Install
-
-Requires Go 1.27.3. Uses published servex v1.4.0.
-
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/encoding/yaml@v1.2.0
-```
-
-The example version corresponds to the tag `encoding/yaml/v1.2.0`;
-see [module versioning](../../README.md#versioning).
 
 ## Usage
 
@@ -84,13 +75,5 @@ There are no integration tests.
 
 Licensed under the [MIT License](../../LICENSE).
 
-Configuration-engine examples use config/viper v1.0.0 and servex v1.4.0.
+Configuration-engine examples use config/viper v1.0.0 and servex v1.7.0.
 Earlier releases keep their historical API.
-
-## Release
-
-Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/encoding/yaml@v1.2.0
-```

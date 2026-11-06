@@ -1,5 +1,9 @@
 # discovery/nacos
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/discovery/nacos` implements the servex
 `discovery.Registrar` and `discovery.Discoverer` contracts on the
 [Nacos](https://github.com/nacos-group/nacos-sdk-go) naming service.
@@ -21,23 +25,10 @@
   service that became empty.
 - The client is owned by the caller and is not closed by the Registry.
 
-## Install
-
-Requires Go 1.27.3. Uses published servex v1.4.0 and kitx v1.0.0.
-
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/discovery/nacos@v1.2.0
-```
-
-The example version corresponds to the tag `discovery/nacos/v1.2.0`;
-see [module versioning](../../README.md#versioning).
-
 ## Usage
 
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
+The complete programs below use the current source API. Use matching peer
+sources during development; install real module versions after publication.
 
 Start a dedicated Nacos 2 standalone server with authentication disabled for
 local testing. Expose HTTP port `8848` and client gRPC port `9848`. The SDK
@@ -118,11 +109,3 @@ HTTP port + 1000 and can be set with `SERVEX_IT_NACOS_GRPC_PORT`.
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
-
-## Release
-
-Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/discovery/nacos@v1.2.0
-```

@@ -30,7 +30,11 @@ type options struct {
 	onError      func(http.ResponseWriter, *http.Request, error)
 }
 
+// WithCookieName overrides the host-only session cookie name; New validates it.
 func WithCookieName(name string) Option { return func(o *options) { o.cookie.Name = name } }
+
+// WithLifetime sets the positive absolute session lifetime. Activity can extend
+// idle expiry but cannot extend this deadline.
 func WithLifetime(lifetime time.Duration) Option {
 	return func(o *options) { o.lifetime = lifetime }
 }
@@ -40,13 +44,19 @@ func WithIdleTimeout(timeout time.Duration) Option {
 	return func(o *options) { o.idleTimeout = timeout }
 }
 
+// WithSameSite selects Lax, Strict or None. None requires secure cookies.
 func WithSameSite(mode http.SameSite) Option {
 	return func(o *options) { o.cookie.SameSite = mode }
 }
 
 // WithInsecureCookies permits HTTP cookies for local development.
-func WithInsecureCookies() Option      { return func(o *options) { o.cookie.Secure = false } }
-func WithPersistentCookie() Option     { return func(o *options) { o.persistent = true } }
+func WithInsecureCookies() Option { return func(o *options) { o.cookie.Secure = false } }
+
+// WithPersistentCookie adds browser cookie expiry; it does not change server-side
+// session expiry or the persistence guarantees of the injected Store.
+func WithPersistentCookie() Option { return func(o *options) { o.persistent = true } }
+
+// WithMaxDataBytes sets the positive JSON data limit enforced before persistence.
 func WithMaxDataBytes(size int) Option { return func(o *options) { o.maxDataBytes = size } }
 
 // WithErrorHandler sets an application-owned error response/logging callback.

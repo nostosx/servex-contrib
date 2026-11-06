@@ -1,5 +1,9 @@
 # config/nacos
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/config/nacos` provides a servex
 `config.Source` and `config.Watchable` backed by the
 [Nacos](https://github.com/nacos-group/nacos-sdk-go) configuration service.
@@ -14,23 +18,10 @@
   configuration. Client calls cannot be canceled and are bounded by the
   client's own timeout.
 
-## Install
-
-Requires Go 1.27.3. Uses published servex v1.4.0.
-
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/config/nacos@v1.2.0
-```
-
-The example version corresponds to the tag `config/nacos/v1.2.0`;
-see [module versioning](../../README.md#versioning).
-
 ## Usage
 
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
+The complete programs below use the current source API. Use matching peer
+sources during development; install real module versions after publication.
 
 Start a dedicated Nacos 2 standalone server with authentication disabled
 for local testing. Expose HTTP port `8848` and client gRPC port `9848`.
@@ -122,13 +113,5 @@ HTTP port + 1000 and can be set with `SERVEX_IT_NACOS_GRPC_PORT`.
 
 Licensed under the [MIT License](../../LICENSE).
 
-Configuration-engine examples use config/viper v1.0.0 and servex v1.4.0.
+Configuration-engine examples use config/viper v1.0.0 and servex v1.7.0.
 Earlier releases keep their historical API.
-
-## Release
-
-Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/config/nacos@v1.2.0
-```

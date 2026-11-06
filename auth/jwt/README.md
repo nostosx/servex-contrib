@@ -1,13 +1,15 @@
 # auth/jwt
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/auth/jwt` adapts
 [`github.com/golang-jwt/jwt/v5`](https://github.com/golang-jwt/jwt) v5.3.1 for
 application-owned JWT signing and typed verification. Cryptography, JSON claims
 decoding and standard claim validation are delegated to the SDK. Production
 code imports only the SDK and standard library; middleware composition tests
-also require published servex and middleware v1.4.0.
-
-This module is released as v1.0.0 and requires Go 1.27.3. Install the independent v1.0.0 module. Its license and the SDK's license are MIT.
+use servex v1.7.0 and matching middleware sources.
 
 ## API
 
@@ -16,7 +18,7 @@ This module is released as v1.0.0 and requires Go 1.27.3. Install the independen
 | `NewSigner(SignerConfig)` | Selects an explicit algorithm, signing key and optional key ID |
 | `signer.Sign(ctx, claims)` | Signs application-supplied SDK claims without changing them |
 | `NewVerifier(VerifierConfig, newClaims)` | Configures one algorithm, trusted issuer, expected audience and context-aware key callback |
-| `verifier.Verify(ctx, raw)` | Returns typed claims only after signature and claims verification; directly usable with `auth.New` |
+| `verifier.Verify(ctx, raw)` | Returns typed claims only after signature and claims verification; directly usable with `endpointmw.Authentication` |
 
 Supported algorithms: HS256/384/512, RS256/384/512, PS256/384/512,
 ES256/384/512 and EdDSA. Each verifier accepts exactly one algorithm; there is
@@ -54,9 +56,9 @@ import (
 
     sdkjwt "github.com/golang-jwt/jwt/v5"
 
-    "github.com/nostosx/servex/metadata"
+    endpointmw "github.com/nostosx/servex-contrib/middleware/endpoint"
     "github.com/nostosx/servex-contrib/auth/jwt"
-    "github.com/nostosx/servex-contrib/middleware/auth"
+    "github.com/nostosx/servex/metadata"
 )
 
 type Claims struct {
@@ -98,8 +100,8 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    handler := auth.New(verifier.Verify)(func(ctx context.Context, _ any) (any, error) {
-        principal, _ := auth.FromContext[*Claims](ctx)
+    handler := endpointmw.Authentication(verifier.Verify)(func(ctx context.Context, _ any) (any, error) {
+        principal, _ := endpointmw.PrincipalFromContext[*Claims](ctx)
         return principal.Subject + " " + principal.Role, nil
     })
     // A servex transport populates this metadata from the incoming request.
@@ -114,10 +116,10 @@ func main() {
 }
 ```
 
-In an HTTP application, compose `auth.New(verifier.Verify)` with
+In an HTTP application, compose `endpointmw.Authentication(verifier.Verify)` with
 `httpx.WithMiddleware`. For gRPC streams, opt in through
 `grpcx.WithStreamMiddleware`. The handler reads the exact factory result type
-with `auth.FromContext[*Claims]`. Ordinary verification errors become
+with `endpointmw.PrincipalFromContext[*Claims]`. Ordinary verification errors become
 `Unauthenticated`; application-provided `errorx` errors retain their status.
 
 ## Ownership and validation
@@ -153,7 +155,7 @@ logs tokens or key material.
 From the repository root:
 
 ```sh
-task check lint vulncheck MODULES='auth/jwt'
+bash .github/scripts/check-source.sh check lint vulncheck MODULES='auth/jwt'
 ```
 
 Tests generate local keys and need no services. They exercise all supported

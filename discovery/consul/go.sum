@@ -102,10 +102,8 @@ github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3Rllmb
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/nostosx/kitx v1.0.0 h1:EMfdh57DXbW+FPZD9/e+Mrxju1qx6EyEjrotpR+nso0=
 github.com/nostosx/kitx v1.0.0/go.mod h1:zNZAYv7ZyA2UkijHptpgnsSQKMmWIHp9E0e2TGBgDZE=
-github.com/nostosx/servex v1.4.0 h1:0B8SjcbBuIxAkygTsbZKFtBZ7QJ7k4od8s3G5xWqpWc=
-github.com/nostosx/servex v1.4.0/go.mod h1:tOSGFq4M6GVGGsm7SHTNd8SGCr0Kd3YsJ+9abwAA/Cw=
-github.com/nostosx/servex-contrib/discovery/memory v1.0.0 h1:M+cokicLQUKkpxNSai/jLEvGeDaKsgB3i9e8q5C27h0=
-github.com/nostosx/servex-contrib/discovery/memory v1.0.0/go.mod h1:RlIgYz6qS8hDTF9TJx5A9KiVYMgDw2wAH0IEqP8p0YU=
+github.com/nostosx/servex v1.7.0 h1:1R56qmZlNxmSi/YWoSKYzLgpNeraku1opoX9XZuqUKs=
+github.com/nostosx/servex v1.7.0/go.mod h1:tOSGFq4M6GVGGsm7SHTNd8SGCr0Kd3YsJ+9abwAA/Cw=
 github.com/nostosx/servex-contrib/encoding/json v1.0.0 h1:da89iNLzSeERrNL7FmU60z6u/QkmPUeSPCP/AIA02vg=
 github.com/nostosx/servex-contrib/encoding/json v1.0.0/go.mod h1:cpQdP+vdLba69lDsEK7fphFoE1+m+51gUi9tTMWJBgA=
 github.com/nostosx/servex-contrib/selector v1.2.0 h1:9eu6AjWvr42OGSmrr3w3xBuCaQFv0BFoT5WojT9Qa68=

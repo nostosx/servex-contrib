@@ -1,6 +1,10 @@
-# password
+# auth/password
 
-**v1.0.0 (2026-10-31).** Argon2id password hashing using the Go project's official
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
+Argon2id password hashing using the Go project's official
 `golang.org/x/crypto/argon2` v0.58.0. Go 1.27.3; MIT. No user database or login
 handler is imposed. Algorithms come from x/crypto; PHC encoding is local glue.
 
@@ -59,6 +63,12 @@ owns password buffers; the adapter clears its derived-key buffers only.
 
 ## Checks
 
-From the repository root: `task check lint vulncheck MODULES=auth/password`.
+From the repository root:
+
+```sh
+bash .github/scripts/check-source.sh check lint vulncheck MODULES=auth/password
+```
+
 Tests cover matching, mismatch, fresh salts, policy upgrades, malformed/excessive
-parameters and cancellation. Install this module at v1.0.0.
+parameters and cancellation. This source revision remains unreleased; the
+published module path is unchanged.

@@ -1,6 +1,6 @@
-// Package do implements servex/di with samber/do/v2 and integrates container
-// cleanup with servex/app. New returns a container usable through the core
-// typed DI helpers and as an application hook. Hook also bridges an existing
-// native do.Injector. Keep registration and resolution at the composition root;
-// business constructors receive ordinary dependencies.
+// Package do bridges native samber/do/v2 injectors to servex application
+// lifecycle and health checks. Use samber/do directly for registration and
+// resolution; this package defines no container or dependency lookup API.
+// Keep the injector at the composition root and pass ordinary dependencies
+// to business constructors.
 package do

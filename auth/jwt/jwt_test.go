@@ -19,7 +19,7 @@ import (
 	sdkjwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/nostosx/servex-contrib/auth/jwt"
-	"github.com/nostosx/servex-contrib/middleware/auth"
+	endpointmw "github.com/nostosx/servex-contrib/middleware/endpoint"
 	"github.com/nostosx/servex/endpoint"
 	"github.com/nostosx/servex/errorx"
 	"github.com/nostosx/servex/metadata"
@@ -438,9 +438,9 @@ func TestAuthMiddlewareComposition(t *testing.T) {
 	key := []byte(strings.Repeat("s", 32))
 	v := verifier(t, config("HS256", key))
 	calls := 0
-	handler := auth.New(v.Verify)(endpoint.Endpoint(func(ctx context.Context, _ any) (any, error) {
+	handler := endpointmw.Authentication(v.Verify)(endpoint.Endpoint(func(ctx context.Context, _ any) (any, error) {
 		calls++
-		p, ok := auth.FromContext[*claims](ctx)
+		p, ok := endpointmw.PrincipalFromContext[*claims](ctx)
 		if !ok || p.Subject != "user-1" || p.Role != "reader" {
 			t.Fatalf("missing principal: %v", p)
 		}
@@ -464,7 +464,7 @@ func TestAuthMiddlewareComposition(t *testing.T) {
 	keyFailure := errorx.New(errorx.Unavailable, "KEY_UNAVAILABLE", "key lookup unavailable")
 	cfg := config("HS256", nil)
 	cfg.KeyFunc = func(context.Context, *sdkjwt.Token) (any, error) { return nil, keyFailure }
-	failing := auth.New(verifier(t, cfg).Verify)(func(context.Context, any) (any, error) {
+	failing := endpointmw.Authentication(verifier(t, cfg).Verify)(func(context.Context, any) (any, error) {
 		t.Fatal("handler called after key lookup failure")
 		return nil, nil
 	})

@@ -7,7 +7,7 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/nostosx/servex-contrib/database/postgres"
+	"github.com/nostosx/servex-contrib/storage/database/postgres"
 )
 
 type Scheduler struct {

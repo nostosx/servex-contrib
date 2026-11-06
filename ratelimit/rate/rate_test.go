@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	mwratelimit "github.com/nostosx/servex-contrib/middleware/ratelimit"
+	"github.com/nostosx/servex-contrib/middleware/endpoint"
 	"github.com/nostosx/servex-contrib/ratelimit/rate"
 	"github.com/nostosx/servex/errorx"
 )
 
-var _ mwratelimit.Limiter = (*rate.Limiter)(nil)
+var _ endpoint.RateLimiter = (*rate.Limiter)(nil)
 
 func TestBurstRefillAndKeyIsolation(t *testing.T) {
 	now := time.Unix(1000, 0)
@@ -66,7 +66,7 @@ func TestMiddlewareComposition(t *testing.T) {
 		t.Fatal(err)
 	}
 	calls := 0
-	ep := mwratelimit.New(l, mwratelimit.WithKey(func(_ context.Context, req any) string { return req.(string) }))(func(context.Context, any) (any, error) {
+	ep := endpoint.RateLimit(l, endpoint.WithRateLimitKey(func(_ context.Context, req any) string { return req.(string) }))(func(context.Context, any) (any, error) {
 		calls++
 		return "ok", nil
 	})

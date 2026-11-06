@@ -1,5 +1,5 @@
 // Package login composes OAuth2/OIDC and browser sessions around an application
-// principal. Password, JWT and browser handlers can share auth.FromContext[P].
+// principal. Password, JWT and browser handlers share endpoint.PrincipalFromContext[P].
 package login
 
 import (
@@ -15,7 +15,7 @@ import (
 
 	"github.com/nostosx/servex-contrib/auth/oauth2"
 	"github.com/nostosx/servex-contrib/auth/oidc"
-	"github.com/nostosx/servex-contrib/middleware/auth"
+	"github.com/nostosx/servex-contrib/middleware/endpoint"
 	"github.com/nostosx/servex-contrib/session"
 )
 
@@ -27,6 +27,9 @@ type OIDC[P any] struct {
 	Resolve  func(context.Context, *oidc.IDToken) (P, error)
 }
 
+// Config selects application principal validation and optional OIDC login.
+// SuccessURL must be a local absolute path; the default is /. HTTPClient is
+// copied at construction and receives a ten-second timeout when none is set.
 type Config[P any] struct {
 	SessionKey string
 	Valid      func(P) bool
@@ -35,11 +38,15 @@ type Config[P any] struct {
 	HTTPClient *http.Client
 }
 
+// Manager restores application principals from sessions and coordinates login.
+// Its session store and provider clients remain caller-owned.
 type Manager[P any] struct {
 	sessions *session.Manager
 	config   Config[P]
 }
 
+// New requires a session manager and principal validator. OIDC is optional;
+// when supplied, its client, verifier and application resolver must all be set.
 func New[P any](sessions *session.Manager, config Config[P]) (*Manager[P], error) {
 	if sessions == nil || config.Valid == nil {
 		return nil, errors.New("login: session manager and principal validator required")
@@ -92,7 +99,7 @@ func (m *Manager[P]) Middleware(next http.Handler) http.Handler {
 				http.Error(w, "authentication required", http.StatusUnauthorized)
 				return
 			}
-			r = r.WithContext(auth.NewContext(r.Context(), principal))
+			r = r.WithContext(endpoint.NewPrincipalContext(r.Context(), principal))
 		}
 		next.ServeHTTP(w, r)
 	}))
@@ -118,6 +125,8 @@ func (m *Manager[P]) SignIn(ctx context.Context, principal P) error {
 	return current.Put(m.config.SessionKey, principal)
 }
 
+// SignOut destroys the whole current session. Call it before writing the response
+// so the session middleware can persist revocation and expire the browser cookie.
 func (m *Manager[P]) SignOut(ctx context.Context) error {
 	current, ok := session.FromContext(ctx)
 	if !ok {
@@ -126,9 +135,11 @@ func (m *Manager[P]) SignOut(ctx context.Context) error {
 	return current.Destroy()
 }
 
+// Require rejects requests without a valid application principal. Mount it inside
+// Middleware, which loads the session and installs the principal in the context.
 func (m *Manager[P]) Require(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		principal, ok := auth.FromContext[P](r.Context())
+		principal, ok := endpoint.PrincipalFromContext[P](r.Context())
 		if !ok || !m.config.Valid(principal) {
 			http.Error(w, "authentication required", http.StatusUnauthorized)
 			return
@@ -166,6 +177,9 @@ func (m *Manager[P]) Begin(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, authorization.URL, http.StatusFound)
 }
 
+// Callback handles a GET authorization-code response, verifies its session binding
+// and OIDC nonce, and signs in the resolved application principal before redirecting.
+// Mount it inside Middleware alongside Begin.
 func (m *Manager[P]) Callback(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -206,6 +220,8 @@ func (m *Manager[P]) Callback(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, m.config.SuccessURL, http.StatusSeeOther)
 }
 
+// Logout handles POST session revocation and returns 204 on success. Mount it
+// inside Middleware and apply the application's CSRF policy to browser requests.
 func (m *Manager[P]) Logout(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)

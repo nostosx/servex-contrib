@@ -1,8 +1,12 @@
-# Browser login composition
+# auth/login
+
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
 
 `login` combines OAuth2, OIDC and the owned Session implementation around an
 application-defined principal. Browser and JWT handlers can both read that type
-through `middleware/auth.FromContext[P]`. Password verification stays in the
+through `middleware/endpoint.PrincipalFromContext[P]`. Password verification stays in the
 application; after verification call `SignIn`.
 
 Configure one Session Manager and one reusable login Manager in `app.go`:
@@ -19,9 +23,10 @@ manager, err := login.New(sessions, login.Config[Principal]{
 })
 ```
 
-This is an assembly fragment. The complete application, including configuration,
-password authentication and resource cleanup, lives in
-[`servex-examples/services/user`](https://github.com/nostosx/servex-examples/tree/main/services/user).
+This is an assembly fragment. Existing
+[`servex-examples/services/user`](https://github.com/nostosx/servex-examples/tree/main/services/user)
+shows application configuration, password authentication and resource cleanup;
+its imports and dependencies require a separate migration to the current APIs.
 `Resolve` receives a verified ID token and maps issuer/subject to an application
 account with its own access policy. Omit `OIDC` for password-only applications.
 This module does not store access/refresh tokens in the session.
@@ -47,12 +52,12 @@ in production. Mount CORS and standard-library `http.CrossOriginProtection`
 outside Session/login middleware with explicit trusted origins. The application
 still owns authorization and account mapping.
 
-Validate this module and its published peers from the contrib root:
+Validate this module and its matching unpublished peers from the contrib root:
 
 ```sh
-MODULES='auth/login auth/oauth2redis' task check lint vulncheck
+bash .github/scripts/check-source.sh check lint vulncheck \
+  MODULES='auth/login auth/oauth2redis'
 ```
 
-Requirements and checksums resolve through the public Go proxy without source
-replacements. Tests use a locally signed OIDC/JWKS fixture and memory/miniredis
-backends; they do not establish external provider acceptance.
+Tests use a locally signed OIDC/JWKS fixture and memory/miniredis backends;
+they do not establish external provider acceptance.

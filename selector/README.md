@@ -1,7 +1,11 @@
 # selector
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/selector` is one module holding node selection
-`selector.Selector` implementations. It depends only on the standard library,
+`selector.Selector` implementations. It depends only on the standard library and
 the published servex contracts.
 
 | Package | Constructor | Strategy |
@@ -9,6 +13,10 @@ the published servex contracts.
 | `random` | `New()` | Weighted random selection, with nonpositive weights treated as 1. |
 | `roundrobin` | `New()` | Smooth weighted round-robin (the nginx algorithm): picks follow `Node.Weight` exactly over every cycle and are spread evenly instead of in bursts. |
 | `p2c` | `New(opts...)` | Power of Two Choices: samples two nodes and picks the one with the lower load, estimated from a peak EWMA of latency and the number of in-flight calls. Outcomes reported through `Done` update the estimate; failures add a latency penalty so failing nodes are avoided until they recover. |
+
+`random.New()` uses `math/rand/v2` and supports concurrent calls. An empty node
+set returns `selector.ErrNoAvailable`. Its successful `Done` callback is non-nil
+and has no state to update.
 
 All honor `Node.Weight` (values `<= 0` count as 1), which `servex-contrib/transport/client.Client`
 copies from `discovery.Instance.Weight` since servex v1.2.0; registries such
@@ -22,22 +30,10 @@ HTTP/gRPC adapters choose `random.New()` as their contrib default. Because
 selection is the innermost step of a client call, every retry selects again
 and every outcome is reported to the selector.
 
-## Install
-
-Requires Go 1.27.3 and servex v1.4.0. Version v1.2.0 includes the random package.
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/selector@v1.2.0
-```
-
-The example version corresponds to the tag `selector/v1.2.0`;
-see [module versioning](../README.md#versioning).
-
 ## Usage
 
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
+The complete programs below use the current source API. Use matching peer
+sources during development; install real module versions after publication.
 
 ```go
 package main
@@ -84,20 +80,12 @@ Failures are calls ending with `Unavailable`, `DeadlineExceeded`, `Internal`,
 
 ```sh
 GOWORK=off go test -race -count=1 ./...
-GOWORK=off go list -m all   # only this module, github.com/nostosx/servex and github.com/nostosx/kitx
+GOWORK=off go list -m all   # only this module and github.com/nostosx/servex
 ```
 
 Transport/discovery composition regressions live in the discovery/memory
-module, keeping this module's dependency boundary limited to core and kitx.
+module, keeping this module's dependency boundary limited to core.
 
 ## License
 
 Licensed under the [MIT License](../LICENSE).
-
-## Release
-
-Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/selector@v1.2.0
-```

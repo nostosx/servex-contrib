@@ -1,5 +1,9 @@
 # config/consul
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/config/consul` provides a servex
 `config.Source` and `config.Watchable` backed by the
 [Consul](https://github.com/hashicorp/consul) KV store.
@@ -14,23 +18,10 @@
 - The client is owned by the caller; datacenter, namespace, partition and token
   come from its configuration.
 
-## Install
-
-Requires Go 1.27.3. Uses published servex v1.4.0.
-
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/config/consul@v1.2.0
-```
-
-The example version corresponds to the tag `config/consul/v1.2.0`;
-see [module versioning](../../README.md#versioning).
-
 ## Usage
 
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
+The complete programs below use the current source API. Use matching peer
+sources during development; install real module versions after publication.
 
 Start a dedicated Consul agent at `127.0.0.1:8500`. Before running the
 program, seed its KV prefix with JSON objects:
@@ -119,13 +110,5 @@ SERVEX_IT_CONSUL_ADDR=127.0.0.1:8500 GOWORK=off go test -race -count=1 -tags int
 
 Licensed under the [MIT License](../../LICENSE).
 
-Configuration-engine examples use config/viper v1.0.0 and servex v1.4.0.
+Configuration-engine examples use config/viper v1.0.0 and servex v1.7.0.
 Earlier releases keep their historical API.
-
-## Release
-
-Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/config/consul@v1.2.0
-```

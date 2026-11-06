@@ -1,7 +1,11 @@
 # config/viper
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 Implements the contract-only `github.com/nostosx/servex/config` package with
-`github.com/spf13/viper`. This module implements the configuration contracts in servex v1.4.0.
+`github.com/spf13/viper`. This module implements the configuration contracts in servex v1.7.0.
 
 ## Usage
 
@@ -55,6 +59,21 @@ serializes callbacks and joins all watchers on cancellation. Callbacks may
 Reload; validators must not reenter Reload. Applying new values to running
 components is the application's responsibility.
 
+## Component configuration
+
+Applications compose component-owned configuration models; this loader does not
+own a global database/logger/server configuration or import their SDKs. Initialize
+component defaults before Unmarshal. Use JSON field tags and duration strings in
+TOML/YAML, then call each model's Validate method before constructing resources.
+
+See the [application configuration example](../../README.md#configuration) and
+component APIs for [logging](../../observability/logger/slog),
+[database](../../storage/database/gorm), [HTTP](../../transport/httpx) and
+[Redis](../../storage/cache/redis). Use WithValidator to default, decode and validate
+a complete candidate on both initial load and reload. Keep failed candidates out
+of the published snapshot. Applying accepted changes to resources remains an
+explicit application operation.
+
 ## Sources and formats
 
 `Env("APP_")` snapshots process environment. Prefix matching is case-sensitive,
@@ -92,16 +111,8 @@ merge algorithm or snapshot implementation.
 ## Validation
 
 Use repository Task gates with an isolated module override pointing at the
-matching unpublished core. No sibling replacements are stored in go.mod.
+published servex v1.7.0 and matching contrib peers. No sibling replacements are stored in go.mod.
 Tests cover ordered layers, mutation isolation, accepted/rejected revisions,
 concurrent reload/read, synchronous callbacks, cancellation, watcher failures,
 Viper decoding and file formats. Real backend services are verified in their
 own source modules.
-
-## Release
-
-Version v1.0.1, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/config/viper@v1.0.1
-```

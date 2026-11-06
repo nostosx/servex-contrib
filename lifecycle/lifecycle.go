@@ -156,7 +156,7 @@ func (s *Scope) Add(hook app.Hook) error {
 	return nil
 }
 
-func (s *Scope) Start(ctx context.Context) error {
+func (s *Scope) Start(ctx context.Context) (err error) {
 	s.mu.Lock()
 	if s.state != assembling {
 		s.mu.Unlock()
@@ -167,21 +167,29 @@ func (s *Scope) Start(ctx context.Context) error {
 	s.startCancel = cancel
 	hooks := slices.Clone(s.hooks)
 	s.mu.Unlock()
-	err := startHooks(startCtx, hooks)
-	s.mu.Lock()
-	if err == nil && s.state == starting {
-		s.state = running
-	} else if err == nil {
-		err = context.Canceled
-	}
-	close(s.startDone)
-	s.mu.Unlock()
-	if err != nil {
-		cleanup, finish := context.WithTimeout(context.Background(), s.timeout)
-		defer finish()
-		return errors.Join(err, s.Stop(cleanup))
-	}
-	return nil
+	finished := false
+	defer func() {
+		s.mu.Lock()
+		if !finished {
+			err = errors.New("lifecycle: startup interrupted")
+		}
+		if err == nil && s.state == starting {
+			s.state = running
+		} else if err == nil {
+			err = context.Canceled
+		}
+		// Notify Stop even when a startup callback panics or calls Goexit.
+		close(s.startDone)
+		s.mu.Unlock()
+		if err != nil {
+			cleanup, finish := context.WithTimeout(context.Background(), s.timeout)
+			defer finish()
+			err = errors.Join(err, s.Stop(cleanup))
+		}
+	}()
+	err = startHooks(startCtx, hooks)
+	finished = true
+	return err
 }
 
 func startHooks(ctx context.Context, hooks []app.Hook) error {

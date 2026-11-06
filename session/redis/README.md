@@ -1,14 +1,20 @@
 # session/redis
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 Redis Store for the handwritten `servex-contrib/session` manager. The production
 adapter uses the official `github.com/redis/go-redis/v9` v9.23.0 client; the
 existing community miniredis fixture is used only in tests. Session itself keeps
 its standard-library-only implementation. This module requires Go 1.27.3 and is
 MIT licensed.
 
-Released as v1.0.0 with published session v1.0.0. Install with
-`go get github.com/nostosx/servex-contrib/session/redis@v1.0.0`.
-Release validation uses public dependencies without source replacements.
+This source revision and its matching Session changes remain unreleased; both
+modules retain their published paths.
+Use the source-validation commands below during development. After publication,
+release validation must resolve the actual published dependencies without source
+replacements.
 
 ## Behavior
 
@@ -107,11 +113,12 @@ guarantees. Do not share the session namespace with unrelated Redis keys.
 
 ## Validation
 
-From the repository root, while session is unpublished:
+From the repository root, while contrib peer changes are unpublished:
 
 ```sh
-bash .github/scripts/check-session-redis.sh check lint vulncheck
-SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 task test INTEGRATION=true MODULES='session/redis'
+bash .github/scripts/check-source.sh check lint vulncheck MODULES=session/redis
+SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 \
+  bash .github/scripts/check-source.sh test INTEGRATION=true MODULES=session/redis
 ```
 
 Use a dedicated disposable Redis. Integration creates a unique namespace and

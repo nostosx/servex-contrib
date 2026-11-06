@@ -1,6 +1,7 @@
 // Package redis provides an atomic Redis token bucket shared by service
 // replicas. It implements the structural ContextLimiter contract consumed by
-// servex-contrib/middleware/ratelimit without importing another contrib module.
+// the servex-contrib/middleware/endpoint RateLimit middleware without importing
+// another contrib module.
 package redis
 
 import (

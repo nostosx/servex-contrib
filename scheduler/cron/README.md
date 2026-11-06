@@ -1,6 +1,10 @@
-# cron
+# scheduler/cron
 
-**v1.0.0 (2026-10-31).** In-process scheduling with community robfig/cron/v3 v3.0.1
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
+In-process scheduling with community robfig/cron/v3 v3.0.1
 (MIT), Go 1.27.3. Implements servex app.Hook. No Redis or durable storage is
 required. The upstream version is mature but has a slow release cadence.
 
@@ -57,7 +61,7 @@ job; later Stop calls may continue waiting. The scheduler is one-shot, including
 Stop-before-Start. No implicit global scheduler is created.
 
 Schedules are process-local. Multiple replicas execute independently; missed
-runs are not persisted/replayed. Use the existing jobqueue/asynq periodic
+runs are not persisted/replayed. Use the existing job/asynq periodic
 scheduler for durable enqueueing, with one scheduler instance per schedule set
 or explicit leader coordination. Neither option promises exactly-once effects.
 

@@ -11,7 +11,7 @@ import (
 	sdkjwt "github.com/golang-jwt/jwt/v5"
 
 	"github.com/nostosx/servex-contrib/auth/jwt"
-	"github.com/nostosx/servex-contrib/middleware/auth"
+	"github.com/nostosx/servex-contrib/middleware/endpoint"
 	"github.com/nostosx/servex/metadata"
 )
 
@@ -52,8 +52,8 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	handler := auth.New(verifier.Verify)(func(ctx context.Context, _ any) (any, error) {
-		principal, _ := auth.FromContext[*exampleClaims](ctx)
+	handler := endpoint.Authentication(verifier.Verify)(func(ctx context.Context, _ any) (any, error) {
+		principal, _ := endpoint.PrincipalFromContext[*exampleClaims](ctx)
 		return principal.Subject + " " + principal.Role, nil
 	})
 	// A servex transport populates this metadata from the incoming request.

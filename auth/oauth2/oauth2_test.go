@@ -14,6 +14,7 @@ import (
 	"time"
 
 	sdk "golang.org/x/oauth2"
+	"golang.org/x/oauth2/clientcredentials"
 )
 
 func TestCodeFlowPKCEBindingAndReplay(t *testing.T) {
@@ -137,5 +138,73 @@ func TestTokenRefresh(t *testing.T) {
 	}
 	if calls.Load() != 1 {
 		t.Fatal("refreshed token not cached")
+	}
+}
+
+func TestClientCredentialsRequiresCredentialsAndHTTPS(t *testing.T) {
+	for _, tt := range []struct {
+		name   string
+		id     string
+		secret string
+		url    string
+	}{
+		{name: "missing client ID", secret: "secret", url: "https://provider.example/token"},
+		{name: "missing secret", id: "client", url: "https://provider.example/token"},
+		{name: "missing endpoint", id: "client", secret: "secret"},
+		{name: "HTTP loopback", id: "client", secret: "secret", url: "http://localhost/token"},
+		{name: "URL credentials", id: "client", secret: "secret", url: "https://user:password@provider.example/token"},
+		{name: "fragment", id: "client", secret: "secret", url: "https://provider.example/token#secret"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			source, err := ClientCredentials(t.Context(), clientcredentials.Config{
+				ClientID: tt.id, ClientSecret: tt.secret, TokenURL: tt.url,
+			})
+			if err == nil || source != nil {
+				t.Fatalf("invalid credentials/endpoint accepted: source=%v err=%v", source, err)
+			}
+		})
+	}
+}
+
+func TestClientCredentialsSnapshotsConfigAndPropagatesCancellation(t *testing.T) {
+	var calls atomic.Int32
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		calls.Add(1)
+		if err := r.ParseForm(); err != nil {
+			t.Error(err)
+		}
+		if r.Form.Get("grant_type") != "client_credentials" || r.Form.Get("scope") != "read" || r.Form.Get("audience") != "catalog" {
+			t.Error("client-credentials request did not retain its configured parameters", r.Form)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"access_token":"service-token","token_type":"Bearer","expires_in":3600}`))
+	}))
+	defer server.Close()
+	ctx, cancel := context.WithTimeout(context.WithValue(t.Context(), sdk.HTTPClient, server.Client()), 5*time.Second)
+	defer cancel()
+	config := clientcredentials.Config{
+		ClientID: "client", ClientSecret: "secret", TokenURL: server.URL,
+		Scopes: []string{"read"}, EndpointParams: url.Values{"audience": {"catalog"}}, AuthStyle: sdk.AuthStyleInParams,
+	}
+	source, err := ClientCredentials(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.Scopes[0] = "write"
+	config.EndpointParams["audience"][0] = "other"
+	token, err := source.Token()
+	if err != nil || token.AccessToken != "service-token" {
+		t.Fatalf("token=%v err=%v", token, err)
+	}
+	cancel()
+	canceled, err := ClientCredentials(ctx, config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := canceled.Token(); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled source returned %v", err)
+	}
+	if calls.Load() != 1 {
+		t.Fatal("canceled source reached the token endpoint", calls.Load())
 	}
 }

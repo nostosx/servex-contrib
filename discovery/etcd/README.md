@@ -1,5 +1,9 @@
 # discovery/etcd
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/discovery/etcd` implements the servex
 `discovery.Registrar` and `discovery.Discoverer` contracts on
 [etcd](https://github.com/etcd-io/etcd) v3.
@@ -15,23 +19,10 @@
   the full list again.
 - The client is owned by the caller and never closed by the Registry.
 
-## Install
-
-Requires Go 1.27.3. Uses published servex v1.4.0 and kitx v1.0.0.
-
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/discovery/etcd@v1.2.0
-```
-
-The example version corresponds to the tag `discovery/etcd/v1.2.0`;
-see [module versioning](../../README.md#versioning).
-
 ## Usage
 
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
+The complete programs below use the current source API. Use matching peer
+sources during development; install real module versions after publication.
 
 Start a dedicated etcd v3 server at `127.0.0.1:2379`. The program starts an
 HTTP server on port `8000` and registers it as `user`; Ctrl+C removes its
@@ -110,11 +101,3 @@ namespace.
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
-
-## Release
-
-Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/discovery/etcd@v1.2.0
-```

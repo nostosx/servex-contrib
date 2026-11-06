@@ -37,6 +37,9 @@ func must(t *testing.T, err error) {
 func fixture(t *testing.T) (*Store, *goredis.Client, *miniredis.Miniredis) {
 	t.Helper()
 	server := miniredis.RunT(t)
+	// Miniredis stores relative TTLs; use one clock for PEXPIREAT and
+	// PEXPIRETIME so the absolute deadline round-trips exactly.
+	server.SetTime(time.Now())
 	client := goredis.NewClient(&goredis.Options{Addr: server.Addr(), MaxRetries: -1, ContextTimeoutEnabled: true})
 	t.Cleanup(func() {
 		if err := client.Close(); err != nil && !errors.Is(err, goredis.ErrClosed) {

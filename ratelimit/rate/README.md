@@ -1,8 +1,12 @@
 # ratelimit/rate
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 Keyed local token buckets backed by `golang.org/x/time/rate`. The independent
 module implements the existing structural `Allow(key string) bool` Limiter
-contract. Core and generic middleware do not depend on x/time. Requires servex v1.4.0. No local source replacements are needed.
+contract. Core and generic middleware do not depend on x/time. Requires servex v1.7.0. See the source-validation instructions below for unpublished peers.
 
 ## Usage
 
@@ -13,7 +17,7 @@ import (
     "context"
     "fmt"
 
-    mwratelimit "github.com/nostosx/servex-contrib/middleware/ratelimit"
+    endpointmw "github.com/nostosx/servex-contrib/middleware/endpoint"
     "github.com/nostosx/servex-contrib/ratelimit/rate"
 )
 
@@ -22,7 +26,7 @@ func main() {
     if err != nil {
         panic(err)
     }
-    handler := mwratelimit.New(limiter, mwratelimit.WithKey(func(_ context.Context, req any) string {
+    handler := endpointmw.RateLimit(limiter, endpointmw.WithRateLimitKey(func(_ context.Context, req any) string {
         return req.(string) // derive a trusted tenant/principal key in your application
     }))(func(context.Context, any) (any, error) {
         return "ok", nil
@@ -56,23 +60,21 @@ bounded key dimensions when possible.
 New rejects nonpositive/nonfinite rates, nonpositive bursts and invalid options
 with InvalidArgument/RATE_LIMIT_CONFIG. Calls are concurrency-safe. The zero
 value and a nil *Limiter fail closed. This adapter is an optional implementation;
-the existing SDK-free middleware/ratelimit.TokenBucket remains available.
+the existing SDK-free middleware/endpoint.TokenBucket remains available.
 
 ## Checks
 
-Use `MODULES='ratelimit/rate' task check lint vulncheck` with matching core and
-middleware sources. Regression tests use a fixed clock for admission/refill,
-exercise key-capacity and slow-refill reclamation, verify the actual generic
-middleware composition and bound concurrent admissions to the configured burst.
+From the repository root, validate matching contrib sources against published
+servex v1.7.0:
+
+```sh
+bash .github/scripts/check-source.sh check lint vulncheck MODULES=ratelimit/rate
+```
+
+Regression tests use a fixed clock for admission/refill, exercise key-capacity
+and slow-refill reclamation, verify the actual generic middleware composition
+and bound concurrent admissions to the configured burst.
 
 ## License
 
 [MIT](LICENSE); golang.org/x/time uses BSD-3-Clause.
-
-## Release
-
-Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/ratelimit/rate@v1.0.0
-```

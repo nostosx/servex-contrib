@@ -1,5 +1,9 @@
 # discovery/kubernetes
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 `github.com/nostosx/servex-contrib/discovery/kubernetes` implements the servex
 `discovery.Discoverer` contract on Kubernetes EndpointSlices
 (`discovery.k8s.io/v1`) through [client-go](https://github.com/kubernetes/client-go).
@@ -17,23 +21,10 @@ a Service.
   no weight, so instances have `Weight` 0, the selector default.
 - Each `Watch` runs an EndpointSlice informer until the Watcher is stopped.
 
-## Install
-
-Requires Go 1.27.3. Uses published servex v1.4.0 and kitx v1.0.0.
-
-Run this in your application module (create one with `go mod init` if needed):
-
-```sh
-go get github.com/nostosx/servex-contrib/discovery/kubernetes@v1.2.0
-```
-
-The example version corresponds to the tag `discovery/kubernetes/v1.2.0`;
-see [module versioning](../../README.md#versioning).
-
 ## Usage
 
-Save a complete program below as `main.go`, then run `go mod tidy` and
-`go run .` from that application directory.
+The complete programs below use the current source API. Use matching peer
+sources during development; install real module versions after publication.
 
 This program runs inside a Kubernetes Pod, not directly on your laptop:
 `rest.InClusterConfig` reads the Pod's service-account credentials. In the
@@ -85,7 +76,7 @@ func main() {
 	}
 	defer client.Close()
 
-	reply, err := httpx.Call[User](client, "GET", "/v1/users/{id}")(ctx, map[string]any{"id": 7})
+	reply, err := client.Endpoint("GET", "/v1/users/{id}", func() any { return new(User) })(ctx, map[string]any{"id": 7})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -113,11 +104,3 @@ SERVEX_IT_KUBECONFIG=$HOME/.kube/config GOWORK=off go test -race -count=1 -tags 
 ## License
 
 Licensed under the [MIT License](../../LICENSE).
-
-## Release
-
-Version v1.2.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/discovery/kubernetes@v1.2.0
-```

@@ -1,6 +1,10 @@
 # lifecycle
 
-**v1.0.0 (2026-10-31).** Explicit resource ownership and application assembly cleanup for
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../CONTRIBUTING.md#checks).
+
+Explicit resource ownership and application assembly cleanup for
 servex. Go 1.27.3; MIT. This module depends only on the standard library and
 published servex contracts. No SDK is selected and no Close method is discovered
 implicitly.
@@ -54,7 +58,7 @@ func main() {
 For an SDK whose constructor creates a closable resource, register it immediately
 after successful construction. Add transfers ownership only on success; if Add
 rejects a duplicate, the caller still owns and must clean up that new object.
-Native application resource types such as database/gorm.Database can also be
+Native application resource types such as storage/database/gorm.Database can also be
 added directly, provided Stop is idempotent and valid before Start.
 
 ## Resource contract
@@ -87,7 +91,8 @@ Check is ready only after all starts succeed, including for an empty scope;
 before startup and after stopping it returns ErrNotReady.
 
 All already constructed resources are released on a failed or canceled Start,
-including those whose Start was never reached. Stop cancels an active startup
+including those whose Start was never reached. Startup panics and goroutine exits
+also trigger cleanup, preserving the original panic or exit. Stop cancels an active startup
 and waits for its callbacks to exit before closing anything. This prevents an
 SDK from starting after it has been closed. Startup callbacks must honor
 cancellation; an uncooperative callback can keep cleanup waiting.

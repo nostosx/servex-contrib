@@ -4,9 +4,9 @@ go 1.27.3
 
 require (
 	github.com/hashicorp/consul/api v1.35.0
-	github.com/nostosx/servex v1.4.0
-	github.com/nostosx/servex-contrib/config/viper v1.0.0
-	github.com/nostosx/servex-contrib/encoding/json v1.0.0
+	github.com/nostosx/servex v1.7.0
+	github.com/nostosx/servex-contrib/config/viper v1.0.2
+	github.com/nostosx/servex-contrib/encoding/json v1.0.1
 )
 
 require (
@@ -36,6 +36,6 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
-	golang.org/x/sys v0.48.0 // indirect
-	golang.org/x/text v0.28.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/text v0.43.0 // indirect
 )

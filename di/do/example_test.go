@@ -10,36 +10,11 @@ import (
 
 	dox "github.com/nostosx/servex-contrib/di/do"
 	"github.com/nostosx/servex/app"
-	"github.com/nostosx/servex/di"
 )
 
 type greeter struct{ message string }
 
 func newGreeter(message string) *greeter { return &greeter{message: message} }
-
-func ExampleNew() {
-	container := dox.New()
-	defer func() {
-		if err := container.Stop(context.Background()); err != nil {
-			panic(err)
-		}
-	}()
-	var registry di.Container = container
-	if err := di.Supply(registry, "hello"); err != nil {
-		panic(err)
-	}
-	if err := di.Provide(registry, func(r di.Resolver) (*greeter, error) {
-		return newGreeter(di.MustResolve[string](r)), nil
-	}); err != nil {
-		panic(err)
-	}
-	service, err := di.Resolve[*greeter](registry)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(service.message)
-	// Output: hello
-}
 
 func ExampleHook() {
 	injector := do.New()

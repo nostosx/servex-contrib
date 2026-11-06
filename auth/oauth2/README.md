@@ -1,6 +1,10 @@
-# oauth2
+# auth/oauth2
 
-**v1.0.0 (2026-10-31).** Authorization-code/PKCE orchestration with the Go project's
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
+Authorization-code/PKCE orchestration with the Go project's
 official golang.org/x/oauth2 v0.37.0. Go 1.27.3; MIT. Production imports only the
 standard library and the official OAuth2 module. Existing auth/oidc remains the
 ID-token verifier; neither tokens nor user permissions are silently trusted.
@@ -12,7 +16,8 @@ OAUTH_AUTH_URL, OAUTH_TOKEN_URL and OAUTH_REDIRECT_URL. Configure the provider's
 redirect URI to https://localhost:8443/callback and supply server.crt/server.key.
 This example verifies a login result; application account mapping and issuing a
 persistent logged-in Session belong after VerifyNonce succeeds. It uses the
-already published auth/oidc v1.0.0 adapter together with this module.
+matching `auth/oidc` source together with this module. Both source revisions
+remain unreleased; their published module paths are unchanged.
 
 ```go
 package main
@@ -27,8 +32,8 @@ import (
 
     sdk "golang.org/x/oauth2"
 
-    "github.com/nostosx/servex-contrib/auth/oidc"
     "github.com/nostosx/servex-contrib/auth/oauth2"
+    "github.com/nostosx/servex-contrib/auth/oidc"
 )
 
 func run() error {
@@ -103,7 +108,13 @@ authorization-code client's local-development configuration. Endpoints are trust
 application configuration; set a finite-timeout, restricted HTTP client through
 oauth2.HTTPClient for token exchange and refresh.
 
-From the root: `task check lint vulncheck MODULES=auth/oauth2`. Local HTTP token
+From the repository root, validate matching sources:
+
+```sh
+bash .github/scripts/check-source.sh check lint vulncheck MODULES=auth/oauth2
+```
+
+Local HTTP token
 fixtures verify real code exchange and the PKCE challenge, browser binding,
 single consumption, expiry, capacity and cancellation. No live identity provider
 or account provisioning is part of ordinary acceptance.

@@ -19,7 +19,7 @@ import (
 
 	"github.com/nostosx/servex-contrib/auth/oauth2"
 	"github.com/nostosx/servex-contrib/auth/oidc"
-	"github.com/nostosx/servex-contrib/middleware/auth"
+	"github.com/nostosx/servex-contrib/middleware/endpoint"
 	"github.com/nostosx/servex-contrib/session"
 )
 
@@ -71,7 +71,7 @@ func TestOIDCSessionComposition(t *testing.T) {
 	mux.HandleFunc("GET /callback", manager.Callback)
 	mux.HandleFunc("POST /logout", manager.Logout)
 	mux.Handle("GET /private", manager.Require(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		p, _ := auth.FromContext[principal](r.Context())
+		p, _ := endpoint.PrincipalFromContext[principal](r.Context())
 		_, _ = io.WriteString(w, p.ID)
 	})))
 	handler := manager.Middleware(mux)
