@@ -1,8 +1,9 @@
 # session
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.1**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../CONTRIBUTING.md#checks).
 
 Server-side browser sessions implemented directly with the Go standard library.
 No SCS or other session SDK is used. This independent module requires Go 1.27.3 and is MIT licensed.
@@ -111,7 +112,7 @@ MemoryStore loses sessions on restart and cannot share them across replicas.
 For production shared storage, use the independent [Redis adapter](redis/README.md),
 which owns the official Redis SDK and atomic persistence scripts. It currently
 supports standalone/Sentinel clients and has its own module/version. Both modules
-keep their published paths; this source revision remains unreleased.
+keep their existing module paths.
 Its capacity bounds stored records, not simultaneous request snapshots. Expired
 entries are removed on access/capacity pressure. A shared Redis/SQL implementation
 must honor the documented atomic Store contract. Redis lives in a separate module.
@@ -121,7 +122,7 @@ not be logged. This module provides no compatibility with SCS session records.
 ## Checks
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES='session'
+task check lint vulncheck MODULES='session'
 ```
 
 Tests cover lifecycle, TLS cookie roundtrips, random/hashed tokens, expiry with

@@ -1,10 +1,11 @@
 # storage/database/sql
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
 
-Unreleased business transaction scopes are available through
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../../CONTRIBUTING.md#checks).
+
+Business transaction scopes are available through
 `NewTransactor(db, options)`. Inject the same scope into transaction middleware
 and participating repositories. `Within(ctx, callback)` runs once with a
 transaction-bearing context; `scope.Executor(ctx)` returns that transaction's
@@ -21,7 +22,7 @@ adapter has no dependency on middleware. See [application handlers](https://gith
 
 database/sql adapter.
 
-Unreleased `NewPostgresIdempotency(scope)` implements durable keyed execution.
+`NewPostgresIdempotency(scope)` implements durable keyed execution.
 Run `EnsureSchema(ctx)` explicitly in the migration workflow. PostgreSQL row
 locks serialize keys; the success record and business writes using the same
 `scope.Executor(ctx)` commit atomically. Matching completed calls replay encoded
@@ -92,8 +93,7 @@ implicit schema migration.
 ## Validation
 
 Run repository `task check MODULES='storage/database/sql'`, `task lint` and
-`task vulncheck` with matching core/contrib sources. During development,
-throwaway modfiles may resolve unpublished peers locally; do not commit local
-replacements or claim public-proxy acceptance before coordinated publication.
+`task vulncheck` against published dependencies. Source overrides are an explicit development mode;
+see the root CONTRIBUTING guide.
 Original unit, race and composition regressions moved with the backend.
 These tests do not require a shared or production service.

@@ -1,12 +1,13 @@
 # transport/client
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.1.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 Shared client execution over the core transport, discovery and selector contracts.
 This module is SDK-free and is used by both transport/httpx and transport/grpcx.
-Requires servex v1.7.0; use matching contrib sources while this revision is unreleased.
+Requires published servex v1.7.0.
 
 ## Migration
 
@@ -83,7 +84,7 @@ finishes before New returns; subsequent calls are serialized with discovery
 updates and receive deep copies. Observers must return promptly and must not
 call Close. No observation occurs after Close returns.
 
-Unreleased Close rejects new calls and retry attempts with non-retryable
+Close rejects new calls and retry attempts with non-retryable
 FailedPrecondition/CLIENT_CLOSED, then stops and joins the discovery watcher.
 It is idempotent. Running invocations obey their contexts; protocol adapters
 own connection shutdown. Closing during selection still reports its outcome

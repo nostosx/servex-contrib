@@ -1,8 +1,9 @@
 # storage/database/postgres
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../../CONTRIBUTING.md#checks).
 
 Shared, driver-neutral SQL helpers and explicit extension administration.
 Construction borrows *sql.DB without I/O or ownership. Existing database/sql
@@ -113,7 +114,7 @@ for profile in base general timescale citus duckdb; do (
     base) modules='storage/database/postgres storage/vector/pgvector storage/search/postgres job/pgmq scheduler/pgcron' ;;
     general) modules='storage/database/postgres storage/vector/pgvector' ;;
   esac
-  bash .github/scripts/check-source.sh test INTEGRATION=true MODULES="$modules"
+  task test INTEGRATION=true MODULES="$modules"
 ); done
 ```
 

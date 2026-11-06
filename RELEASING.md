@@ -9,10 +9,9 @@ separate maintainer decision.
 
 Core-dependent modules require published servex v1.7.0, including its HTTP
 request decoder and native message/job handlers. Verify this core version from
-the public proxy. The responsibility layout migration remains unreleased:
-relocated directories define new contrib module paths, while old tags retain
-their original snapshots. A local contrib-source pass is not evidence that
-those new module versions can already be installed.
+the public proxy. Relocated directories define new contrib module paths, while
+old tags retain their original snapshots. A local contrib-source pass is not
+evidence that a selected module version can already be installed.
 
 Capability modules keep their published paths: `auth/*`, `auth/oauth2redis`,
 `session`, `session/redis`, `ratelimit/*` and `validation/*` continue their

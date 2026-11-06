@@ -1,8 +1,9 @@
 # auth/login
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.1.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 `login` combines OAuth2, OIDC and the owned Session implementation around an
 application-defined principal. Browser and JWT handlers can both read that type
@@ -52,10 +53,10 @@ in production. Mount CORS and standard-library `http.CrossOriginProtection`
 outside Session/login middleware with explicit trusted origins. The application
 still owns authorization and account mapping.
 
-Validate this module and its matching unpublished peers from the contrib root:
+Validate this module and its related adapters from the contrib root:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck \
+task check lint vulncheck \
   MODULES='auth/login auth/oauth2redis'
 ```
 

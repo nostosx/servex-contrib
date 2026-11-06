@@ -1,9 +1,10 @@
 # observability/logger/zap
 
+Module version for this revision: **v1.0.0**.
+
 Implements the published servex v1.7.0 Logger contract with go.uber.org/zap.
 Configuration and construction belong to this contrib module; the application
-combines Config with its HTTP/database settings. Current source is unreleased;
-use Go 1.27.3 and [source validation](../../../CONTRIBUTING.md#checks).
+combines Config with its HTTP/database settings. Use Go 1.27.3 and [validation commands](../../../CONTRIBUTING.md#checks).
 
 ## Configuration
 
@@ -68,7 +69,7 @@ when its backend/output does.
 ## Checks
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES=observability/logger/zap
+task check lint vulncheck MODULES=observability/logger/zap
 ```
 
 Run from the repository root. Tests exercise actual JSON/text records, level and

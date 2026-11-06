@@ -1,8 +1,9 @@
 # storage/cache/loader
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../../CONTRIBUTING.md#checks).
 
 `github.com/nostosx/servex-contrib/storage/cache/loader` adds typed read-through
 loading and duplicate-load suppression to the core `cache.Cache` contract.
@@ -10,7 +11,7 @@ The backing cache and codec are supplied explicitly. No codec is selected by
 default.
 
 Requires Go 1.27.3, servex v1.7.0 and kitx v1.0.0.
-Use matching contrib peers through the source-validation helper until publication.
+Use the module versions listed in the root CHANGELOG.
 
 ## Usage
 

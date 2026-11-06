@@ -1,8 +1,9 @@
 # encoding/proto
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.1.1**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 `github.com/nostosx/servex-contrib/encoding/proto` provides `Codec`, a servex
 `encoding.Codec` named `proto` that marshals Protocol Buffers messages with

@@ -1,8 +1,9 @@
 # config/viper
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.2**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 Implements the contract-only `github.com/nostosx/servex/config` package with
 `github.com/spf13/viper`. This module implements the configuration contracts in servex v1.7.0.

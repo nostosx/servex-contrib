@@ -1,5 +1,7 @@
 # samber/do lifecycle adapter
 
+Module version for this revision: **v1.3.0**.
+
 Bridge a native `github.com/samber/do/v2` injector to servex lifecycle and health
 checks. Register and resolve services with samber/do itself; business constructors
 remain ordinary Go functions. This module defines no container or resolver API.

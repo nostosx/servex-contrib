@@ -1,8 +1,9 @@
 # storage/search/postgres
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../../CONTRIBUTING.md#checks).
 
 Implements servex `storage/search.Index` using four explicitly selected engines:
 
@@ -46,4 +47,4 @@ hide engine differences, expose SQL fragments to query input, or supply a
 universal highlight/facet API.
 
 See [PostgreSQL integration](../../database/postgres/README.md#integration-fixtures) for development and real-server
-acceptance. Core contracts are published in servex v1.7.0; the relocated storage/database/postgres module remains unreleased.
+acceptance. Core contracts use published servex v1.7.0; dependency versions are recorded in go.mod.

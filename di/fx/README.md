@@ -1,5 +1,7 @@
 # Fx lifecycle adapter
 
+Module version for this revision: **v1.0.0**.
+
 The recommended dependency assembly for servex uses native `go.uber.org/fx` in
 application `app.go`, with ordinary business constructors. This module connects
 that native Fx application to servex lifecycle, readiness and runtime shutdown.

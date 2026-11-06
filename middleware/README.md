@@ -1,8 +1,9 @@
 # middleware
 
-Explicit AOP policies for published servex v1.7.0 contracts. Current source is
-unreleased and requires Go 1.27.3. Use the
-[source-validation commands](../CONTRIBUTING.md#checks) while peers are unpublished.
+Module version for this revision: **v1.6.0**.
+
+Explicit AOP policies for published servex v1.7.0 contracts. Requires Go 1.27.3.
+See the [validation commands](../CONTRIBUTING.md#checks).
 
 ## Package layout
 
@@ -248,7 +249,7 @@ handler := endpoint.Chain(endpointmw.Recommended(map[endpointmw.Policy]endpoint.
 From the repository root:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES=middleware
+task check lint vulncheck MODULES=middleware
 ```
 
 Select independent SDK modules explicitly when changing them. Tests cover ordering,

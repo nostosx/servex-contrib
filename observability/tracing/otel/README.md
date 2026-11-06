@@ -1,8 +1,9 @@
 # observability/tracing/otel
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../../CONTRIBUTING.md#checks).
 
 `github.com/nostosx/servex-contrib/observability/tracing/otel` adapts
 [OpenTelemetry](https://github.com/open-telemetry/opentelemetry-go) tracing to
@@ -18,7 +19,7 @@ the servex tracing API.
   directly through OpenTelemetry become parents of spans started through the
   Tracer.
 
-Unreleased source records errors as safe code/reason summaries with
+The adapter records errors as safe code/reason summaries with
 `servex.code`, `servex.reason`, `servex.retryable`, `servex.remote` and `error.type`.
 Original message text, metadata and causes are excluded from exception events
 and status descriptions. This source targets published servex v1.7.0; older

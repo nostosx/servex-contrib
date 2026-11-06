@@ -1,8 +1,9 @@
 # storage/database/gorm
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../../CONTRIBUTING.md#checks).
 
 Native GORM integration for servex observability, lifecycle and readiness.
 Applications retain `*gorm.DB`, normal transactions and native driver APIs.
@@ -143,9 +144,9 @@ logging is allowed; the example disables it to avoid logging parameters.
 From the repository root:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES='storage/database/gorm'
+task check lint vulncheck MODULES='storage/database/gorm'
 SERVEX_IT_POSTGRES_DSN='host=127.0.0.1 port=5432 user=servex password=servex dbname=servex_it sslmode=disable' \
-    bash .github/scripts/check-source.sh test INTEGRATION=true MODULES='storage/database/gorm'
+    task test INTEGRATION=true MODULES='storage/database/gorm'
 ```
 
 Use a dedicated disposable PostgreSQL instance. The integration test creates and

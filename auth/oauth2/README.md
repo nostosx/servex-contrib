@@ -1,8 +1,9 @@
 # auth/oauth2
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.1**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 Authorization-code/PKCE orchestration with the Go project's
 official golang.org/x/oauth2 v0.37.0. Go 1.27.3; MIT. Production imports only the
@@ -16,8 +17,7 @@ OAUTH_AUTH_URL, OAUTH_TOKEN_URL and OAUTH_REDIRECT_URL. Configure the provider's
 redirect URI to https://localhost:8443/callback and supply server.crt/server.key.
 This example verifies a login result; application account mapping and issuing a
 persistent logged-in Session belong after VerifyNonce succeeds. It uses the
-matching `auth/oidc` source together with this module. Both source revisions
-remain unreleased; their published module paths are unchanged.
+`auth/oidc` module version declared in go.mod. Both modules keep their existing paths.
 
 ```go
 package main
@@ -111,7 +111,7 @@ oauth2.HTTPClient for token exchange and refresh.
 From the repository root, validate matching sources:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES=auth/oauth2
+task check lint vulncheck MODULES=auth/oauth2
 ```
 
 Local HTTP token

@@ -7,11 +7,10 @@ contracts: backend adapters, codecs, node selection, observability and middlewar
 Core owns contracts and the minimal framework runtime; concrete implementations
 live here even when they use only the standard library or kitx.
 
-Use Go 1.27.3 and published **servex v1.7.0**. This contrib revision remains
-unreleased; some relocated contrib module paths still need matching source.
-Historical releases retain their original paths and dependencies; see
-[CHANGELOG.md](CHANGELOG.md). Source checks use the published core and do not
-require a sibling servex checkout.
+Use Go 1.27.3 and published **servex v1.7.0**. Each contrib module has an
+independent version; the module/version and import migration tables are in
+[CHANGELOG.md](CHANGELOG.md). Historical releases retain their original paths
+and dependencies. A sibling servex checkout is not required.
 
 ## Layout
 
@@ -176,16 +175,14 @@ need to migrate imports and dependencies to the current APIs.
 ## Development
 
 Use Go 1.27.3, Task v3.53.1 and Bash. From the contrib root, select exact
-modules while unpublished contrib peers still need source mappings:
+modules:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck \
+task check lint vulncheck \
   MODULES='middleware transport/httpx'
 ```
 
-The helper resolves servex v1.7.0 from the public proxy and maps only contrib
-peers through external temporary modfiles. Checked-in manifests are unchanged.
-Standalone release gates require published contrib dependency versions too.
+Checks resolve the versions declared in each module without source overrides.
 See [CONTRIBUTING](CONTRIBUTING.md) for all-module selection, tools, workspaces,
 service integrations and browser acceptance; [RELEASING](RELEASING.md) for
 publication; [SECURITY](SECURITY.md) for private vulnerability reports.

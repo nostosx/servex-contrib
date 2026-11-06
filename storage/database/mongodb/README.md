@@ -1,8 +1,9 @@
 # storage/database/mongodb
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../../CONTRIBUTING.md#checks).
 
 `github.com/nostosx/servex-contrib/storage/database/mongodb` plugs the official
 [MongoDB Go driver](https://github.com/mongodb/mongo-go-driver) (v2) into

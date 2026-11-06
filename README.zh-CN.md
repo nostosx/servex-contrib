@@ -6,9 +6,9 @@
 节点选择、可观测性与中间件。核心保留契约和最小框架运行时；仅依赖标准库或 kitx 的
 具体实现也放在本仓库。
 
-当前源码使用 Go 1.27.3 和已发布的 **servex v1.7.0**。本轮 contrib 改动仍未发布，
-部分迁移后的 contrib 模块需要配套源码。历史版本保留各自路径与依赖，见
-[CHANGELOG.md](CHANGELOG.md)。源码检查直接使用公开 core，无需同级 servex 目录。
+使用 Go 1.27.3 和已发布的 **servex v1.7.0**。各 contrib 模块独立版本化，
+本批模块版本与导入路径迁移见 [CHANGELOG.md](CHANGELOG.md)。历史版本保留各自路径与依赖，
+无需同级 servex 目录。
 
 ## 目录职责
 
@@ -163,14 +163,12 @@ SDK 适配器保持独立模块，不自动安装预设链。
 使用 Go 1.27.3、Task v3.53.1 和 Bash。在 contrib 根目录选择需要验证的模块：
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck \
+task check lint vulncheck \
   MODULES='middleware transport/httpx'
 ```
 
-该入口从公共代理解析 servex v1.7.0，仅对尚未发布的 contrib 依赖建立仓库外临时映射。
-不会修改正式清单。全部模块选择、IDE 工作区、真实服务和浏览器验收见
-[贡献指南](CONTRIBUTING.md)；正式发布还需通过无替换的依赖校验，见
-[发布流程](RELEASING.md)。
+检查直接解析各模块声明的公开依赖，不使用源码替换。全部模块选择、IDE 工作区、真实服务和
+浏览器验收见[贡献指南](CONTRIBUTING.md)；发布门禁见[发布流程](RELEASING.md)。
 
 ### 测试
 

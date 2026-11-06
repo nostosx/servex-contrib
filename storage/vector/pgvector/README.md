@@ -1,8 +1,9 @@
 # storage/vector/pgvector
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../../CONTRIBUTING.md#checks).
 
 Implements servex `storage/vector.Store` using a caller-owned `*sql.DB`.
 Document/query embeddings are supplied by the application. Construction has no

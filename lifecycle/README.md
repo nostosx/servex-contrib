@@ -1,8 +1,9 @@
 # lifecycle
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.1**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../CONTRIBUTING.md#checks).
 
 Explicit resource ownership and application assembly cleanup for
 servex. Go 1.27.3; MIT. This module depends only on the standard library and

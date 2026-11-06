@@ -1,16 +1,17 @@
 # transport/httpx
 
-Current source is unreleased. Use Go 1.27.3 and published servex v1.7.0.
+Module version for this revision: **v1.2.0**.
+
+Use Go 1.27.3 and published servex v1.7.0.
 The core includes the route request-decoder contract. From the contrib root:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES=transport/httpx
+task check lint vulncheck MODULES=transport/httpx
 ```
 
-The helper maps unpublished contrib peers only; no local core checkout is
-required. See [CONTRIBUTING](../../CONTRIBUTING.md#checks) for release validation.
+Dependencies resolve from published modules; no local core checkout is required. See [CONTRIBUTING](../../CONTRIBUTING.md#checks) for release validation.
 
-The unreleased implementation satisfies core `transport/http.Server`, `Router`,
+The implementation satisfies core `transport/http.Server`, `Router`,
 `EndpointRouter` and `Client`. Applications can depend on these HTTP boundaries while keeping
 concrete construction, request binding, routing and client policy here.
 
@@ -144,9 +145,8 @@ configuration reload and resource replacement belong to the application.
 ## Validation
 
 Run repository `task check MODULES='transport/httpx'`, `task lint` and
-`task vulncheck` with matching core/contrib sources. During development,
-throwaway modfiles may resolve unpublished peers locally; do not commit local
-replacements or claim public-proxy acceptance before coordinated publication.
+`task vulncheck` against published dependencies. Source overrides are an explicit development mode;
+see the root CONTRIBUTING guide.
 Original unit, race and composition regressions moved with the backend.
 These tests do not require a shared or production service.
 
@@ -205,7 +205,7 @@ Response-controller access, flushing and hijacking remain available to SSE and
 WebSocket handlers. The application also selects the order of native Session,
 CSRF and CORS wrappers through `WithHTTPMiddleware`.
 
-## Unreleased server logging
+## Server logging
 
 Server diagnostics honor Logger.Enabled and record errorx code, non-empty reason,
 retryable and remote without raw error messages, metadata or causes. Both current

@@ -1,9 +1,11 @@
 # observability/logger/slog
 
+Module version for this revision: **v1.0.0**.
+
 Implements the published servex v1.7.0 Logger contract with log/slog. Configuration
 and construction belong to this contrib module; the application combines Config
-with its HTTP/database settings. Current source is unreleased; use Go 1.27.3 and
-[source validation](../../../CONTRIBUTING.md#checks).
+with its HTTP/database settings. Use Go 1.27.3 and
+[validation commands](../../../CONTRIBUTING.md#checks).
 
 ## Configuration
 
@@ -62,7 +64,7 @@ not be copied and is safe for concurrent use when its handler/output is safe.
 ## Checks
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES=observability/logger/slog
+task check lint vulncheck MODULES=observability/logger/slog
 ```
 
 Run from the repository root. Tests exercise actual JSON/text records, level and

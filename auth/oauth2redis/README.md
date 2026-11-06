@@ -1,8 +1,9 @@
 # auth/oauth2redis
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.1**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 `oauth2redis` implements `oauth2.StateStore` using the official
 `github.com/redis/go-redis/v9` client. It borrows a client and never closes it.
@@ -34,15 +35,14 @@ Disable automatic transport retries: after a lost `GETDEL` response, the client
 cannot determine whether consumption happened. Begin a fresh login after an
 uncertain callback. Supports single-node/Sentinel `*redis.Client`.
 
-These OAuth2 and Redis adapter revisions remain unreleased; their published
-module paths are unchanged. From the
-repository root, validate the matching sources and run real Redis acceptance
+These OAuth2 and Redis adapters retain their existing module paths. From the
+repository root, validate the modules and run real Redis acceptance
 against an explicitly configured disposable service:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES=auth/oauth2redis
+task check lint vulncheck MODULES=auth/oauth2redis
 SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 \
-  bash .github/scripts/check-source.sh test INTEGRATION=true MODULES=auth/oauth2redis
+  task test INTEGRATION=true MODULES=auth/oauth2redis
 ```
 
 The backend requires Redis 6.2 or newer for GETDEL. Unit tests use miniredis;

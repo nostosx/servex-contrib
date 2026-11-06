@@ -1,8 +1,9 @@
 # job/memory
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 In-memory job queue.
 
@@ -13,8 +14,7 @@ subpackage retains the core Worker lifecycle/readiness regression suite.
 ## Validation
 
 Run repository `task check MODULES='job/memory'`, `task lint` and
-`task vulncheck` with matching core/contrib sources. During development,
-throwaway modfiles may resolve unpublished peers locally; do not commit local
-replacements or claim public-proxy acceptance before coordinated publication.
+`task vulncheck` against published dependencies. Source overrides are an explicit development mode;
+see the root CONTRIBUTING guide.
 Original unit, race and composition regressions moved with the backend.
 These tests do not require a shared or production service.

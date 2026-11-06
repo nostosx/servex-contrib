@@ -1,8 +1,9 @@
 # auth/password
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.1**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 Argon2id password hashing using the Go project's official
 `golang.org/x/crypto/argon2` v0.58.0. Go 1.27.3; MIT. No user database or login
@@ -66,9 +67,8 @@ owns password buffers; the adapter clears its derived-key buffers only.
 From the repository root:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES=auth/password
+task check lint vulncheck MODULES=auth/password
 ```
 
 Tests cover matching, mismatch, fresh salts, policy upgrades, malformed/excessive
-parameters and cancellation. This source revision remains unreleased; the
-published module path is unchanged.
+parameters and cancellation. The module path is unchanged.

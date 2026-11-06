@@ -1,12 +1,13 @@
 # validation/playground
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.1**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 Struct validation middleware backed by `github.com/go-playground/validator/v10`.
 This is an independent module; core and generic middleware do not depend on it.
-Requires servex v1.7.0. See the source-validation instructions below for unpublished peers.
+Requires servex v1.7.0. See the validation commands below.
 
 ## Usage
 
@@ -69,7 +70,7 @@ From the repository root, validate matching contrib sources against published
 servex v1.7.0:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES=validation/playground
+task check lint vulncheck MODULES=validation/playground
 ```
 
 Tests cover actual tag validation, cause identity, cancellation, middleware

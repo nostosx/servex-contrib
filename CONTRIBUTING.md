@@ -14,60 +14,37 @@ go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
 The root is not a Go module. Implementations have independent, recursively
 discovered modules. Optional SDK adapters remain capability modules such as
 auth, validation and ratelimit. Core-dependent modules require published servex
-v1.7.0. Relocated contrib module paths remain unreleased; source checks map only
-those contrib peers and do not require a local core checkout.
+v1.7.0. Modules declare their actual dependency versions; a sibling core checkout
+is not required. Module versions and path migrations are in CHANGELOG.md.
 
 An ignored local go.work may join contrib modules for IDE navigation. Create
-it with `go work init`, then add modules with `go work use -r .`. Until relocated
-peers are published, also map their required versions in the workspace:
-
-```sh
-go work edit -replace=github.com/nostosx/servex-contrib/observability/metrics/noop@v1.0.0=./observability/metrics/noop
-```
-
-Apply the same version-specific mapping to other unpublished peers reported by
-`go list -m -json all`. Do not commit workspaces or local go.mod replacements,
-or change global Go settings for one checkout. Task gates force GOWORK=off.
+it with `go work init`, then add modules with `go work use -r .`. Do not commit
+workspaces or local go.mod replacements, or change global Go settings for one
+checkout. Task gates force GOWORK=off.
 Public tasks are check, test, build, lint, vulncheck, fmt, fix and tidy;
 bare task runs check. Use `task --list` to discover them.
 
 ## Checks
 
-Run from the repository root. Select exact modules while contrib peers remain
-unpublished:
+Run from the repository root against the published dependency versions:
+
+```sh
+task check lint vulncheck
+```
+
+For deliberate coordinated source development, select exact modules explicitly:
 
 ```sh
 bash .github/scripts/check-source.sh check lint vulncheck \
-  MODULES='middleware transport/httpx messaging/memory job/memory'
+  MODULES='middleware transport/httpx'
 ```
 
-For all modules, obtain the current recursive module list:
-
-```sh
-modules=$(GOWORK=off go run .github/scripts/matrices/main.go -modules)
-bash .github/scripts/check-source.sh check lint vulncheck MODULES="$modules"
-```
-
-The helper resolves published servex v1.7.0 and replaces only contrib peers in
-external temporary manifests. Checked-in manifests and global Go configuration
-stay unchanged; no go.work is created. Push/PR CI uses the same mode. This proves
-compatibility with the published core and matching contrib source, not public
-installation of unreleased contrib modules.
-
-For deliberate changes to core and contrib together, the optional
-`bash .github/scripts/local-peers.sh /absolute/path/to/servex task ...`
-helper also replaces core. Report that development mode separately.
-Release validation requires published dependencies without overrides; see
-[RELEASING.md](RELEASING.md).
-
-After publishing dependency layers and updating requirements/checksums, run the
-standalone release gates without source overrides:
-
-```sh
-task check
-task lint
-task vulncheck
-```
+That optional helper maps contrib peers in external temporary manifests while
+still resolving the published core. It proves source compatibility, not public
+installation. `bash .github/scripts/local-peers.sh /absolute/path/to/servex task ...`
+also replaces core for deliberate core/contrib changes. Neither mode changes
+canonical manifests. Release gates require published dependencies without overrides;
+see [RELEASING.md](RELEASING.md).
 
 `Taskfile.yml` exports `GOWORK=off` and applies each target to the modules.
 `check` rejects formatting, modernizer and tidy changes, vets and builds
@@ -157,7 +134,7 @@ matching variables and select the modules:
 
 ```sh
 SERVEX_IT_REDIS_ADDR=127.0.0.1:6379 \
-  bash .github/scripts/check-source.sh test INTEGRATION=true MODULES='storage/cache/redis'
+  task test INTEGRATION=true MODULES='storage/cache/redis'
 ```
 
 The gate runs TestIntegration* with the integration tag and race detector,

@@ -1,8 +1,9 @@
 # job/pgmq
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.0**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 Implements `job.Enqueuer` and `job.ReadyRunner` using PGMQ >= 1.5.
 The caller owns the SQL pool. Construction performs no I/O. Install PGMQ on the

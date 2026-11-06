@@ -1,8 +1,9 @@
 # auth/jwt
 
-Current source is unreleased. Use Go 1.27.3; core integration targets
-published servex v1.7.0. See the
-[source-validation commands](../../CONTRIBUTING.md#checks).
+Module version for this revision: **v1.0.1**.
+
+Use Go 1.27.3; core integration requires published servex v1.7.0. See the
+[validation commands](../../CONTRIBUTING.md#checks).
 
 `github.com/nostosx/servex-contrib/auth/jwt` adapts
 [`github.com/golang-jwt/jwt/v5`](https://github.com/golang-jwt/jwt) v5.3.1 for
@@ -155,7 +156,7 @@ logs tokens or key material.
 From the repository root:
 
 ```sh
-bash .github/scripts/check-source.sh check lint vulncheck MODULES='auth/jwt'
+task check lint vulncheck MODULES='auth/jwt'
 ```
 
 Tests generate local keys and need no services. They exercise all supported
