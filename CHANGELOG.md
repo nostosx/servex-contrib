@@ -13,6 +13,42 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## 2026-11-06: shared facilities and explicit service assembly
+
+Release date: 2026-11-06. Requires Go 1.27.3 and published servex v1.7.0.
+
+| Module | Version |
+|---|---|
+| observability/logger/zap | v1.1.0 |
+| storage/database/sql | v1.1.0 |
+| transport/grpcx | v1.5.0 |
+| middleware | v1.7.0 |
+
+### Changes
+
+- observability/logger/zap: add opt-in readable text with configurable field
+  labels and an additional rotating JSON file. Config owns file rotation values;
+  New validates both outputs before acquiring them and Close owns their cleanup.
+  Existing json/text defaults and borrowed-writer ownership stay intact.
+- storage/database/sql: add DatabaseConfig.PingTimeout and WithPingTimeout for
+  explicitly bounded Hook startup/readiness pings. Failed startup closes the pool;
+  a readiness timeout does not close a running pool.
+- transport/grpcx: add WithHealthMiddleware to explicitly apply application unary
+  and streaming chains to health Check/Watch. Add opt-in WithPublicErrors to redact gRPC error
+  messages/details while retaining native status codes. Default behavior is unchanged.
+- middleware: add endpoint.Timeout, plus
+  tokenauth.StaticToken for configured service credentials. Token extraction
+  rejects duplicate authorization values. Applications select and order policies
+  at their service entry points; no automatic policy chain is installed.
+
+### Breaking changes
+
+- Zap Config and SQL DatabaseConfig gain fields. Use keyed struct literals.
+- Middleware inbound authentication rejects duplicate authorization header values;
+  send exactly one credential. Previously the first value could be accepted.
+- Applications choose logger configuration and middleware order at their own
+  service entry points. These modules do not install a shared policy chain.
+
 ## 2026-11-06: servex v1.7.0 integration
 
 Release date: 2026-11-06. Requires Go 1.27.3. Core-dependent modules use
