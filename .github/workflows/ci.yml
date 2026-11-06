@@ -23,13 +23,12 @@ defaults:
   run:
     shell: bash
 
-# Source checks use this checkout's contrib peers through external temporary
-# modfiles. The core still resolves published servex v1.7.0; no sibling is cloned.
-# release-validation.yml separately verifies actual published dependencies.
+# All checks resolve the published versions declared in each module.
+# No sibling checkout, source override or workspace is needed.
 # Preserve the checkout name because depguard uses the servex-contrib directory.
 jobs:
   unit:
-    name: Source check (${{ matrix.module }})
+    name: Check (${{ matrix.module }})
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -121,14 +120,14 @@ jobs:
           cache-dependency-path: |
             servex-contrib/${{ matrix.module }}/go.mod
             servex-contrib/${{ matrix.module }}/go.sum
-      - name: Check module sources (no external services)
+      - name: Check module (no external services)
         working-directory: servex-contrib
         env:
           CHECK_MODULE: ${{ matrix.module }}
-        run: bash .github/scripts/check-source.sh check MODULES="$CHECK_MODULE"
+        run: task check MODULES="$CHECK_MODULE"
 
   lint:
-    name: Source lint (Go 1.27.3)
+    name: Lint (Go 1.27.3)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -152,14 +151,14 @@ jobs:
           install-mode: goinstall
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           install-only: true
-      - name: Lint all module sources
+      - name: Lint all modules
         working-directory: servex-contrib
         run: |
           modules="$(go run .github/scripts/matrices/main.go -modules)"
-          bash .github/scripts/check-source.sh lint MODULES="$modules"
+          task lint MODULES="$modules"
 
   vulncheck:
-    name: Source reachable vulnerabilities
+    name: Reachable vulnerabilities
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -180,14 +179,14 @@ jobs:
             servex-contrib/**/go.sum
       - name: Install scanner outside the modules
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
-      - name: Scan all module sources (normal and integration builds)
+      - name: Scan all modules (normal and integration builds)
         working-directory: servex-contrib
         run: |
           modules="$(go run .github/scripts/matrices/main.go -modules)"
-          bash .github/scripts/check-source.sh vulncheck MODULES="$modules"
+          task vulncheck MODULES="$modules"
 
   integration:
-    name: Source integration (${{ matrix.backend }})
+    name: Integration (${{ matrix.backend }})
     # MongoDB 8 refuses Linux 6.19+ (SERVER-121912); Ubuntu 22.04 uses kernel 6.8.
     runs-on: ${{ matrix.backend == 'mongodb' && 'ubuntu-22.04' || 'ubuntu-latest' }}
     timeout-minutes: 30
@@ -239,11 +238,11 @@ jobs:
         env:
           BACKEND: ${{ matrix.backend }}
         run: bash .github/scripts/start-service.sh "$BACKEND"
-      - name: Run source integration tests and reject skipped or absent tests
+      - name: Run integration tests and reject skipped or absent tests
         working-directory: servex-contrib
         env:
           MODULES: ${{ matrix.modules }}
-        run: bash .github/scripts/check-source.sh test INTEGRATION=true MODULES="$MODULES"
+        run: task test INTEGRATION=true MODULES="$MODULES"
       - name: Service logs
         if: failure()
         env:
@@ -262,7 +261,7 @@ jobs:
           fi
 
   postgres-capabilities:
-    name: Source PostgreSQL capabilities (${{ matrix.profile }})
+    name: PostgreSQL capabilities (${{ matrix.profile }})
     runs-on: ubuntu-latest
     timeout-minutes: 40
     strategy:
@@ -295,7 +294,7 @@ jobs:
           set +a
           modules=storage/database/postgres
           if [ "$PROFILE" = general ]; then modules="$modules storage/vector/pgvector"; fi
-          bash .github/scripts/check-source.sh test INTEGRATION=true MODULES="$modules"
+          task test INTEGRATION=true MODULES="$modules"
       - name: Remove owned fixture resources
         if: always()
         working-directory: servex-contrib
@@ -304,7 +303,7 @@ jobs:
           if [ -f "$fixture_env" ]; then bash tests/postgres/fixture.sh down "$fixture_env"; fi
 
   integration-kubernetes:
-    name: Source integration (kind)
+    name: Integration (kind)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -334,5 +333,5 @@ jobs:
         working-directory: servex-contrib
         run: |
           export SERVEX_IT_KUBECONFIG="$HOME/.kube/config"
-          bash .github/scripts/check-source.sh test INTEGRATION=true MODULES=discovery/kubernetes
+          task test INTEGRATION=true MODULES=discovery/kubernetes
       # kind-action deletes the cluster in its post step, including on failure.

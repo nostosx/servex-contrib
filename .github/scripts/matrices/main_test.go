@@ -26,7 +26,7 @@ task test INTEGRATION=true MODULES=discovery/kubernetes
 		new  string
 	}{
 		{name: "complete"},
-		{name: "source_complete", old: "task test INTEGRATION=true MODULES=discovery/kubernetes", new: "bash .github/scripts/check-source.sh test INTEGRATION=true MODULES=discovery/kubernetes"},
+		{name: "source_override_rejected", old: "task test INTEGRATION=true MODULES=discovery/kubernetes", new: "bash .github/scripts/check-source.sh test INTEGRATION=true MODULES=discovery/kubernetes"},
 		{name: "missing_module", old: "  - alpha\n"},
 		{name: "missing_nested_module", old: "  - alpha/nested\n"},
 		{name: "duplicate_module", old: "  - alpha\n", new: "  - alpha\n  - alpha\n"},
@@ -64,7 +64,7 @@ task test INTEGRATION=true MODULES=discovery/kubernetes
 				}
 			}
 			err := check(root)
-			if (err == nil) != (tt.name == "complete" || tt.name == "source_complete") {
+			if (err == nil) != (tt.name == "complete") {
 				t.Fatalf("check=%v", err)
 			}
 		})

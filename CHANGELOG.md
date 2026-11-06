@@ -92,10 +92,10 @@ release. Old path tags remain immutable and have no forwarding packages.
 
 ### Changes and migrations
 
-- Core-dependent modules now require published servex v1.7.0. Source checks
-  resolve core from the public proxy; the temporary requirement for a matching
-  local core checkout is removed. Contrib peers remain source-mapped until their
-  own releases.
+- Core-dependent modules now require published servex v1.7.0. CI and release
+  checks resolve the declared public module versions without source overrides
+  or sibling checkouts. Temporary source mappings remain an explicit
+  development mode only.
 
 - **Breaking**: remove the unused KeyError constants from the five middleware
   boundaries. Default observation emits classified fields without raw error text;
@@ -249,8 +249,8 @@ release. Old path tags remain immutable and have no forwarding packages.
 - **Breaking**: di/do drops its adapter for the removed core di.Container,
   constructor-registration helpers and custom resolution API. Use native
   samber/do registration/resolution and retain the explicit Hook/Shutdown bridge.
-- Keep module discovery, CI coverage and temporary peer-source checks recursive
-  so nested responsibility groups are validated without committed local replacements.
+- Keep module discovery and CI coverage recursive so nested responsibility
+  groups are validated against published dependencies without local replacements.
 
 - **Breaking**: transport/client and transport/httpx now reject calls and retry
   attempts after Close with non-retryable FailedPrecondition/CLIENT_CLOSED,

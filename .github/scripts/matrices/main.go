@@ -106,8 +106,7 @@ func check(root string) error {
 	for _, match := range regexp.MustCompile(`(?m)^\s+modules: (.+)$`).FindAllStringSubmatch(integrationSection, -1) {
 		listed = append(listed, strings.Fields(match[1])...)
 	}
-	if !strings.Contains(workflow, "task test INTEGRATION=true MODULES=discovery/kubernetes") &&
-		!strings.Contains(workflow, "bash .github/scripts/check-source.sh test INTEGRATION=true MODULES=discovery/kubernetes") {
+	if !strings.Contains(workflow, "task test INTEGRATION=true MODULES=discovery/kubernetes") {
 		return errors.New("missing kind integration invocation")
 	}
 	listed = append(listed, "discovery/kubernetes")
