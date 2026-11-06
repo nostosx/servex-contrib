@@ -1,8 +1,12 @@
 # validation/protovalidate
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 Protobuf validation middleware backed by `buf.build/go/protovalidate`.
 It uses an explicitly supplied Buf Validator and owns its SDK dependencies;
-core and generic middleware remain SDK-free. Requires servex v1.4.0. No local source replacements are needed.
+core and generic middleware remain SDK-free. Requires servex v1.7.0. See the source-validation instructions below for unpublished peers.
 
 ## Schema and usage
 
@@ -60,19 +64,17 @@ downstream results/errors are passed through unchanged.
 
 ## Checks
 
-Use `MODULES='validation/protovalidate' task check lint vulncheck` with matching
-core sources. Tests construct annotated descriptors dynamically, run real Buf
-validation and verify schema compilation failures without requiring protoc,
-Buf binaries, generated test artifacts or external services.
+From the repository root, validate matching contrib sources against published
+servex v1.7.0:
+
+```sh
+bash .github/scripts/check-source.sh check lint vulncheck MODULES=validation/protovalidate
+```
+
+Tests construct annotated descriptors dynamically, run real Buf validation and
+verify schema compilation failures without requiring protoc, Buf binaries,
+generated test artifacts or external services.
 
 ## License
 
 [MIT](LICENSE); the upstream Buf SDK is Apache-2.0 licensed.
-
-## Release
-
-Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/validation/protovalidate@v1.0.0
-```

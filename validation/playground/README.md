@@ -1,8 +1,12 @@
 # validation/playground
 
+Current source is unreleased. Use Go 1.27.3; core integration targets
+published servex v1.7.0. See the
+[source-validation commands](../../CONTRIBUTING.md#checks).
+
 Struct validation middleware backed by `github.com/go-playground/validator/v10`.
 This is an independent module; core and generic middleware do not depend on it.
-Requires servex v1.4.0. No local source replacements are needed.
+Requires servex v1.7.0. See the source-validation instructions below for unpublished peers.
 
 ## Usage
 
@@ -34,10 +38,12 @@ func main() {
 }
 ```
 
-Use the returned endpoint.Middleware in HTTP, RPC, CQRS or consumer middleware
-chains when the request is a struct or struct pointer. Requests without a
+Use the returned endpoint.Middleware in HTTP or unary RPC endpoint chains when
+the request is a struct or struct pointer. Typed application, message and job
+handlers use different contracts and require explicit validation at their boundary.
+Requests without a
 Validate method are still checked. This does not replace the SDK-free
-middleware/validate adapter for request-owned Validate methods.
+middleware/endpoint.Validation for request-owned Validate methods.
 
 ## Errors and concurrency
 
@@ -59,18 +65,16 @@ generic; causes retain SDK details for deliberate inspection by application code
 
 ## Checks
 
-From the repository root, run `MODULES='validation/playground' task check lint
-vulncheck` with the matching core source. Tests cover actual tag validation,
-cause identity, cancellation, middleware short-circuiting and concurrent use.
+From the repository root, validate matching contrib sources against published
+servex v1.7.0:
+
+```sh
+bash .github/scripts/check-source.sh check lint vulncheck MODULES=validation/playground
+```
+
+Tests cover actual tag validation, cause identity, cancellation, middleware
+short-circuiting and concurrent use.
 
 ## License
 
 [MIT](LICENSE).
-
-## Release
-
-Version v1.0.0, released 2026-10-29. Requires servex v1.4.0. Install from the public Go proxy without source replacements:
-
-```sh
-go get github.com/nostosx/servex-contrib/validation/playground@v1.0.0
-```
