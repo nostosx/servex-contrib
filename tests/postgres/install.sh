@@ -59,6 +59,6 @@ case "$profile" in
     ;;
   timescale) apt-get install -y --no-install-recommends 'postgresql-17-timescaledb-tsl=2.31.0-1PGSTY~trixie' ;;
   citus) apt-get install -y --no-install-recommends 'postgresql-17-citus=14.3.0-9PGSTY~trixie' ;;
-  duckdb) apt-get install -y --no-install-recommends 'postgresql-17-pg-duckdb=1.1.1-1PIGSTY~trixie' ;;
+  duckdb) apt-get install -y --no-install-recommends 'postgresql-17-pg-duckdb=1.2.0-1PGSTY~trixie' ;;
   *) echo "Unknown fixture profile: $profile" >&2; exit 1 ;;
 esac
