@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/nostosx/servex/app"
 )
@@ -100,5 +101,36 @@ func TestHookFailedStartupPreservesPingAndCleanupErrors(t *testing.T) {
 	}
 	if err := db.PingContext(t.Context()); err == nil {
 		t.Fatal("failed startup pool remains usable")
+	}
+}
+
+func TestHookBoundsReadinessAndFailedStart(t *testing.T) {
+	connector := newFullConnector()
+	db, _, _ := instrumented(t, connector)
+	owner := Hook("bounded", db, WithPingTimeout(5*time.Millisecond))
+	if err := owner.Start(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	connector.st.set(func(s *fakeState) { s.pingWait = true })
+	checker := owner.(interface{ Check(context.Context) error })
+	if err := checker.Check(t.Context()); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal(err)
+	}
+	if connector.closed.Load() {
+		t.Fatal("readiness timeout closed a running pool")
+	}
+	if err := owner.Stop(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+
+	connector = newFullConnector()
+	db, _, _ = instrumented(t, connector)
+	connector.st.set(func(s *fakeState) { s.pingWait = true })
+	owner = Hook("bounded", db, WithPingTimeout(5*time.Millisecond))
+	if err := owner.Start(t.Context()); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatal(err)
+	}
+	if !connector.closed.Load() {
+		t.Fatal("startup timeout did not close its owned pool")
 	}
 }

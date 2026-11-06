@@ -45,6 +45,7 @@ type fakeState struct {
 	mu          sync.Mutex
 	log         []string
 	pingErr     error
+	pingWait    bool
 	commitErr   error
 	rollbackErr error
 	sleep       time.Duration // added to every exec and query
@@ -236,11 +237,16 @@ func (c *fakeBeginTx) BeginTx(ctx context.Context, opts driver.TxOptions) (drive
 	return &fakeTx{st: c.st}, nil
 }
 
-func (c *fakePinger) Ping(context.Context) error {
+func (c *fakePinger) Ping(ctx context.Context) error {
 	c.st.record("ping")
 	c.st.mu.Lock()
-	defer c.st.mu.Unlock()
-	return c.st.pingErr
+	wait, err := c.st.pingWait, c.st.pingErr
+	c.st.mu.Unlock()
+	if wait {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+	return err
 }
 
 func (c *fakeResetter) ResetSession(context.Context) error {

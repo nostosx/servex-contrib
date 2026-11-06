@@ -22,6 +22,7 @@ type DatabaseConfig struct {
 	MaxIdleConns    int           `json:"max_idle_conns"`
 	ConnMaxLifetime time.Duration `json:"conn_max_lifetime"`
 	ConnMaxIdleTime time.Duration `json:"conn_max_idle_time"`
+	PingTimeout     time.Duration `json:"ping_timeout"`
 }
 
 // DefaultDatabaseConfig returns bounded pool defaults, leaving driver and
@@ -51,6 +52,8 @@ func (c DatabaseConfig) Validate() error {
 		field = "conn_max_lifetime"
 	case c.ConnMaxIdleTime < 0:
 		field = "conn_max_idle_time"
+	case c.PingTimeout < 0:
+		field = "ping_timeout"
 	default:
 		return nil
 	}

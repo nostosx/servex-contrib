@@ -1,6 +1,6 @@
 # storage/database/sql
 
-Module version for this revision: **v1.0.0**.
+Module version for this revision: **v1.1.0**.
 
 Use Go 1.27.3; core integration requires published servex v1.7.0. See the
 [validation commands](../../../CONTRIBUTING.md#checks).
@@ -97,3 +97,12 @@ Run repository `task check MODULES='storage/database/sql'`, `task lint` and
 see the root CONTRIBUTING guide.
 Original unit, race and composition regressions moved with the backend.
 These tests do not require a shared or production service.
+
+
+## v1.1.0: bounded health checks
+
+DatabaseConfig.PingTimeout is file-decodable and must be nonnegative. Apply it
+explicitly with Hook(name, db, WithPingTimeout(cfg.PingTimeout)). Zero keeps the
+caller deadline. The timeout covers startup and readiness PingContext calls;
+drivers must honor cancellation. A failed startup releases its owned pool,
+while a readiness timeout leaves the running pool open.

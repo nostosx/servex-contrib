@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"time"
 
 	noopmetrics "github.com/nostosx/servex-contrib/observability/metrics/noop"
 	nooptracing "github.com/nostosx/servex-contrib/observability/tracing/noop"
@@ -123,7 +124,17 @@ func OpenDB(c driver.Connector, opts ...Option) *sql.DB {
 type HookOption func(*hookOptions)
 
 type hookOptions struct {
-	readiness bool
+	readiness   bool
+	pingTimeout time.Duration
+}
+
+// WithPingTimeout bounds startup and readiness pings. Zero keeps the caller's
+// deadline. A driver must honor context cancellation for the bound to take effect.
+func WithPingTimeout(timeout time.Duration) HookOption {
+	if timeout < 0 {
+		panic("database: negative ping timeout")
+	}
+	return func(o *hookOptions) { o.pingTimeout = timeout }
 }
 
 // WithReadiness sets whether the hook takes part in app readiness through a
@@ -151,7 +162,7 @@ func Hook(name string, db *sql.DB, opts ...HookOption) app.Hook {
 			opt(&o)
 		}
 	}
-	h := &dbHook{name: name, db: db}
+	h := &dbHook{name: name, db: db, pingTimeout: o.pingTimeout}
 	if o.readiness {
 		return &readyDBHook{h}
 	}
@@ -160,8 +171,9 @@ func Hook(name string, db *sql.DB, opts ...HookOption) app.Hook {
 
 // dbHook implements app.Hook for a *sql.DB.
 type dbHook struct {
-	name string
-	db   *sql.DB
+	name        string
+	db          *sql.DB
+	pingTimeout time.Duration
 }
 
 func (h *dbHook) Name() string { return h.name }
@@ -184,6 +196,11 @@ func (h *dbHook) Stop(context.Context) error {
 
 // ping pings the database.
 func (h *dbHook) ping(ctx context.Context) error {
+	if h.pingTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, h.pingTimeout)
+		defer cancel()
+	}
 	if err := h.db.PingContext(ctx); err != nil {
 		return fmt.Errorf("database: ping %q: %w", h.name, err)
 	}
