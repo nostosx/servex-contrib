@@ -13,6 +13,25 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## auth/oauth2server/v1.0.0
+
+Release date: 2026-11-06. Requires Go 1.27.3.
+
+- Add an independent Ory Fosite adapter for authorization-code/OIDC providers:
+  mandatory S256 PKCE, opaque access credentials, rotating refresh tokens with
+  reuse detection, machine grants, revocation and scoped introspection.
+- Expose the native provider for application authentication/consent policy;
+  provide standard HTTP token/discovery/JWKS handlers and bounded client-secret
+  hashing. Applications own accounts, registered clients, authorization and audit.
+- Add persistent PostgreSQL protocol storage with hashed lookup keys, sanitized
+  forms, atomic refresh consumption and explicit schema initialization. Generic
+  storage delegates current account/client/grant checks to application callbacks.
+- Publish RS256 public JWKS with retained rotation keys; require persistent
+  2048-bit-or-stronger RSA keys and a 32-byte HMAC secret. HTTPS is required except
+  explicit loopback development. Implicit/password/hybrid grants are not enabled.
+- Upgrade vulnerable upstream transitive dependency versions for the new module;
+  normal/integration vulnerability scans are part of its release gates.
+
 ## 2026-11-06: shared facilities and explicit service assembly
 
 Release date: 2026-11-06. Requires Go 1.27.3 and published servex v1.7.0.

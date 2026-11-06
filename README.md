@@ -29,7 +29,7 @@ and dependencies. A sibling servex checkout is not required.
 
 ## Modules
 
-There are 64 independent Go modules. The repository root has no go.mod. Module
+There are 65 independent Go modules. The repository root has no go.mod. Module
 paths are `github.com/nostosx/servex-contrib/<directory>`; dependency sets stay
 separate so selecting one backend does not import unrelated SDKs. Explicit shared
 capabilities may be reused through a directed dependency graph.
@@ -69,6 +69,7 @@ select and assemble each required module explicitly.
 | [`auth/jwt`](auth/jwt) | JWT signing and typed verification for application auth callbacks | `github.com/golang-jwt/jwt/v5` |
 | [`auth/oauth2`](auth/oauth2) | PKCE code flow, bound one-time state, token refresh and client credentials | official `golang.org/x/oauth2` |
 | [`auth/oauth2redis`](auth/oauth2redis) | Atomic shared OAuth2 state using the Session Redis pool | official `github.com/redis/go-redis/v9` |
+| [`auth/oauth2server`](auth/oauth2server) | Authorization-code/PKCE OIDC provider, machine grants, rotation/revocation/introspection and PostgreSQL protocol storage | Ory Fosite |
 | [`auth/oidc`](auth/oidc) | OIDC discovery, ID Token signature/JWKS verification for application auth callbacks | `github.com/coreos/go-oidc/v3` |
 | [`auth/password`](auth/password) | Argon2id PHC password hashes, bounded verification and rehash policy | official `golang.org/x/crypto/argon2` |
 | [`auth/login`](auth/login) | OAuth2/OIDC or password login, Session rotation and typed application principals | OAuth2, OIDC, Session and auth middleware |

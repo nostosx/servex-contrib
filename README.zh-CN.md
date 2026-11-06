@@ -27,7 +27,7 @@
 
 ## 模块
 
-当前有 64 个独立 Go 模块，仓库根目录没有 go.mod。模块路径为
+当前有 65 个独立 Go 模块，仓库根目录没有 go.mod。模块路径为
 `github.com/nostosx/servex-contrib/<目录>`。独立依赖集合避免选用一个后端时引入其他 SDK；
 基础能力可以显式复用，但依赖图必须保持单向。
 
@@ -64,6 +64,7 @@
 | [`auth/jwt`](auth/jwt) | JWT 签发与类型化验证，供应用鉴权回调使用 | `github.com/golang-jwt/jwt/v5` |
 | [`auth/oauth2`](auth/oauth2) | PKCE 授权码流程、浏览器绑定的一次性 state、刷新及客户端凭证 | Go 官方 `golang.org/x/oauth2` |
 | [`auth/oauth2redis`](auth/oauth2redis) | 与 Session 共用 Redis 连接池的原子 OAuth2 state 存储 | Redis 官方 `github.com/redis/go-redis/v9` |
+| [`auth/oauth2server`](auth/oauth2server) | 授权码/PKCE、OIDC 签发、机器凭证、轮换/撤销/内省与 PostgreSQL 协议存储 | Ory Fosite |
 | [`auth/oidc`](auth/oidc) | OIDC 发现、ID Token 签名与 JWKS 验证，供应用鉴权回调使用 | `github.com/coreos/go-oidc/v3` |
 | [`auth/password`](auth/password) | Argon2id 密码哈希、受限参数验证及升级判断 | Go 官方 `golang.org/x/crypto/argon2` |
 | [`auth/login`](auth/login) | OAuth2/OIDC 或密码登录、Session 轮换及统一业务身份 | OAuth2、OIDC、Session 及 auth 中间件 |
