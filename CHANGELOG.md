@@ -13,13 +13,24 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
-- auth/login v1.3.0: compose enterprise SAML SP login with application Resolve
-  and browser sessions; bounded POST ACS, exact form fields and local rotation.
-  **Breaking:** Config gains SAML; use keyed literals. Select exactly one login
-  mechanism. Account/tenant linkage and local session expiry remain application-owned.
-- auth/saml/redis v1.0.0: shared atomic request correlation through a borrowed
-  Redis client, insert-only save, GETDEL consume, bounded/expiring records and
-  multi-client race/expiry integration tests.
+## 2026-11-07: SAML state and browser session composition
+
+Release date: 2026-11-07. Requires Go 1.27.3 and published auth/saml v1.0.0.
+
+| Module | Version |
+| --- | --- |
+| auth/saml/redis | v1.0.0 |
+| auth/login | v1.3.0 |
+
+- auth/login: compose enterprise SAML SP login with application Resolve and
+  browser sessions; bounded POST ACS, exact form fields and local rotation.
+  **Breaking:** Config gains SAML; use keyed literals. Select exactly one of
+  OAuth2 Provider, lower-level OIDC or SAML. Account/tenant linkage and local
+  session expiry remain application-owned. Use published auth/oauth2 v1.2.0
+  for the domestic provider adapters.
+- auth/saml/redis: shared atomic request correlation through a borrowed Redis
+  client, insert-only save, GETDEL consume, bounded/expiring records and
+  multi-client race/expiry integration tests. Redis 6.2+; retries disabled.
 
 ## 2026-11-07: domestic OAuth2 and enterprise SAML
 

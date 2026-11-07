@@ -122,7 +122,7 @@ matching variables and select the modules:
 | `SERVEX_IT_KAFKA_BROKERS` | `messaging/kafka` | `127.0.0.1:9092` (comma separated) |
 | `SERVEX_IT_NATS_URL` | `messaging/nats` | `nats://127.0.0.1:4222` (JetStream enabled) |
 | `SERVEX_IT_RABBITMQ_URL` | `messaging/rabbitmq` | `amqp://guest:guest@127.0.0.1:5672/` |
-| `SERVEX_IT_REDIS_ADDR` | `storage/cache/redis`, `job/asynq`, `ratelimit/redis`, `session/redis`, `auth/oauth2/redis` | `127.0.0.1:6379` |
+| `SERVEX_IT_REDIS_ADDR` | `storage/cache/redis`, `job/asynq`, `ratelimit/redis`, `session/redis`, `auth/oauth2/redis`, `auth/saml/redis` | `127.0.0.1:6379` |
 | `SERVEX_IT_CONSUL_ADDR` | `config/consul`, `discovery/consul` | `127.0.0.1:8500` |
 | `SERVEX_IT_ETCD_ENDPOINTS` | `config/etcd`, `discovery/etcd`, `coordination/etcd` | `127.0.0.1:2379` (comma separated) |
 | `SERVEX_IT_NACOS_ADDR` | `config/nacos`, `discovery/nacos` | `127.0.0.1:8848` (HTTP API) |

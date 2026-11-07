@@ -42,6 +42,7 @@ jobs:
           - auth/oauth2
           - auth/oauth2/redis
           - auth/saml
+          - auth/saml/redis
           - auth/password
           - messaging/kafka
           - messaging/memory
@@ -209,7 +210,7 @@ jobs:
           - backend: rabbitmq
             modules: messaging/rabbitmq
           - backend: redis
-            modules: storage/cache/redis job/asynq ratelimit/redis session/redis auth/oauth2/redis
+            modules: storage/cache/redis job/asynq ratelimit/redis session/redis auth/oauth2/redis auth/saml/redis
           - backend: mongodb
             modules: storage/database/mongodb
           - backend: consul

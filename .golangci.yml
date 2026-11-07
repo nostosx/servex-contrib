@@ -30,6 +30,7 @@ linters:
             - $gostd
             - github.com/nostosx/servex-contrib/auth/oauth2/client$
             - github.com/nostosx/servex-contrib/auth/oidc$
+            - github.com/nostosx/servex-contrib/auth/saml$
             - github.com/nostosx/servex-contrib/middleware/endpoint$
             - github.com/nostosx/servex-contrib/session$
             - golang.org/x/oauth2$

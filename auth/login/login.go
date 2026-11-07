@@ -16,6 +16,7 @@ import (
 
 	oauthclient "github.com/nostosx/servex-contrib/auth/oauth2/client"
 	"github.com/nostosx/servex-contrib/auth/oidc"
+	"github.com/nostosx/servex-contrib/auth/saml"
 	"github.com/nostosx/servex-contrib/middleware/endpoint"
 	"github.com/nostosx/servex-contrib/session"
 )
@@ -35,6 +36,13 @@ type Provider[P any] struct {
 	Resolve func(context.Context, oauthclient.Identity) (P, error)
 }
 
+// SAML maps a verified enterprise IdP identity to the application's principal.
+// The application selects the IdP configuration and owns account/tenant policy.
+type SAML[P any] struct {
+	Client  *saml.ServiceProvider
+	Resolve func(context.Context, saml.Identity) (P, error)
+}
+
 // Config selects application principal validation and optional OIDC login.
 // SuccessURL must be a local absolute path; the default is /. HTTPClient is
 // copied at construction and receives a ten-second timeout when none is set.
@@ -43,6 +51,7 @@ type Config[P any] struct {
 	Valid      func(P) bool
 	OIDC       *OIDC[P]
 	Provider   *Provider[P]
+	SAML       *SAML[P]
 	SuccessURL string
 	HTTPClient *http.Client
 }
@@ -81,10 +90,20 @@ func New[P any](sessions *session.Manager, config Config[P]) (*Manager[P], error
 	if err != nil || u.IsAbs() || u.Host != "" || !strings.HasPrefix(config.SuccessURL, "/") || strings.HasPrefix(config.SuccessURL, "//") || strings.ContainsAny(config.SuccessURL, "\r\n\\") {
 		return nil, errors.New("login: success URL must be a local absolute path")
 	}
+	providers := 0
 	if config.OIDC != nil {
-		if config.Provider != nil {
-			return nil, errors.New("login: select either OIDC or Provider")
-		}
+		providers++
+	}
+	if config.Provider != nil {
+		providers++
+	}
+	if config.SAML != nil {
+		providers++
+	}
+	if providers > 1 {
+		return nil, errors.New("login: select only one of OIDC, Provider or SAML")
+	}
+	if config.OIDC != nil {
 		if config.OIDC.Client == nil || config.OIDC.Verifier == nil || config.OIDC.Resolve == nil {
 			return nil, errors.New("login: complete OIDC provider configuration required")
 		}
@@ -97,6 +116,13 @@ func New[P any](sessions *session.Manager, config Config[P]) (*Manager[P], error
 		}
 		copyProvider := *config.Provider
 		config.Provider = &copyProvider
+	}
+	if config.SAML != nil {
+		if config.SAML.Client == nil || config.SAML.Resolve == nil {
+			return nil, errors.New("login: complete SAML provider configuration required")
+		}
+		copyProvider := *config.SAML
+		config.SAML = &copyProvider
 	}
 	return &Manager[P]{sessions: sessions, config: config}, nil
 }
@@ -174,7 +200,7 @@ func (m *Manager[P]) Begin(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
-	if m.config.OIDC == nil && m.config.Provider == nil {
+	if m.config.OIDC == nil && m.config.Provider == nil && m.config.SAML == nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -190,9 +216,14 @@ func (m *Manager[P]) Begin(w http.ResponseWriter, r *http.Request) {
 	}
 	var authorization oauthclient.Authorization
 	var err error
-	if m.config.Provider != nil {
+	switch {
+	case m.config.SAML != nil:
+		var samlAuthorization saml.Authorization
+		samlAuthorization, err = m.config.SAML.Client.Begin(r.Context(), binding)
+		authorization.URL = samlAuthorization.URL
+	case m.config.Provider != nil:
 		authorization, err = m.config.Provider.Client.Begin(r.Context(), binding)
-	} else {
+	default:
 		authorization, err = m.config.OIDC.Client.Begin(r.Context(), binding)
 	}
 	if err != nil {
@@ -207,6 +238,10 @@ func (m *Manager[P]) Begin(w http.ResponseWriter, r *http.Request) {
 // exact-path CSRF middleware exception for this callback only. State and binding
 // validation remain mandatory. Mount it inside Middleware alongside Begin.
 func (m *Manager[P]) Callback(w http.ResponseWriter, r *http.Request) {
+	if m.config.SAML != nil {
+		m.samlCallback(w, r)
+		return
+	}
 	method := http.MethodGet
 	if m.config.Provider != nil {
 		method = m.config.Provider.Client.CallbackMethod()

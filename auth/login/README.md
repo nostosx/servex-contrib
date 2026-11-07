@@ -1,6 +1,6 @@
 # auth/login
 
-Module version for this revision: **v1.2.0**.
+Module version for this revision: **v1.3.0**.
 
 Use Go 1.27.3; core integration requires published servex v1.7.0. See the
 [validation commands](../../CONTRIBUTING.md#checks).
@@ -84,3 +84,29 @@ persistence precede success. Other mutation routes retain CSRF protection.
 
 See [provider setup and limits](../oauth2/README.md). Fixtures do not establish
 live application approval or third-party account/browser login.
+
+## Enterprise SAML SSO
+
+Use `Config.SAML` with `SAML[P]{Client, Resolve}` and a configured
+[`auth/saml.ServiceProvider`](../saml). Select exactly one of OIDC, Provider or
+SAML in a manager. Register the adapter's SP metadata separately as a public GET
+route, Begin as GET and this manager's Callback on the exact POST ACS route.
+SAML's signed assertion, correlation state and original browser Session must all
+validate before Resolve and local Session rotation.
+
+The ACS requires Secure HttpOnly SameSite=None sessions and an exact-path
+cross-origin POST/CSRF exception. It accepts a bounded 2 MiB form body with one
+RelayState and one SAMLResponse. It does not take those fields from query values,
+accept duplicate fields or process SAMLart. Complete caps encoded assertions at
+1 MiB. Unsolicited IdP login and SLO are not enabled. All other mutation routes
+retain normal CSRF protection.
+
+Resolve receives issuer/NameID, format/qualifiers, attributes, SessionIndex and
+expiry. Scope account linkage to the configured tenant/IdP and preserve NameID
+qualifiers. Do not auto-link by email or map IdP groups to privileged local roles
+without explicit policy. Include expiry in the application principal/Valid
+policy or otherwise restrict the local session lifetime. The module does not
+automatically revoke local sessions when an enterprise IdP session ends.
+
+`Config` gains SAML and OAuth2 Identity gains UnionID in the corresponding minor
+releases. Use keyed struct literals and upgrade imports/requirements together.
