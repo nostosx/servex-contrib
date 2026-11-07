@@ -98,7 +98,7 @@ type ServiceProvider struct {
 }
 
 func New(config Config, store StateStore) (*ServiceProvider, error) {
-	if store == nil || config.Key == nil || config.Certificate == nil || config.Key.N.BitLen() < 2048 {
+	if store == nil || config.Key == nil || config.Key.N == nil || config.Certificate == nil || config.Key.N.BitLen() < 2048 {
 		return nil, errors.New("saml: state store and RSA key/certificate of at least 2048 bits required")
 	}
 	if err := config.Key.Validate(); err != nil {

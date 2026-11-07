@@ -366,6 +366,7 @@ func TestSPInvalidConfiguration(t *testing.T) {
 		change func(*Config)
 	}{
 		{"no key", func(c *Config) { c.Key = nil }},
+		{"zero RSA key", func(c *Config) { c.Key = &rsa.PrivateKey{} }},
 		{"no cert", func(c *Config) { c.Certificate = nil }},
 		{"empty entity", func(c *Config) { c.EntityID = "" }},
 		{"http ACS", func(c *Config) { c.ACSURL = "http://sp.example/acs" }},
