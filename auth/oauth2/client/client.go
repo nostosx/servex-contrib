@@ -112,28 +112,37 @@ type Result struct {
 // Complete consumes state before exchanging code. Failed exchanges cannot be
 // retried with the same state; start a fresh login after an uncertain response.
 func (c *Client) Complete(ctx context.Context, binding, state, code string) (Result, error) {
-	if err := context.Cause(ctx); err != nil {
-		return Result{}, err
-	}
-	if binding == "" || state == "" || len(state) > 256 || code == "" {
-		return Result{}, ErrInvalidState
-	}
-	attempt, err := c.store.Take(ctx, stateKey(state))
+	attempt, err := c.consume(ctx, binding, state, code)
 	if err != nil {
-		return Result{}, fmt.Errorf("oauth2: consume state: %w", err)
-	}
-	actual := sha256.Sum256([]byte(binding))
-	if subtle.ConstantTimeCompare(actual[:], attempt.Binding[:]) != 1 || subtle.ConstantTimeCompare(c.identity[:], attempt.Client[:]) != 1 {
-		return Result{}, ErrInvalidState
-	}
-	if !time.Now().Before(attempt.ExpiresAt) || attempt.Verifier == "" || attempt.Nonce == "" {
-		return Result{}, ErrInvalidState
+		return Result{}, err
 	}
 	token, err := c.config.Exchange(ctx, code, sdk.VerifierOption(attempt.Verifier))
 	if err != nil {
 		return Result{}, fmt.Errorf("oauth2: exchange: %w", err)
 	}
 	return Result{Token: token, Nonce: attempt.Nonce}, nil
+}
+
+// consume is shared by protocol-specific exchanges; all consume before network I/O.
+func (c *Client) consume(ctx context.Context, binding, state, code string) (Attempt, error) {
+	if err := context.Cause(ctx); err != nil {
+		return Attempt{}, err
+	}
+	if binding == "" || state == "" || len(state) > 256 || code == "" {
+		return Attempt{}, ErrInvalidState
+	}
+	attempt, err := c.store.Take(ctx, stateKey(state))
+	if err != nil {
+		return Attempt{}, fmt.Errorf("oauth2: consume state: %w", err)
+	}
+	actual := sha256.Sum256([]byte(binding))
+	if subtle.ConstantTimeCompare(actual[:], attempt.Binding[:]) != 1 || subtle.ConstantTimeCompare(c.identity[:], attempt.Client[:]) != 1 {
+		return Attempt{}, ErrInvalidState
+	}
+	if !time.Now().Before(attempt.ExpiresAt) || attempt.Verifier == "" || attempt.Nonce == "" {
+		return Attempt{}, ErrInvalidState
+	}
+	return attempt, nil
 }
 
 // TokenSource uses SDK refresh behavior. Its context must outlive refreshes;

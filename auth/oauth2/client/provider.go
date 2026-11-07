@@ -31,6 +31,10 @@ const (
 	Discord   ProviderKind = "discord"
 	LinkedIn  ProviderKind = "linkedin"
 	Apple     ProviderKind = "apple"
+	WeChat    ProviderKind = "wechat"
+	WeChatWeb ProviderKind = "wechat_web"
+	QQ        ProviderKind = "qq"
+	Weibo     ProviderKind = "weibo"
 	OIDC      ProviderKind = "oidc"
 )
 
@@ -62,6 +66,9 @@ type Identity struct {
 	Name          string
 	Email         string
 	EmailVerified bool
+	// UnionID is optional WeChat cross-app identity under one Open Platform
+	// account. It is not a replacement for the app-scoped Issuer/Subject key.
+	UnionID string
 }
 
 // Provider coordinates code exchange and identity verification. It owns no user
@@ -157,6 +164,11 @@ func NewProvider(ctx context.Context, config ProviderConfig, store StateStore) (
 	if p.verifier != nil && !slices.Contains(scopes, "openid") {
 		return nil, errors.New("oauth2: OIDC login requires the openid scope")
 	}
+	if (config.Kind == WeChat && (len(scopes) != 1 || scopes[0] != "snsapi_login")) ||
+		(config.Kind == WeChatWeb && (len(scopes) != 1 || scopes[0] != "snsapi_userinfo")) ||
+		(config.Kind == QQ && !slices.Contains(scopes, "get_user_info")) {
+		return nil, errors.New("oauth2: provider login requires its user-information scope")
+	}
 	p.flow, err = New(Config{OAuth: sdk.Config{ClientID: config.ClientID, ClientSecret: config.ClientSecret,
 		RedirectURL: config.RedirectURL, Scopes: scopes, Endpoint: endpoint}, StateTTL: config.StateTTL,
 		AllowInsecureLoopback: config.AllowInsecureLoopback}, store)
@@ -199,6 +211,23 @@ func providerDefaults(c ProviderConfig) (string, sdk.Endpoint, []string, error) 
 	case Apple:
 		issuer = "https://appleid.apple.com"
 		scopes = []string{"openid", "email"}
+	case WeChat, WeChatWeb:
+		issuer = "https://open.weixin.qq.com/appid/" + url.PathEscape(c.ClientID)
+		authorize := "https://open.weixin.qq.com/connect/qrconnect"
+		scopes = []string{"snsapi_login"}
+		if c.Kind == WeChatWeb {
+			authorize = "https://open.weixin.qq.com/connect/oauth2/authorize"
+			scopes = []string{"snsapi_userinfo"}
+		}
+		endpoint = sdk.Endpoint{AuthURL: authorize, TokenURL: "https://api.weixin.qq.com/sns/oauth2/access_token", AuthStyle: sdk.AuthStyleInParams}
+	case QQ:
+		issuer = "https://graph.qq.com/appid/" + url.PathEscape(c.ClientID)
+		endpoint = sdk.Endpoint{AuthURL: "https://graph.qq.com/oauth2.0/authorize", TokenURL: "https://graph.qq.com/oauth2.0/token", AuthStyle: sdk.AuthStyleInParams}
+		scopes = []string{"get_user_info"}
+	case Weibo:
+		issuer = "https://api.weibo.com"
+		endpoint = sdk.Endpoint{AuthURL: issuer + "/oauth2/authorize", TokenURL: issuer + "/oauth2/access_token", AuthStyle: sdk.AuthStyleInParams}
+		scopes = nil
 	case OIDC:
 		issuer = c.Issuer
 		if issuer == "" {
@@ -231,6 +260,25 @@ func (p *Provider) Begin(ctx context.Context, binding string) (Authorization, er
 		u.RawQuery = query.Encode()
 		authorization.URL = u.String()
 	}
+	if p.chineseProvider() {
+		u, _ := url.Parse(authorization.URL)
+		query := u.Query()
+		// These providers document confidential code flows without PKCE/nonce.
+		// Never imply they enforce those extensions.
+		query.Del("code_challenge")
+		query.Del("code_challenge_method")
+		query.Del("nonce")
+		if p.kind == WeChat || p.kind == WeChatWeb {
+			query.Set("appid", query.Get("client_id"))
+			query.Del("client_id")
+			u.Fragment = "wechat_redirect"
+		}
+		if p.kind == QQ {
+			query.Set("scope", strings.Join(p.flow.config.Scopes, ","))
+		}
+		u.RawQuery = query.Encode()
+		authorization.URL = u.String()
+	}
 	return authorization, nil
 }
 
@@ -251,6 +299,12 @@ func (p *Provider) Complete(ctx context.Context, binding, state, code string) (I
 	ctx = context.WithValue(ctx, sdk.HTTPClient, p.http)
 	if binding == "" {
 		return Identity{}, ErrInvalidState
+	}
+	if p.chineseProvider() {
+		if _, err := p.flow.consume(ctx, p.binding(binding), state, code); err != nil {
+			return Identity{}, err
+		}
+		return p.chineseIdentity(ctx, code)
 	}
 	result, err := p.flow.Complete(ctx, p.binding(binding), state, code)
 	if err != nil {

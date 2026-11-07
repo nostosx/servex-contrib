@@ -41,6 +41,7 @@ jobs:
           - auth/oidc
           - auth/oauth2
           - auth/oauth2/redis
+          - auth/saml
           - auth/password
           - messaging/kafka
           - messaging/memory

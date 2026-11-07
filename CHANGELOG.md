@@ -13,6 +13,44 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+- auth/login v1.3.0: compose enterprise SAML SP login with application Resolve
+  and browser sessions; bounded POST ACS, exact form fields and local rotation.
+  **Breaking:** Config gains SAML; use keyed literals. Select exactly one login
+  mechanism. Account/tenant linkage and local session expiry remain application-owned.
+- auth/saml/redis v1.0.0: shared atomic request correlation through a borrowed
+  Redis client, insert-only save, GETDEL consume, bounded/expiring records and
+  multi-client race/expiry integration tests.
+
+## 2026-11-07: domestic OAuth2 and enterprise SAML
+
+Release date: 2026-11-07. Requires Go 1.27.3.
+
+| Module | Version |
+| --- | --- |
+| auth/oauth2 | v1.2.0 |
+| auth/saml | v1.0.0 |
+
+- auth/oauth2: built-in WeChat website QR and Official Account web authorization,
+  QQ Connect and Weibo confidential code/login adapters. Handle provider-native
+  token exchange and user APIs, retain one-time browser/client/provider state,
+  app-scope OpenIDs, check QQ client_id and Weibo token/profile UID consistency.
+  Omit unsupported PKCE/nonce parameters, reject provider JSON errors/redirects
+  and redact secret-bearing request URLs from returned errors.
+- **Breaking, auth/oauth2:** Identity gains optional UnionID; use keyed literals.
+  UnionID is never substituted for app-specific Subject or used for automatic linkage.
+- auth/saml: SAML 2.0 SP-initiated browser SSO, signed Redirect AuthnRequests,
+  POST ACS, trusted IdP metadata/certificates and encrypted assertion support.
+  Runtime validation uses gosaml2 v0.12.0; independent crewjam IdP fixtures only
+  generate test responses. The flagged crewjam response-validation path is not
+  called or imported by production code; reachable-vulnerability gates remain enabled.
+- Validate signatures with SHA-256+ policy, issuer/audience/recipient/validity,
+  assertion/request/browser correlation, namespace-qualified identity and bounded
+  XML/body/token depth. Reject unsolicited responses, duplicate assertions,
+  transient identities and replay. Export SP metadata, NameID qualifiers,
+  attributes, SessionIndex and expiry for explicit application policy.
+- SAML IdP issuance, SLO and Artifact/SOAP are outside this SP adapter. No front-end
+  UI, live vendor credentials or automatic business account linking is included.
+
 ## auth/login/v1.2.0
 
 Release date: 2026-11-07. Requires Go 1.27.3, auth/oauth2 v1.1.0 and

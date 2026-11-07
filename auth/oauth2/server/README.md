@@ -1,6 +1,6 @@
 # auth/oauth2/server
 
-Module version for this revision: **v1.1.0**.
+Module version for this revision: **v1.2.0**.
 
 OAuth2 authorization-server and OIDC provider adapter using Ory Fosite v0.49.0.
 Use Go 1.27.3. This package shares the auth/oauth2 module with the client package;
