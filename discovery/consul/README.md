@@ -1,6 +1,6 @@
 # discovery/consul
 
-Module version for this revision: **v1.2.1**.
+Module version for this revision: **v1.3.0**.
 
 Use Go 1.27.3; core integration requires published servex v1.7.0. See the
 [validation commands](../../CONTRIBUTING.md#checks).
@@ -24,6 +24,13 @@ Use Go 1.27.3; core integration requires published servex v1.7.0. See the
 - The client is owned by the caller.
 
 ## Usage
+
+For decoded configuration, start from `DefaultConfig()` and call
+`NewFromConfig(cfg, opts...)`. `Config` contains `address` (host:port), `scheme`
+(`http`/`https`), `datacenter` and `acl_token`; `Validate` and construction do not
+contact the agent. Configure registration identity and enablement in the service,
+then use the same Registry/servex registration lifecycle shown below. Advanced
+native SDK configuration, including Unix sockets, can still use `New(client)`.
 
 The complete programs below use the current source API. Use matching peer
 sources during development; install real module versions after publication.

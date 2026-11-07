@@ -112,6 +112,20 @@ func TestWrongVerifierAndRedirectRejected(t *testing.T) {
 			}
 		})
 	}
+	t.Run("untrusted authorization callback", func(t *testing.T) {
+		s, _ := testProvider(t)
+		query := url.Values{"client_id": {"public"}, "redirect_uri": {"https://attacker.example/callback"}, "response_type": {"code"}, "state": {"untrusted-redirect-state"}}
+		r := httptest.NewRequest(http.MethodGet, "https://issuer.example/oauth2/authorize?"+query.Encode(), nil)
+		request, err := s.Provider.NewAuthorizeRequest(t.Context(), r)
+		if err == nil {
+			t.Fatal("untrusted authorization callback accepted")
+		}
+		w := httptest.NewRecorder()
+		s.Provider.WriteAuthorizeError(t.Context(), w, request, err)
+		if w.Code != http.StatusBadRequest || w.Header().Get("Location") != "" {
+			t.Fatal("authorization error redirected to an untrusted callback")
+		}
+	})
 }
 
 func TestDiscoveryDoesNotExposePrivateKeys(t *testing.T) {

@@ -13,6 +13,26 @@ v1.0.0. See [RELEASING.md](RELEASING.md) for release gates.
 
 ## Unreleased
 
+## 2026-11-07: component configuration constructors
+
+Release date: 2026-11-07. Requires Go 1.27.3 and published servex v1.7.0.
+
+| Module | Version |
+| --- | --- |
+| discovery/consul | v1.3.0 |
+| auth/oauth2 | v1.3.0 |
+
+- discovery/consul: add file-decodable Config, DefaultConfig, Validate and
+  NewFromConfig. Connection/credential handling belongs to the adapter; service
+  registration identity and capability selection remain application-owned.
+- auth/oauth2/server: add ServerConfig, DefaultServerConfig, Validate and
+  NewServerFromConfig with persistent RSA/HMAC/JWKS file loading. Runtime options
+  supply client-secret hashing and token policy/audit hooks. Keep the native
+  Config/New API for callers that own keys in memory.
+- Move authorization-code replay and untrusted callback regressions from the
+  account service to their protocol/storage implementation; verify replay across
+  PostgreSQL-backed instances. Existing client/server APIs remain compatible.
+
 ## 2026-11-07: SAML state and browser session composition
 
 Release date: 2026-11-07. Requires Go 1.27.3 and published auth/saml v1.0.0.

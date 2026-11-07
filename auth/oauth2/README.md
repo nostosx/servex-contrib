@@ -1,7 +1,7 @@
 # auth/oauth2
 
 OAuth2 client and server implementations live in one capability module,
-**v1.2.0**, Go 1.27.3, MIT. Dependencies: Go OAuth2 SDK, go-oidc through auth/oidc,
+**v1.3.0**, Go 1.27.3, MIT. Dependencies: Go OAuth2 SDK, go-oidc through auth/oidc,
 and Ory Fosite.
 
 ```text

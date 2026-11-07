@@ -52,14 +52,8 @@ type Server struct {
 }
 
 func New(config Config, store Store) (*Server, error) {
-	u, err := url.Parse(config.Issuer)
-	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || strings.HasSuffix(config.Issuer, "/") {
-		return nil, errors.New("oauth2 server: issuer must be an absolute URL without trailing slash, query or fragment")
-	}
-	local := u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1"
-	localHTTP := config.AllowInsecureLoopback && u.Scheme == "http" && local
-	if u.Scheme != "https" && !localHTTP {
-		return nil, errors.New("oauth2 server: HTTPS issuer required")
+	if err := validateIssuer(config.Issuer, config.AllowInsecureLoopback); err != nil {
+		return nil, err
 	}
 	if store == nil || config.Key == nil || config.Key.N == nil || config.Key.N.BitLen() < 2048 || config.KeyID == "" || len(config.OAuth.GlobalSecret) < 32 {
 		return nil, errors.New("oauth2 server: store, RSA key (2048+ bits), key ID and 32-byte global secret required")
@@ -236,4 +230,17 @@ func writeJSON(w http.ResponseWriter, value any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
 	_ = json.NewEncoder(w).Encode(value)
+}
+
+func validateIssuer(issuer string, allowInsecureLoopback bool) error {
+	u, err := url.Parse(issuer)
+	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || strings.HasSuffix(issuer, "/") {
+		return errors.New("oauth2 server: issuer must be an absolute URL without trailing slash, query or fragment")
+	}
+	local := u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1"
+	localHTTP := allowInsecureLoopback && u.Scheme == "http" && local
+	if u.Scheme != "https" && !localHTTP {
+		return errors.New("oauth2 server: HTTPS issuer required")
+	}
+	return nil
 }

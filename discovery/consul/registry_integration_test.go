@@ -34,7 +34,12 @@ func itClient(t *testing.T) *api.Client {
 
 func TestIntegrationDistinctServiceIdentities(t *testing.T) {
 	client := itClient(t)
-	r := New(client)
+	cfg := DefaultConfig()
+	cfg.Address = os.Getenv("SERVEX_IT_CONSUL_ADDR")
+	r, err := NewFromConfig(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
 	s := newSyncRegistrar(t, r)
 	prefix := "it-identity-" + uuid.NewV7().String() + "-"
 	instances := []*discovery.Instance{

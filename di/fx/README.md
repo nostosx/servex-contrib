@@ -7,8 +7,8 @@ application `app.go`, with ordinary business constructors. This module connects
 that native Fx application to servex lifecycle, readiness and runtime shutdown.
 It defines no container, provider or dependency-resolution API.
 
-Current source uses Go 1.27.3, published servex v1.7.0 and Fx v1.24.0. This new
-contrib module is not yet published. No local replacements are checked in.
+Current source uses Go 1.27.3, published servex v1.7.0 and Fx v1.24.0. Use
+published di/fx v1.0.0. No local replacements are checked in.
 
 ## Explicit assembly
 

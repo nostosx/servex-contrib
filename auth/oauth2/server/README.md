@@ -1,6 +1,6 @@
 # auth/oauth2/server
 
-Module version for this revision: **v1.2.0**.
+Module version for this revision: **v1.3.0**.
 
 OAuth2 authorization-server and OIDC provider adapter using Ory Fosite v0.49.0.
 Use Go 1.27.3. This package shares the auth/oauth2 module with the client package;
@@ -9,6 +9,22 @@ account model. Fosite implements protocol validation, PKCE,
 token generation, ID-token signing and protocol responses.
 
 ## Responsibilities
+
+File-based services can embed `ServerConfig`, initialize it with
+`DefaultServerConfig()` and call `NewServerFromConfig(cfg, store, opts...)`.
+The constructor validates settings and loads persistent RSA signing keys, raw
+HMAC-secret bytes and optional previous public JWKS. It retains an owned secret
+for token validation after construction. Replicas must share key material.
+Default lifetimes are 15 minutes for access/ID tokens, seven days for refresh
+tokens and two minutes for codes. Issuer, key ID and file paths are explicit.
+`Validate` checks scalar settings without file I/O. Enablement, application
+scope policy and tighter lifetime bounds remain service-owned.
+
+Runtime `WithClientSecretsHasher`, `WithBeforeToken` and `WithOnToken` options
+keep SDK dependencies and business callbacks outside decoded configuration.
+The existing native `Config`/`New` API remains available for in-memory keys and
+advanced Fosite settings. Constructors never start an HTTP server or install
+application middleware.
 
 `New(Config, Store)` selects authorization code + mandatory S256 PKCE,
 refresh-token rotation/reuse detection, client credentials, revocation,

@@ -91,4 +91,18 @@ func TestIntegrationPostgresDurableCredentialsAndAtomicRotation(t *testing.T) {
 	if exposed != 0 {
 		t.Fatal("raw credential persisted as lookup key")
 	}
+	// Code replay is a protocol/storage guarantee, independent of account policy.
+	code = authorize(t, first, verifier)
+	exchange := url.Values{"grant_type": {"authorization_code"}, "client_id": {"public"}, "code": {code}, "code_verifier": {verifier}, "redirect_uri": {"https://client.example/callback"}}
+	status, tokens = tokenRequest(t, second, exchange)
+	if status != 200 {
+		t.Fatalf("authorization exchange returned %d", status)
+	}
+	status, result = tokenRequest(t, first, exchange)
+	if status != 400 || result["error"] != "invalid_grant" {
+		t.Fatal("replayed authorization code was not rejected", status, result)
+	}
+	if _, _, err := second.Provider.IntrospectToken(t.Context(), tokens["access_token"].(string), fosite.AccessToken, openid.NewDefaultSession()); err == nil {
+		t.Fatal("authorization code replay left access token active")
+	}
 }
